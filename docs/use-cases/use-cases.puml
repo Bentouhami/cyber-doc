@@ -1,0 +1,18 @@
+@startuml
+left to right direction
+actor Agent
+actor Administrateur
+actor Client
+
+usecase UC1 as "Gérer les modèles"
+usecase UC2 as "Générer un contrat"
+usecase UC3 as "Consulter l'archive"
+
+Administrateur --> UC1
+Agent --> UC2
+Administrateur --> UC3
+Agent --> UC3
+Client ..> UC2 : "informations fournies"
+
+' TODO: compléter avec les cas spécifiques à votre organisation
+@enduml
