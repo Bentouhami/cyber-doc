@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+.git
+.vscode
+.DS_Store
+npm-debug.log
+yarn-error.log
+pnpm-lock.yaml
+.eslintcache
+.env*
+storage

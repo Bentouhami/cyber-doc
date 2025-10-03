@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cyberdoc-next:latest
+    container_name: cyberdoc-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      APP_BASE_URL: ${APP_BASE_URL}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
+      BETTER_AUTH_ENABLE_EMAIL: ${BETTER_AUTH_ENABLE_EMAIL}
+      DATABASE_URL: ${DATABASE_URL}
+      DOCS_STORAGE_DIR: /app/storage
+    ports:
+      - "3000:3000"
+    volumes:
+      # Stockage persistant des documents générés
+      - ./storage:/app/storage
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    container_name: cyberdoc-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: cyberdoc
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:

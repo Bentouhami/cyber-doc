@@ -123,7 +123,7 @@ const mockTemplates: ContractTemplate[] = [
 export function ContractTemplateManager() {
   const [templates, setTemplates] = useState<ContractTemplate[]>(mockTemplates)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [editingTemplate, setEditingTemplate] = useState<ContractTemplate | null>(null)
+  const [, setEditingTemplate] = useState<ContractTemplate | null>(null)
   const [newTemplate, setNewTemplate] = useState<Partial<ContractTemplate>>({
     name: "",
     description: "",
@@ -294,3 +294,4 @@ export function ContractTemplateManager() {
     </div>
   )
 }
+

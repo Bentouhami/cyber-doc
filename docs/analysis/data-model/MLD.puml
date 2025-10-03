@@ -1,3 +1,144 @@
-@startuml
-' TODO: compléter le modèle logique de données (tables & relations)
+@startuml CyberDoc_MLD
+
+!define Table(name,desc) class name as "desc" << (T,#FFAAAA) >>
+
+Table(Personne, "Personne") {
+  +idPersonne : INTEGER (PK)
+  --
+  nom : VARCHAR
+  prenom : VARCHAR
+}
+
+Table(Role, "Rôle") {
+  +idRole : INTEGER (PK)
+  --
+  libelle : VARCHAR
+}
+
+Table(PersonneRole, "Rôle de la personne") {
+  +idPersonneRole : INTEGER (PK)
+  --
+  dateDebut : DATETIME
+  dateFin : DATETIME
+  #idPersonne : INTEGER (FK)
+  #idRole : INTEGER (FK)
+}
+
+Table(UserInfo, "Infos utilisateur") {
+  +idUserInfo : INTEGER (PK)
+  --
+  email : VARCHAR
+  motDePasseHash : VARCHAR
+  actif : BOOLEAN
+  dateCreation : DATETIME
+  #idPersonne : INTEGER (FK)
+}
+
+Table(ClientInfo, "Infos client") {
+  +idClientInfo : INTEGER (PK)
+  --
+  cin : VARCHAR
+  telephone : VARCHAR
+  adresse : VARCHAR
+  notes : TEXT
+  #idPersonne : INTEGER (FK)
+}
+
+Table(DocumentTemplate, "Modèle de document") {
+  +idTemplate : INTEGER (PK)
+  --
+  titre : VARCHAR
+  typeDocument : VARCHAR
+  categorie : VARCHAR
+  statut : VARCHAR
+  langue : VARCHAR
+  derniereMiseAJour : DATETIME
+  instructions : TEXT
+  contenuModele : TEXT
+  #creatorId : INTEGER (FK)
+}
+
+Table(TemplateField, "Champ du modèle") {
+  +idField : INTEGER (PK)
+  --
+  codeChamp : VARCHAR
+  libelle : VARCHAR
+  typeChamp : VARCHAR
+  obligatoire : BOOLEAN
+  ordreAffichage : INTEGER
+  valeurParDefaut : VARCHAR
+  aideSaisie : VARCHAR
+  #templateId : INTEGER (FK)
+}
+
+Table(GeneratedDocument, "Document généré") {
+  +idGenerated : INTEGER (PK)
+  --
+  reference : VARCHAR
+  statut : VARCHAR
+  copiesDemandees : INTEGER
+  copiesImprimees : INTEGER
+  prixTotal : DECIMAL
+  dateCreation : DATETIME
+  dateDerniereEdition : DATETIME
+  cheminFichier : VARCHAR
+  commentaires : TEXT
+  #generatorId : INTEGER (FK)
+  #clientId : INTEGER (FK)
+  #templateId : INTEGER (FK)
+}
+
+Table(FieldValue, "Valeur de champ") {
+  +idFieldValue : INTEGER (PK)
+  --
+  valeurTexte : TEXT
+  valeurNombre : DECIMAL
+  valeurDate : DATE
+  #documentId : INTEGER (FK)
+  #fieldId : INTEGER (FK)
+}
+
+Table(PrintEvent, "Impression") {
+  +idPrint : INTEGER (PK)
+  --
+  copies : INTEGER
+  dateImpression : DATETIME
+  canal : VARCHAR
+  #documentId : INTEGER (FK)
+  #triggeredById : INTEGER (FK)
+}
+
+Table(ActivityLog, "Journal d'activité") {
+  +idActivity : INTEGER (PK)
+  --
+  typeAction : VARCHAR
+  description : TEXT
+  dateAction : DATETIME
+  adresseIP : VARCHAR
+  #realisedById : INTEGER (FK)
+  #documentId : INTEGER (FK)
+}
+
+' Relations
+Personne "1" -- "0..*" PersonneRole
+Role "1" -- "0..*" PersonneRole
+Personne "1" -- "0..1" UserInfo
+Personne "1" -- "0..1" ClientInfo
+
+PersonneRole "1" -- "0..*" DocumentTemplate
+DocumentTemplate "1" -- "0..*" TemplateField
+
+PersonneRole "1" -- "0..*" GeneratedDocument
+ClientInfo "1" -- "0..*" GeneratedDocument
+DocumentTemplate "1" -- "0..*" GeneratedDocument
+
+GeneratedDocument "1" -- "0..*" FieldValue
+TemplateField "1" -- "0..*" FieldValue
+
+GeneratedDocument "1" -- "0..*" PrintEvent
+PersonneRole "1" -- "0..*" PrintEvent
+
+PersonneRole "1" -- "0..*" ActivityLog
+GeneratedDocument "0..1" -- "0..*" ActivityLog
+
 @enduml

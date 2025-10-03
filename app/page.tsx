@@ -12,13 +12,6 @@ import { ContractGenerator } from "@/components/contract-generator"
 import { ContractArchive } from "@/components/contract-archive"
 import { AuthProvider, useAuth } from "@/components/auth-provider"
 
-const mockUser = {
-  id: "1",
-  name: "أحمد محمد",
-  email: "ahmed.mohamed@cybercafe.com",
-  role: "admin" as "admin" | "user",
-}
-
 function Dashboard() {
   const { user, logout } = useAuth()
   const { theme, setTheme } = useTheme()
@@ -45,7 +38,7 @@ function Dashboard() {
             <div className="flex items-center space-x-4 rtl:space-x-reverse">
               <div className="flex items-center space-x-2 rtl:space-x-reverse">
                 <FileText className="h-8 w-8 text-secondary" />
-                <h1 className="text-xl font-bold text-foreground">سايبر صيدا - إدارة العقود</h1>
+                <h1 className="text-xl font-bold text-foreground">سايبر السعيدية - إدارة العقود</h1>
               </div>
             </div>
             <div className="flex items-center space-x-4 rtl:space-x-reverse">
@@ -77,10 +70,16 @@ function Dashboard() {
               إنشاء عقد
             </TabsTrigger>
             {user?.role === "admin" && (
-              <TabsTrigger value="templates" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                إدارة النماذج
-              </TabsTrigger>
+              <>
+                <TabsTrigger value="templates" className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  إدارة النماذج
+                </TabsTrigger>
+                <a href="/admin/employees" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                  <Users className="h-4 w-4 mr-2" />
+                  Gestion des Employés
+                </a>
+              </>
             )}
             <TabsTrigger value="archive" className="flex items-center gap-2">
               <Archive className="h-4 w-4" />
@@ -133,7 +132,7 @@ function Dashboard() {
           </TabsContent>
 
           <TabsContent value="generate">
-            <ContractGenerator userRole={user?.role || "user"} />
+            <ContractGenerator />
           </TabsContent>
 
           {user?.role === "admin" && (

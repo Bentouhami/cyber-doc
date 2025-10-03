@@ -1,3 +1,143 @@
-@startuml
-' TODO: compléter le modèle conceptuel de données
+@startuml Modèle Conceptuel de Données pour CyberDoc
+title CyberDoc - Modèle Conceptuel de Données
+
+' Entité User unifiée (clients, agents et administrateurs)
+entity "User" as User {
+  + id: UUID <<PK>>
+  --
+  nom: VARCHAR(255)
+  prenom: VARCHAR(255)
+  email: VARCHAR(255) <<Unique>>
+  telephone: VARCHAR(255)
+  adresse: TEXT
+  role: ENUM("client", "agent", "admin")
+  motDePasse: VARCHAR(255)
+  pieceIdentite: VARCHAR(255) <<Unique>>
+  dateCreation: DATETIME
+  dateMiseAJour: DATETIME
+  dateDerniereConnexion: DATETIME
+}
+
+' Entité pour les types de documents (e.g., "طلبات", "وكالات", "عقود")
+entity "TypeDocument" as TypeDocument {
+  + id: UUID <<PK>>
+  --
+  libelle: VARCHAR(255) <<Unique>>
+  dateCreation: DATETIME
+  dateMiseAJour: DATETIME
+}
+
+' Entité pour les sous-types de documents (e.g., "طلب توقيف حساب بنكي", "عقد بيع")
+entity "SousTypeDocument" as SousTypeDocument {
+  + id: UUID <<PK>>
+  --
+  libelle: VARCHAR(255) <<Unique>>
+  idTypeDocument: UUID <<FK>>
+  dateCreation: DATETIME
+  dateMiseAJour: DATETIME
+}
+
+' Entité Modèle de Contrat
+entity "ModeleContrat" as ModeleContrat {
+  + id: UUID <<PK>>
+  --
+  libelle: VARCHAR(255) <<Unique>>
+  description: TEXT
+  contenu: TEXT
+  version: INT
+  statut: ENUM("Actif", "Inactif")
+  idSousTypeDocument: UUID <<FK>>
+  dateCreation: DATETIME
+  dateMiseAJour: DATETIME
+  idCreateur: UUID <<FK>>
+}
+
+' Entité Contrat généré à partir d'un modèle
+entity "Contrat" as Contrat {
+  + id: UUID <<PK>>
+  --
+  reference: VARCHAR(255) <<Unique>>
+  statut: ENUM("Brouillon", "Actif", "Expire", "Annule")
+  version: INT
+  contenu: TEXT
+  cheminFichier: VARCHAR(512)
+  dateCreation: DATETIME
+  dateMiseAJour: DATETIME
+  dateSignature: DATETIME
+  idModele: UUID <<FK>>
+  idClient: UUID <<FK>>
+  idAgent: UUID <<FK>>
+}
+
+' Entité pour les clauses personnalisées d'un contrat
+entity "Clause" as Clause {
+  + id: UUID <<PK>>
+  --
+  titre: VARCHAR(255)
+  contenu: TEXT
+  ordre: INT
+  idContrat: UUID <<FK>>
+  dateCreation: DATETIME
+  dateMiseAJour: DATETIME
+}
+
+' Entité pour les biens (maison, voiture, etc.) concernés par un contrat
+entity "Bien" as Bien {
+  + id: UUID <<PK>>
+  --
+  typeBien: VARCHAR(255)
+  description: TEXT
+  adresse: TEXT
+  valeur: DECIMAL(10,2)
+  idContrat: UUID <<FK>>
+  dateCreation: DATETIME
+  dateMiseAJour: DATETIME
+}
+
+' Entité d'historique pour suivre les versions d'un contrat
+entity "HistoriqueContrat" as HistoriqueContrat {
+  + id: UUID <<PK>>
+  --
+  version: INT
+  dateModification: DATETIME
+  contenu: TEXT
+  idContrat: UUID <<FK>>
+  idModificateur: UUID <<FK>>
+}
+
+' Entité pour les logs d'activité
+entity "LogActivite" as ActivityLog {
+  + id: UUID <<PK>>
+  --
+  date: DATETIME
+  action: VARCHAR(255)
+  description: TEXT
+  idUtilisateur: UUID <<FK>>
+  dateCreation: DATETIME
+}
+
+' Entité pour les données de référence (villes, provinces, mentions légales, etc.)
+entity "Reference" as ReferenceData {
+  + id: UUID <<PK>>
+  --
+  type: VARCHAR(255)
+  code: VARCHAR(255) <<Unique>>
+  valeur: TEXT
+  dateCreation: DATETIME
+  dateMiseAJour: DATETIME
+}
+
+' Relations entre les entités
+User "1" -- "0..N" ModeleContrat : cree
+User "1" -- "0..N" Contrat : genere (Agent)
+User "1" -- "0..N" Contrat : estClientDe (Client)
+TypeDocument "1" -- "0..N" SousTypeDocument : contient
+SousTypeDocument "1" -- "0..N" ModeleContrat : categorise
+ModeleContrat "1" -- "0..N" Contrat : utilise
+Contrat "1" -- "0..N" Clause : compose
+Contrat "1" -- "0..N" Bien : concerne
+Contrat "1" -- "0..N" HistoriqueContrat : aUnHistorique
+User "1" -- "0..N" HistoriqueContrat : modifie
+User "1" -u- "0..N" ActivityLog : effectue
+
 @enduml

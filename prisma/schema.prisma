@@ -1,0 +1,387 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/* =========================
+   Authentication & Users
+   ========================= */
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  id     Int    @id @default(autoincrement())
+  userId String @map("user_id_fk")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId Int    @map("role_id_fk")
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  firstName     String?
+  lastName      String?
+  name          String?   // peut être calculé à partir de firstName + lastName
+  email         String?   @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  cin           String?   @unique // aussi utilisé pour clients
+  phone         String?
+  address       String?
+  notes         String?   // notes internes
+  activatedAt   DateTime?
+  deactivatedAt DateTime?
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  roles            UserRole[]
+  createdDocuments Document[]       @relation("DocumentCreator")
+  clientDocuments  DocumentClient[]
+  activityLogs     ActivityLog[]
+  printHistories   PrintHistory[]
+  cashedDocuments  Document[]       @relation("DocumentCashier")
+
+  @@index([firstName, lastName, cin])
+  @@map("users")
+}
+
+/* =========================
+   Templates & Catalogs
+   ========================= */
+
+model DocumentType {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique           // demande, contrat, attestation
+  nameAr    String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  categories DocumentCategory[]
+  templates  DocumentTemplate[]
+
+  @@map("document_types")
+}
+
+model DocumentCategory {
+  id             Int          @id @default(autoincrement())
+  name           String       // logement, transport, scolarité, etc.
+  nameAr         String?
+  documentTypeId Int          @map("document_type_id_fk")
+  documentType   DocumentType @relation(fields: [documentTypeId], references: [id])
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  templates DocumentTemplate[]
+
+  @@unique([name, documentTypeId])
+  @@map("document_categories")
+}
+
+model DocumentTemplate {
+  id             String           @id @default(cuid())
+  title          String
+  titleAr        String?
+  description    String?
+  documentTypeId Int              @map("document_type_id_fk")
+  documentType   DocumentType     @relation(fields: [documentTypeId], references: [id])
+  categoryId     Int              @map("category_id_fk")
+  category       DocumentCategory @relation(fields: [categoryId], references: [id])
+  content        String           // contenu du template
+  language       String           @default("fr") // fr, ar, both
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  fields    TemplateField[]
+  documents Document[]
+
+  @@map("document_templates")
+}
+
+model FieldType {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // TEXT, NUMBER, DATE, EMAIL, PHONE, etc.
+  nameAr      String?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  templateFields TemplateField[]
+
+  @@map("field_types")
+}
+
+model TemplateField {
+  id              String           @id @default(cuid())
+  templateId      String
+  template        DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  fieldName       String           // nom, cin, adresse, montant, etc.
+  fieldLabel      String           // label FR
+  fieldLabelAr    String?          // label AR
+  fieldTypeId     Int              @map("field_type_id_fk")
+  fieldType       FieldType        @relation(fields: [fieldTypeId], references: [id])
+  isRequired      Boolean          @default(false)
+  defaultValue    String?
+  validationRules Json?            // JSON pour les règles de validation
+  displayOrder    Int              @default(0)
+  notes           String?
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  values DocumentFieldValue[]
+
+  @@unique([templateId, fieldName])
+  @@map("template_fields")
+}
+
+model DocumentStatus {
+  id           Int      @id @default(autoincrement())
+  name         String   @unique   // DRAFT, READY, PRINTED, ARCHIVED
+  nameAr       String?
+  description  String?
+  color        String?
+  isActive     Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  documents Document[]
+
+  @@map("document_statuses")
+}
+
+model FileFormat {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique // PDF, DOCX, BOTH
+  nameAr    String?
+  extension String?  // .pdf, .docx
+  mimeType  String?  // application/pdf, ...
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  documents Document[]
+
+  @@map("file_formats")
+}
+
+/* =========================
+   Documents & Fields
+   ========================= */
+
+model Document {
+  id           String           @id @default(cuid())
+
+  templateId   String
+  template     DocumentTemplate @relation(fields: [templateId], references: [id])
+
+  createdById  String           @map("user_id_fk")
+  createdBy    User             @relation("DocumentCreator", fields: [createdById], references: [id])
+
+  statusId     Int              @map("status_id_fk")
+  status       DocumentStatus   @relation(fields: [statusId], references: [id])
+
+  fileName     String?
+  filePath     String?
+  fileFormatId Int              @map("file_format_id_fk")
+  fileFormat   FileFormat       @relation(fields: [fileFormatId], references: [id])
+
+  totalCopies  Int              @default(1)
+  notes        String?
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  // ---- Prix & Encaissement (cash only) ----
+  standardPrice   Decimal? @db.Decimal(10, 2)   // prix catalogue (optionnel)
+  negotiatedPrice Decimal? @db.Decimal(10, 2)   // compatible avec l'existant (optionnel)
+
+  unitPrice       Decimal? @db.Decimal(10, 2)   // prix unitaire final (par document)
+  discount        Decimal? @db.Decimal(10, 2)   // remise (valeur positive)
+  surcharge       Decimal? @db.Decimal(10, 2)   // supplément (valeur positive)
+  chargedTotal    Decimal? @db.Decimal(10, 2)   // total facturé = unitPrice*totalCopies - discount + surcharge
+
+  amountPaid      Decimal? @db.Decimal(10, 2)   // montant reçu en espèces
+  changeGiven     Decimal? @db.Decimal(10, 2)   // monnaie rendue si overpay
+  paidAt          DateTime?
+  paymentStatus   String?                      // 'UNPAID' | 'PARTIAL' | 'PAID'
+  currency        String   @default("MAD")
+
+  cashierId       String?  @map("cashier_id_fk") // qui a encaissé
+  cashier         User?    @relation("DocumentCashier", fields: [cashierId], references: [id])
+
+  // Relations
+  clients      DocumentClient[]
+  fieldValues  DocumentFieldValue[]
+  printHistory PrintHistory[]
+
+  @@index([paidAt, cashierId])
+  @@map("documents")
+}
+
+model DocumentClient {
+  id         String   @id @default(cuid())
+
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  userId     String   @map("user_id_fk") // client depuis la table Users
+  user       User     @relation(fields: [userId], references: [id])
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([documentId, userId])
+  @@map("document_clients")
+}
+
+model DocumentFieldValue {
+  id         String        @id @default(cuid())
+  documentId String        @map("document_id_fk")
+  document   Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  fieldId    String        @map("template_field_id_fk")
+  field      TemplateField @relation(fields: [fieldId], references: [id])
+  value      String        // stocké en texte, interprété selon le type
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  @@unique([documentId, fieldId])
+  @@map("document_field_values")
+}
+
+/* =========================
+   Printing
+   ========================= */
+
+model PrintHistory {
+  id          String   @id @default(cuid())
+
+  documentId  String   @map("document_id_fk")
+  document    Document @relation(fields: [documentId], references: [id])
+
+  printedById String   @map("user_id_fk")
+  printedBy   User     @relation(fields: [printedById], references: [id])
+
+  copies      Int      @default(1)
+  printerId   String   @map("printer_id_fk")
+  printer     Printer  @relation(fields: [printerId], references: [id])
+  printerName String?
+
+  printedAt   DateTime @default(now()) @map("printed_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  notes       String?
+
+  @@map("print_history")
+}
+
+model Printer {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  location  String?
+  ipAddress String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  printHistories PrintHistory[]
+
+  @@map("printers")
+}
+
+/* =========================
+   Activity & Stats
+   ========================= */
+
+model ActivityType {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // LOGIN, LOGOUT, CREATE_DOCUMENT, etc.
+  nameAr      String?
+  description String?
+  category    String?  // auth, document, client, template, etc.
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  activityLogs ActivityLog[]
+
+  @@map("activity_types")
+}
+
+model ActivityLog {
+  id             String       @id @default(cuid())
+  userId         String       @map("user_id_fk")
+  user           User         @relation(fields: [userId], references: [id])
+  activityTypeId Int          @map("activity_type_id_fk")
+  activityType   ActivityType @relation(fields: [activityTypeId], references: [id])
+  resourceType   String?
+  resourceId     String?
+  userAgent      String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@map("activity_logs")
+}
+
+model DailyStats {
+  id               String   @id @default(cuid())
+  date             DateTime @unique @db.Date
+  documentsCreated Int      @default(0)
+  documentsPrinted Int      @default(0)
+  totalCopies      Int      @default(0)
+  uniqueClients    Int      @default(0)
+  activeEmployees  Int      @default(0)
+  topDocumentType  String?
+  topCategory      String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("daily_stats")
+}
+
+/* =========================
+   Settings
+   ========================= */
+
+model AppSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  type      String   @default("string") // string, number, boolean, json
+  category  String   @default("general")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}

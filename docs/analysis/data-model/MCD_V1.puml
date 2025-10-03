@@ -1,0 +1,103 @@
+@startuml Modèle Conceptuel de Données pour CyberDoc
+title CyberDoc - Modèle Conceptuel de Données pour CyberDoc
+' Ce diagramme décrit les principales entités métiers du projet CyberDoc ainsi que leurs attributs et relations.
+
+' Paramètres de rendu
+
+
+'' Entité User unifiée (clients, agents et administrateurs)
+entity "User" as User {
+  *idUser : Integer
+  --
+  nom : String
+  prenom : String
+  email : String
+  telephone : String
+  adresse : String
+  role : String        ' client, agent ou admin
+  motDePasse : String
+  pieceIdentite : String
+}
+
+' Entité Modèle de Contrat
+entity "ModeleContrat" as ModeleContrat {
+  *idModele : Integer
+  --
+  libelle : String
+  description : String
+  typeContrat : String      ' location maison, vente maison, vente voiture, etc.
+  contenu : Text
+  dateCreation : Date
+}
+
+' Entité Contrat généré à partir d'un modèle
+entity "Contrat" as Contrat {
+  *idContrat : Integer
+  --
+  reference : String
+  dateCreation : Date
+  statut : String        ' EnAttente, Actif, Expire ou Annule
+  version : Integer
+  contenu : Text
+}
+
+' Entité représentant le processus de validation d'un contrat
+entity "WorkflowValidation" as WorkflowValidation {
+  *idWorkflow : Integer
+  --
+  statut : String        ' EnAttente, Valide ou Rejete
+  dateSoumission : Date
+  dateDecision : Date
+  commentaire : Text
+}
+
+' Entité pour les clauses personnalisées d'un contrat
+entity "Clause" as Clause {
+  *idClause : Integer
+  --
+  titre : String
+  contenu : Text
+  ordre : Integer
+}
+
+' Entité pour les biens (maison, voiture, etc.) concernés par un contrat
+entity "Bien" as Bien {
+  *idBien : Integer
+  --
+  typeBien : String      ' maison, voiture, moto, vélo, etc.
+  description : String
+  adresse : String
+  valeur : Decimal
+}
+
+' Entité représentant le fichier généré pour un contrat
+entity "Document" as Document {
+  *idDocument : Integer
+  --
+  cheminFichier : String
+  dateGeneration : Date
+}
+
+' Entité d'historique pour suivre les versions d'un contrat
+entity "HistoriqueContrat" as HistoriqueContrat {
+  *idHistorique : Integer
+  --
+  version : Integer
+  dateModification : Date
+  contenu : Text
+}
+
+'' Relations entre les entités
+User ||--o{ Contrat : "client"      ' un utilisateur jouant le rôle de client peut avoir plusieurs contrats
+User ||--o{ Contrat : "agent"       ' un utilisateur jouant le rôle d’agent génère plusieurs contrats
+ModeleContrat ||--o{ Contrat : "utilise"
+Contrat ||--o| WorkflowValidation : "estValidéPar"
+User ||--o{ WorkflowValidation : "approuve"   ' un administrateur peut approuver plusieurs validations
+Contrat ||--o{ Clause : "compose"
+
+'' Relations supplémentaires pour l'extension du modèle
+Bien ||--o{ Contrat : "objetDe"      ' un bien peut être l’objet de plusieurs contrats au fil du temps
+Contrat ||--o{ Document : "document"  ' un contrat peut générer plusieurs documents (versions PDF)
+Contrat ||--o{ HistoriqueContrat : "historique"  ' historique des modifications
+
+@enduml

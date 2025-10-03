@@ -1,0 +1,122 @@
+@startuml CyberDoc_MCD_V3
+' UML Diagram for CyberDoc Data Model (Version 3)
+!define Table(name,desc) class name as "desc" << (T,#FFAAAA) >>
+
+Table(Personne, "Personne") {
+  +idPersonne : Integer
+  --
+  nom : String
+  prenom : String
+}
+
+Table(Role, "Rôle") {
+  +idRole : Integer
+  libelle : String
+}
+
+Table(PersonneRole, "Rôle de la personne") {
+  +idPersonneRole : Integer
+  --
+  dateDebut : DateTime
+  dateFin : DateTime
+}
+
+Table(UserInfo, "Infos utilisateur") {
+  +idUserInfo : Integer
+  --
+  email : String
+  motDePasseHash : String
+  actif : Boolean
+  dateCreation : DateTime
+}
+
+Table(ClientInfo, "Infos client") {
+  +idClientInfo : Integer
+  --
+  cin : String
+  telephone : String
+  adresse : String
+  notes : Text
+}
+
+Table(DocumentTemplate, "Modèle de document") {
+  +idTemplate : Integer
+  titre : String
+  typeDocument : String
+  categorie : String
+  statut : String
+  langue : String
+  derniereMiseAJour : DateTime
+  instructions : Text
+  contenuModele : Text
+}
+
+Table(TemplateField, "Champ du modèle") {
+  +idField : Integer
+  codeChamp : String
+  libelle : String
+  typeChamp : String
+  obligatoire : Boolean
+  ordreAffichage : Integer
+  valeurParDefaut : String
+  aideSaisie : String
+}
+
+Table(GeneratedDocument, "Document généré") {
+  +idGenerated : Integer
+  reference : String
+  statut : String
+  copiesDemandees : Integer
+  copiesImprimees : Integer
+  prixTotal : Decimal
+  dateCreation : DateTime
+  dateDerniereEdition : DateTime
+  cheminFichier : String
+  commentaires : Text
+}
+
+Table(FieldValue, "Valeur de champ") {
+  +idFieldValue : Integer
+  valeurTexte : Text
+  valeurNombre : Decimal
+  valeurDate : Date
+}
+
+Table(PrintEvent, "Impression") {
+  +idPrint : Integer
+  copies : Integer
+  dateImpression : DateTime
+  canal : String
+}
+
+Table(ActivityLog, "Journal d'activité") {
+  +idActivity : Integer
+  typeAction : String
+  description : Text
+  dateAction : DateTime
+  adresseIP : String
+}
+
+' Relations
+Personne "1" --o{ PersonneRole : "remplit"
+Role "1" --o{ PersonneRole : "définit"
+Personne "1" --o{ UserInfo : "a"  -- {static}
+Personne "1" --o{ ClientInfo : "a"  -- {static}
+
+PersonneRole ||--o{ DocumentTemplate : "créé par"
+DocumentTemplate ||--o{ TemplateField : "structure"
+
+PersonneRole ||--o{ GeneratedDocument : "génère"
+ClientInfo ||--o{ GeneratedDocument : "pour"
+DocumentTemplate ||--o{ GeneratedDocument : "instancie"
+
+GeneratedDocument ||--o{ FieldValue : "contient"
+TemplateField ||--o{ FieldValue : "alimente"
+
+GeneratedDocument ||--o{ PrintEvent : "imprimé"
+PersonneRole ||--o{ PrintEvent : "déclenche"
+
+PersonneRole ||--o{ ActivityLog : "réalise"
+GeneratedDocument ||--o{ ActivityLog : "trace"
+
+@enduml

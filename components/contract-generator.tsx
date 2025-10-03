@@ -10,12 +10,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { FileText, Download, Eye, Send } from "lucide-react"
 
-interface ContractGeneratorProps {
-  userRole: "admin" | "user"
+type ContractFieldType = "text" | "textarea" | "number" | "date" | "select"
+
+interface TemplateField {
+  id: string
+  name: string
+  label: string
+  type: ContractFieldType
+  required: boolean
+  placeholder?: string
+  options?: string[]
 }
 
+interface ContractTemplate {
+  id: string
+  name: string
+  category: string
+  fields: TemplateField[]
+}
 // 🇲🇦 Morocco-adapted templates (MAD currency, CIN/CNIE, local terminology)
-const mockTemplates = [
+const mockTemplates: ContractTemplate[] = [
   {
     id: "1",
     name: "عقد كراء منزل/شقة (المغرب)",
@@ -112,7 +126,7 @@ const formatMoneyMAD = (value: string | number): string => {
   return new Intl.NumberFormat("ar-MA", { style: "currency", currency: "MAD", maximumFractionDigits: 0 }).format(num)
 }
 
-export function ContractGenerator({ userRole }: ContractGeneratorProps) {
+export function ContractGenerator() {
   const [selectedTemplate, setSelectedTemplate] = useState<string>("")
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [customConditions, setCustomConditions] = useState<string>("")
@@ -265,7 +279,7 @@ export function ContractGenerator({ userRole }: ContractGeneratorProps) {
             {currentTemplate && (
               <div className="space-y-4 pt-4 border-t border-border">
                 <h4 className="font-medium text-foreground">معلومات العقد</h4>
-                {currentTemplate.fields.map((field: any) => (
+                {currentTemplate.fields.map((field) => (
                   <div key={field.id}>
                     <Label htmlFor={field.name}>
                       {field.label}
@@ -372,3 +386,7 @@ export function ContractGenerator({ userRole }: ContractGeneratorProps) {
     </div>
   )
 }
+
+
+
+

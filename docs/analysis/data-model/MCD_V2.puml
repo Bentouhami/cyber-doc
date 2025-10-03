@@ -1,0 +1,111 @@
+@startuml CyberDoc_MCD_V2
+' UML Diagram for CyberDoc Data Model (Simplified Version)
+title CyberDoc - Modèle Conceptuel de Données (version simplifiée)
+' Modèle adapté au cybercafé pour la génération rapide de documents.
+
+entity "User" as User {
+  *idUser : Integer
+  --
+  nom : String
+  prenom : String
+  email : String
+  role : String        ' admin ou employe
+  motDePasseHash : String
+  actif : Boolean
+  dateCreation : DateTime
+}
+
+entity "Client" as Client {
+  *idClient : Integer
+  --
+  nom : String
+  prenom : String
+  cin : String
+  telephone : String
+  adresse : String
+  notes : Text
+}
+
+entity "DocumentTemplate" as DocumentTemplate {
+  *idTemplate : Integer
+  --
+  titre : String
+  typeDocument : String    ' demande, contrat, attestation
+  categorie : String       ' logement, transport, scolarite...
+  langue : String
+  statut : String          ' actif, brouillon
+  derniereMiseAJour : DateTime
+  instructions : Text
+  contenuModele : Text
+}
+
+entity "TemplateField" as TemplateField {
+  *idField : Integer
+  --
+  codeChamp : String
+  libelle : String
+  typeChamp : String       ' texte, nombre, date, liste
+  obligatoire : Boolean
+  ordreAffichage : Integer
+  valeurParDefaut : String
+  aideSaisie : String
+}
+
+entity "GeneratedDocument" as GeneratedDocument {
+  *idGenerated : Integer
+  --
+  reference : String
+  statut : String          ' brouillon, pret, imprime
+  copiesDemandees : Integer
+  copiesImprimees : Integer
+  prixTotal : Decimal
+  langue : String
+  dateCreation : DateTime
+  dateDerniereEdition : DateTime
+  cheminFichier : String
+  commentaires : Text
+}
+
+entity "FieldValue" as FieldValue {
+  *idFieldValue : Integer
+  --
+  valeurTexte : Text
+  valeurNombre : Decimal
+  valeurDate : Date
+}
+
+entity "PrintEvent" as PrintEvent {
+  *idPrint : Integer
+  --
+  copies : Integer
+  dateImpression : DateTime
+  canal : String           ' poste1, poste2, export
+}
+
+entity "ActivityLog" as ActivityLog {
+  *idActivity : Integer
+  --
+  typeAction : String      ' connexion, generation, edition
+  description : Text
+  dateAction : DateTime
+  adresseIP : String
+}
+
+' Relations principales
+User ||--o{ DocumentTemplate : "cree"
+DocumentTemplate ||--o{ TemplateField : "structure"
+
+User ||--o{ GeneratedDocument : "genere"
+Client ||--o{ GeneratedDocument : "associe"
+DocumentTemplate ||--o{ GeneratedDocument : "instancie"
+
+GeneratedDocument ||--o{ FieldValue : "contient"
+TemplateField ||--o{ FieldValue : "alimente"
+
+GeneratedDocument ||--o{ PrintEvent : "imprime"
+User ||--o{ PrintEvent : "declenche"
+
+User ||--o{ ActivityLog : "realise"
+GeneratedDocument ||--o{ ActivityLog : "trace"
+
+@enduml

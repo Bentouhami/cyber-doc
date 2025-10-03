@@ -1,3 +1,139 @@
-@startuml
-' TODO: compléter le modèle physique de données (implémentation DB)
+@startuml CyberDoc_MPD
+
+!define Table(name,desc) class name as "desc" << (T,#FFAAAA) >>
+
+Table(Personne, "public.Personne") {
+  +idPersonne : SERIAL (PK)
+  --
+  nom : VARCHAR(255)
+  prenom : VARCHAR(255)
+}
+
+Table(Role, "public.Role") {
+  +idRole : SERIAL (PK)
+  --
+  libelle : VARCHAR(255)
+}
+
+Table(PersonneRole, "public.PersonneRole") {
+  +idPersonneRole : SERIAL (PK)
+  --
+  dateDebut : TIMESTAMP(3)
+  dateFin : TIMESTAMP(3)
+  #idPersonne : INTEGER (FK)
+  #idRole : INTEGER (FK)
+}
+
+Table(UserInfo, "public.UserInfo") {
+  +idUserInfo : SERIAL (PK)
+  --
+  email : VARCHAR(255) (UNIQUE)
+  motDePasseHash : VARCHAR(255)
+  actif : BOOLEAN
+  dateCreation : TIMESTAMP(3)
+  #idPersonne : INTEGER (FK) (UNIQUE)
+}
+
+Table(ClientInfo, "public.ClientInfo") {
+  +idClientInfo : SERIAL (PK)
+  --
+  cin : VARCHAR(255) (UNIQUE)
+  telephone : VARCHAR(255)
+  adresse : VARCHAR(255)
+  notes : TEXT
+  #idPersonne : INTEGER (FK) (UNIQUE)
+}
+
+Table(DocumentTemplate, "public.DocumentTemplate") {
+  +idTemplate : SERIAL (PK)
+  --
+  titre : VARCHAR(255)
+  typeDocument : VARCHAR(255)
+  categorie : VARCHAR(255)
+  statut : VARCHAR(255)
+  langue : VARCHAR(255)
+  derniereMiseAJour : TIMESTAMP(3)
+  instructions : TEXT
+  contenuModele : TEXT
+  #creatorId : INTEGER (FK)
+}
+
+Table(TemplateField, "public.TemplateField") {
+  +idField : SERIAL (PK)
+  --
+  codeChamp : VARCHAR(255)
+  libelle : VARCHAR(255)
+  typeChamp : VARCHAR(255)
+  obligatoire : BOOLEAN
+  ordreAffichage : INTEGER
+  valeurParDefaut : VARCHAR(255)
+  aideSaisie : VARCHAR(255)
+  #templateId : INTEGER (FK)
+}
+
+Table(GeneratedDocument, "public.GeneratedDocument") {
+  +idGenerated : SERIAL (PK)
+  --
+  reference : VARCHAR(255) (UNIQUE)
+  statut : VARCHAR(255)
+  copiesDemandees : INTEGER
+  copiesImprimees : INTEGER
+  prixTotal : DECIMAL(10, 2)
+  dateCreation : TIMESTAMP(3)
+  dateDerniereEdition : TIMESTAMP(3)
+  cheminFichier : VARCHAR(255)
+  commentaires : TEXT
+  #generatorId : INTEGER (FK)
+  #clientId : INTEGER (FK)
+  #templateId : INTEGER (FK)
+}
+
+Table(FieldValue, "public.FieldValue") {
+  +idFieldValue : SERIAL (PK)
+  --
+  valeurTexte : TEXT
+  valeurNombre : DECIMAL(10, 2)
+  valeurDate : TIMESTAMP(3)
+  #documentId : INTEGER (FK)
+  #fieldId : INTEGER (FK)
+}
+
+Table(PrintEvent, "public.PrintEvent") {
+  +idPrint : SERIAL (PK)
+  --
+  copies : INTEGER
+  dateImpression : TIMESTAMP(3)
+  canal : VARCHAR(255)
+  #documentId : INTEGER (FK)
+  #triggeredById : INTEGER (FK)
+}
+
+Table(ActivityLog, "public.ActivityLog") {
+  +idActivity : SERIAL (PK)
+  --
+  typeAction : VARCHAR(255)
+  description : TEXT
+  dateAction : TIMESTAMP(3)
+  adresseIP : VARCHAR(255)
+  #realisedById : INTEGER (FK)
+  #documentId : INTEGER (FK)
+}
+
+' Foreign Key Constraints
+PersonneRole --> Personne
+PersonneRole --> Role
+UserInfo --> Personne
+ClientInfo --> Personne
+DocumentTemplate --> PersonneRole
+TemplateField --> DocumentTemplate
+GeneratedDocument --> PersonneRole
+GeneratedDocument --> ClientInfo
+GeneratedDocument --> DocumentTemplate
+FieldValue --> GeneratedDocument
+FieldValue --> TemplateField
+PrintEvent --> GeneratedDocument
+PrintEvent --> PersonneRole
+ActivityLog --> PersonneRole
+ActivityLog --> GeneratedDocument
+
 @enduml
