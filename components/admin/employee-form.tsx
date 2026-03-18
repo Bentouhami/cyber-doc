@@ -1,105 +1,283 @@
+"use client"
 
-'use client';
+import { useEffect, useMemo, useState } from "react"
+import { useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/components/ui/use-toast';
-import { RoleDTO } from '@/types/employees';
+import { Button } from "@/components/ui/button"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast"
+import type { EmployeeDTO } from "@/types/employees"
+import { translateRoleName } from "@/utils/roles"
 
-const formSchema = z.object({
-  firstName: z.string().min(1, 'Le prénom est requis'),
-  lastName: z.string().min(1, 'Le nom est requis'),
-  email: z.string().email('Email invalide'),
-  password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
-  roleId: z.string(),
-});
+type EmployeeFormMode = "create" | "edit"
 
-export function EmployeeForm({ setOpen }: { setOpen: (open: boolean) => void }) {
-  const { toast } = useToast();
-  const [roles, setRoles] = useState<RoleDTO[]>([]);
+const schemaShape = z.object({
+  firstName: z.string(),
+  lastName: z.string(),
+  email: z.string(),
+  password: z.union([z.string(), z.literal("")]).optional(),
+  roleName: z.string(),
+})
+
+type EmployeeFormValues = z.infer<typeof schemaShape>
+
+interface EmployeeFormProps {
+  onSuccess: () => void
+  onCancel?: () => void
+  mode?: EmployeeFormMode
+  employee?: EmployeeDTO | null
+}
+
+const ROLE_OPTIONS = ["admin", "employee"]
+
+export function EmployeeForm({ onSuccess, onCancel, mode = "create", employee }: EmployeeFormProps) {
+  const { t } = useTranslation()
+  const { toast } = useToast()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const isEditMode = mode === "edit"
+
+  const schema = useMemo(() => {
+    const passwordSchema = z
+      .string()
+      .min(8, t("employeeForm.validation.passwordMin"))
+      .regex(/[A-Z]/, t("employeeForm.validation.passwordUppercase"))
+      .regex(/[a-z]/, t("employeeForm.validation.passwordLowercase"))
+      .regex(/[0-9]/, t("employeeForm.validation.passwordNumber"))
+
+    const baseSchema = z.object({
+      firstName: z.string().min(2, t("employeeForm.validation.firstNameMin")),
+      lastName: z.string().min(2, t("employeeForm.validation.lastNameMin")),
+      email: z.string().email(t("employeeForm.validation.email")),
+      password: z.union([passwordSchema, z.literal("")]).optional(),
+      roleName: z.string().min(1, t("employeeForm.validation.roleRequired")),
+    })
+
+    return baseSchema.superRefine((data, ctx) => {
+      if (mode === "create" && (!data.password || data.password === "")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["password"],
+          message: t("employeeForm.errors.passwordRequired"),
+        })
+      }
+    })
+  }, [mode, t])
+
+  const form = useForm<EmployeeFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      firstName: employee?.firstName ?? "",
+      lastName: employee?.lastName ?? "",
+      email: employee?.email ?? "",
+      password: "",
+      roleName: employee?.roles?.[0]?.name ?? "",
+    },
+  })
 
   useEffect(() => {
-    async function fetchRoles() {
-      const res = await fetch('/api/roles');
-      const data = await res.json();
-      setRoles(data);
-    }
-    fetchRoles();
-  }, []);
+    form.reset({
+      firstName: employee?.firstName ?? "",
+      lastName: employee?.lastName ?? "",
+      email: employee?.email ?? "",
+      password: "",
+      roleName: employee?.roles?.[0]?.name ?? "",
+    })
+    setShowPassword(false)
+  }, [employee, form, mode])
 
-  const form = useForm({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      email: '',
-      password: '',
-      roleId: '',
-    },
-  });
+  async function onSubmit(values: EmployeeFormValues) {
+    try {
+      setIsSubmitting(true)
+      if (!ROLE_OPTIONS.includes(values.roleName)) {
+        throw new Error(t("employeeForm.errors.invalidRole"))
+      }
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    const res = await fetch('/api/employees', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(values),
-    });
+      const payload: Record<string, unknown> = {
+        firstName: values.firstName,
+        lastName: values.lastName,
+        email: values.email,
+        roleNames: [values.roleName],
+      }
 
-    if (res.ok) {
-      toast({ title: 'Employé créé avec succès' });
-      setOpen(false);
-      // You might want to trigger a refresh of the employee list here
-    } else {
-      const error = await res.text();
-      toast({ title: 'Erreur', description: error, variant: 'destructive' });
+      if (values.password && values.password.length > 0) {
+        payload.password = values.password
+      }
+
+      const endpoint = isEditMode && employee ? `/api/users/${employee.id}` : "/api/users"
+      const method = isEditMode ? "PATCH" : "POST"
+
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) {
+        const error = await res.text()
+        throw new Error(error || t("employeeForm.errors.generic"))
+      }
+
+      toast({
+        title: t("common.success"),
+        description: isEditMode ? t("employeeForm.success.update") : t("employeeForm.success.create"),
+      })
+
+      if (isEditMode) {
+        onSuccess()
+        onCancel?.()
+      } else {
+        form.reset({
+          firstName: "",
+          lastName: "",
+          email: "",
+          password: "",
+          roleName: "",
+        })
+        onSuccess()
+      }
+    } catch (error) {
+      toast({
+        title: t("common.error"),
+        description: error instanceof Error ? error.message : t("employeeForm.errors.generic"),
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-      <div>
-        <Label htmlFor="firstName">Prénom</Label>
-        <Input id="firstName" {...form.register('firstName')} />
-        {form.formState.errors.firstName && <p className="text-red-500 text-sm">{form.formState.errors.firstName.message}</p>}
-      </div>
-      <div>
-        <Label htmlFor="lastName">Nom</Label>
-        <Input id="lastName" {...form.register('lastName')} />
-        {form.formState.errors.lastName && <p className="text-red-500 text-sm">{form.formState.errors.lastName.message}</p>}
-      </div>
-      <div>
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" type="email" {...form.register('email')} />
-        {form.formState.errors.email && <p className="text-red-500 text-sm">{form.formState.errors.email.message}</p>}
-      </div>
-      <div>
-        <Label htmlFor="password">Mot de passe</Label>
-        <Input id="password" type="password" {...form.register('password')} />
-        {form.formState.errors.password && <p className="text-red-500 text-sm">{form.formState.errors.password.message}</p>}
-      </div>
-      <div>
-        <Label htmlFor="roleId">Rôle</Label>
-        <Select onValueChange={(value) => form.setValue('roleId', value)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Sélectionner un rôle" />
-          </SelectTrigger>
-          <SelectContent>
-            {roles.map((role) => (
-              <SelectItem key={role.id} value={String(role.id)}>
-                {role.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {form.formState.errors.roleId && <p className="text-red-500 text-sm">{form.formState.errors.roleId.message}</p>}
-      </div>
-      <Button type="submit">Créer l&apos;employé</Button>
-    </form>
-  );
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="firstName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("employeeForm.labels.firstName")}</FormLabel>
+                <FormControl>
+                  <Input placeholder={t("employeeForm.placeholders.firstName")} {...field} disabled={isSubmitting} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="lastName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("employeeForm.labels.lastName")}</FormLabel>
+                <FormControl>
+                  <Input placeholder={t("employeeForm.placeholders.lastName")} {...field} disabled={isSubmitting} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("employeeForm.labels.email")}</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder={t("employeeForm.placeholders.email")} {...field} disabled={isSubmitting} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                {t("employeeForm.labels.password")}{" "}
+                {isEditMode && <span className="text-muted-foreground text-sm">{t("employeeForm.labels.passwordOptional")}</span>}
+              </FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder={isEditMode ? t("employeeForm.placeholders.passwordEdit") : t("employeeForm.placeholders.password")}
+                    {...field}
+                    disabled={isSubmitting}
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    disabled={isSubmitting}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                  </Button>
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="roleName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("employeeForm.labels.role")}</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("employeeForm.placeholders.role")} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {ROLE_OPTIONS.map((roleName) => (
+                    <SelectItem key={roleName} value={roleName}>
+                      {translateRoleName(roleName, t)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex justify-end gap-3 pt-4">
+          {isEditMode && (
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+              {t("common.cancel")}
+            </Button>
+          )}
+          <Button type="submit" disabled={isSubmitting} className="min-w-[140px]">
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                {isEditMode ? t("employeeForm.submit.updating") : t("employeeForm.submit.creating")}
+              </>
+            ) : (
+              isEditMode ? t("employeeForm.submit.update") : t("employeeForm.submit.create")
+            )}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  )
 }

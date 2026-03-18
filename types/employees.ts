@@ -2,30 +2,35 @@
 export interface RoleDTO {
   id: number;
   name: string;
-  description: string;
+  description: string | null;
 }
-export interface UserRoleDTO {
-  id: number;
-  RoleDTO: RoleDTO;
-}
+
 export interface EmployeeDTO {
-  id: number;
-  firstName: string;
-  lastName: string;
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
   email: string;
-  UserRoleDTO: UserRoleDTO[];
+  displayName: string;
+  image?: string | null;
+  roles: RoleDTO[];
+  createdAt: string;
+  updatedAt: string;
+  activatedAt: string | null;
+  deletedAt: string | null;
 }
+
 export interface CreateEmployeeDTO {
   firstName: string;
   lastName: string;
   email: string;
   password: string;
-  RoleDTOs: number[]; // Array of RoleDTO IDs
+  roleNames: string[];
 }
+
 export interface UpdateEmployeeDTO {
   firstName?: string;
   lastName?: string;
   email?: string;
   password?: string;
-  RoleDTOs?: number[]; // Array of RoleDTO IDs
+  roleNames?: string[];
 }
