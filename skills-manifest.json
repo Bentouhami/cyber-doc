@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "project": "CyberDoc",
+  "updated_at": "2026-03-18",
+  "canonical_skill_root": ".codex/skills",
+  "notes": [
+    "This manifest classifies skills for CyberDoc (Next.js fullstack).",
+    "Legacy archived skills are stored under skills-legacy/asdho.",
+    "Do not remove legacy skills until replacement workflows are validated.",
+    "Adaptation batch completed for architecture/security/contracts/docs/git/pipeline/script skills."
+  ],
+  "classifications": {
+    "keep": [
+      "algorithmic-art",
+      "brainstorming",
+      "brand-guidelines",
+      "canvas-design",
+      "code-reviewer",
+      "commit",
+      "context7-mcp",
+      "create-plan",
+      "doc-coauthoring",
+      "docx",
+      "find-bugs",
+      "frontend-design",
+      "gh-address-comments",
+      "gh-fix-ci",
+      "internal-comms",
+      "mcp-builder",
+      "nextjs-16-best-practices",
+      "nextjs-code-style",
+      "nextjs-frontend-excellence",
+      "nextjs-security-check",
+      "nextjs-setup",
+      "nextjs-test-generation",
+      "pdf",
+      "pptx",
+      "react-best-practices",
+      "security-best-practices",
+      "security-ownership-map",
+      "security-threat-model",
+      "spreadsheet",
+      "theme-factory",
+      "transcribe",
+      "ui-design-system",
+      "ux-researcher-designer",
+      "web-artifacts-builder",
+      "xlsx",
+      "yeet"
+    ],
+    "adapt": [
+      "cyberdoc-architecture-guardian",
+      "cyberdoc-auth-session-network",
+      "cyberdoc-baseline-compliance",
+      "cyberdoc-contract-validator",
+      "cyberdoc-docs-diagrams",
+      "cyberdoc-git-ops",
+      "cyberdoc-nextjs-feature-scaffold",
+      "cyberdoc-rfc7807-audit",
+      "cyberdoc-security-review",
+      "cyberdoc-silent-writer",
+      "cyberdoc-task-delivery-pipeline",
+      "cyberdoc-task-scripter",
+      "cyberdoc-text-to-ui-generator"
+    ],
+    "legacy": [
+      "asdhoconnect-api-platform-resource-builder",
+      "asdhoconnect-doctrine-uml-from-entities",
+      "atlassian-acli-jira"
+    ]
+  },
+  "legacy_locations": {
+    "asdhoconnect-api-platform-resource-builder": "skills-legacy/asdho/asdhoconnect-api-platform-resource-builder",
+    "asdhoconnect-doctrine-uml-from-entities": "skills-legacy/asdho/asdhoconnect-doctrine-uml-from-entities",
+    "atlassian-acli-jira": "skills-legacy/asdho/atlassian-acli-jira"
+  },
+  "duplicates_to_normalize": [
+    {
+      "skill": "vercel-react-best-practices",
+      "location": ".agents/skills",
+      "canonical_replacement": "react-best-practices"
+    }
+  ]
+}
