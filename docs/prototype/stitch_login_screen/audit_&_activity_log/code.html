@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+
+<html class="light" dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CyberCafé App - Audit Log</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#13ec5b",
+              "background-light": "#f6f8f6",
+              "background-dark": "#102216",
+            },
+            fontFamily: {
+              "display": ["Public Sans", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#0d1b12] dark:text-gray-200">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Main Content Area -->
+<div class="px-4 sm:px-8 md:px-16 lg:px-24 xl:px-40 flex flex-1 justify-center py-5">
+<div class="layout-content-container flex flex-col w-full max-w-7xl flex-1">
+<!-- TopNavBar Component -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-primary/20 px-6 sm:px-10 py-3">
+<div class="flex items-center gap-4 text-[#0d1b12] dark:text-white">
+<div class="size-6 text-primary">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 4H17.3334V17.3334H30.6666V30.6666H44V44H4V4Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="text-[#0d1b12] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">CyberCafé App</h2>
+</div>
+<div class="flex flex-1 justify-end gap-4 sm:gap-8">
+<div class="flex items-center gap-4 sm:gap-6">
+<a class="text-sm font-bold leading-normal text-primary" href="#">AR</a>
+<a class="text-[#0d1b12] dark:text-gray-300 text-sm font-medium leading-normal" href="#">FR</a>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 w-10 bg-primary/20 text-[#0d1b12] dark:bg-primary/30 dark:text-white gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0">
+<span class="material-symbols-outlined text-xl">notifications</span>
+</button>
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 w-10 bg-primary/20 text-[#0d1b12] dark:bg-primary/30 dark:text-white gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0">
+<span class="material-symbols-outlined text-xl">logout</span>
+</button>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="User avatar image" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDvDh7T2YnIWnG4r0P3Nvckc0Esp8-TDA75hmHh8ERoWUiQjmhdcX7IBjpfdPsrYxOfTldsw9ZlfoULbCVCbJqIXQXYDdoHruGnKYomdWQupj523XZmxHTdo3kgO9YnZ5SLGb14aSGmLwm2zN_F727fg0UQlYjAFA_AX7fp_BclreZIMxZ456woFtg5DijHGkrIxHGnwERjuVPrxprOHLPtwo5oZYym8WPFA_s-UUEzxs2Lu7vDpvVLuzmlJY98zQDhpSA7ZFzQzU0");'></div>
+</div>
+</div>
+</header>
+<main class="flex flex-col gap-6 p-4 sm:p-6">
+<!-- PageHeading Component -->
+<div class="flex flex-wrap justify-between gap-4">
+<div class="flex min-w-72 flex-col gap-2">
+<p class="text-[#0d1b12] dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">سجل التدقيق والأنشطة</p>
+<p class="text-primary/80 dark:text-primary/90 text-base font-normal leading-normal">استعراض وتصفية سجلات النظام والوثائق المصدرة</p>
+</div>
+</div>
+<!-- Stats Component -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<div class="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl p-6 border border-primary/30 bg-white dark:bg-background-dark/50">
+<p class="text-[#0d1b12] dark:text-gray-300 text-base font-medium leading-normal">إجمالي الوثائق المصدرة</p>
+<p class="text-[#0d1b12] dark:text-white tracking-light text-2xl font-bold leading-tight">1,450</p>
+<p class="text-[#078829] text-base font-medium leading-normal flex items-center gap-1">+5.2% <span class="material-symbols-outlined text-lg">trending_up</span></p>
+</div>
+<div class="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl p-6 border border-primary/30 bg-white dark:bg-background-dark/50">
+<p class="text-[#0d1b12] dark:text-gray-300 text-base font-medium leading-normal">إجمالي الإيرادات</p>
+<p class="text-[#0d1b12] dark:text-white tracking-light text-2xl font-bold leading-tight">21,750 د.م.</p>
+<p class="text-[#078829] text-base font-medium leading-normal flex items-center gap-1">+8.1% <span class="material-symbols-outlined text-lg">trending_up</span></p>
+</div>
+</div>
+<!-- Filter Section -->
+<div class="flex flex-col gap-4 p-4 rounded-xl border border-primary/30 bg-white dark:bg-background-dark/50">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Chips Component (modified for filters) -->
+<button class="flex h-10 w-full items-center justify-between gap-x-2 rounded-lg bg-primary/20 dark:bg-primary/30 px-4 text-[#0d1b12] dark:text-white">
+<p class="text-sm font-medium leading-normal">نطاق التاريخ</p>
+<span class="material-symbols-outlined text-xl">calendar_today</span>
+</button>
+<button class="flex h-10 w-full items-center justify-between gap-x-2 rounded-lg bg-primary/20 dark:bg-primary/30 px-4 text-[#0d1b12] dark:text-white">
+<p class="text-sm font-medium leading-normal">نوع الوثيقة</p>
+<span class="material-symbols-outlined text-xl">arrow_drop_down</span>
+</button>
+<button class="flex h-10 w-full items-center justify-between gap-x-2 rounded-lg bg-primary/20 dark:bg-primary/30 px-4 text-[#0d1b12] dark:text-white">
+<p class="text-sm font-medium leading-normal">الموظف</p>
+<span class="material-symbols-outlined text-xl">arrow_drop_down</span>
+</button>
+<button class="flex h-10 w-full items-center justify-between gap-x-2 rounded-lg bg-primary/20 dark:bg-primary/30 px-4 text-[#0d1b12] dark:text-white">
+<p class="text-sm font-medium leading-normal">نوع الإجراء</p>
+<span class="material-symbols-outlined text-xl">arrow_drop_down</span>
+</button>
+</div>
+<div class="flex justify-end gap-3 mt-2">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-transparent text-primary dark:text-primary border border-primary/50 gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-6">
+<span class="truncate">إعادة تعيين</span>
+</button>
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-primary text-[#0d1b12] gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-6">
+<span class="truncate">تطبيق الفلاتر</span>
+</button>
+</div>
+</div>
+<!-- Data Table Section -->
+<div class="flex flex-col rounded-xl border border-primary/30 bg-white dark:bg-background-dark/50 overflow-hidden">
+<!-- ToolBar Component -->
+<div class="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-primary/20">
+<h3 class="text-lg font-bold text-[#0d1b12] dark:text-white">سجل الأنشطة</h3>
+<div class="flex gap-2">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-primary/20 dark:bg-primary/30 text-[#0d1b12] dark:text-white gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-4">
+<span class="material-symbols-outlined text-xl">description</span>
+<span class="truncate">تصدير كـ CSV</span>
+</button>
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-primary/20 dark:bg-primary/30 text-[#0d1b12] dark:text-white gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-4">
+<span class="material-symbols-outlined text-xl">picture_as_pdf</span>
+<span class="truncate">تصدير كـ PDF</span>
+</button>
+</div>
+</div>
+<!-- Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-right text-sm">
+<thead class="text-[#0d1b12] dark:text-gray-300 bg-background-light dark:bg-background-dark">
+<tr class="border-b border-primary/20">
+<th class="px-6 py-4 font-bold">التاريخ والوقت</th>
+<th class="px-6 py-4 font-bold">الموظف</th>
+<th class="px-6 py-4 font-bold">الإجراء</th>
+<th class="px-6 py-4 font-bold">نوع الوثيقة</th>
+<th class="px-6 py-4 font-bold">العميل</th>
+<th class="px-6 py-4 font-bold">تفاصيل</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-b border-primary/20 hover:bg-primary/10 dark:hover:bg-primary/20">
+<td class="px-6 py-4 whitespace-nowrap">2023-10-27 14:30</td>
+<td class="px-6 py-4">يوسف العلمي</td>
+<td class="px-6 py-4">إنشاء وثيقة</td>
+<td class="px-6 py-4">عقد كراء</td>
+<td class="px-6 py-4">C00123 - فاطمة الزهراء</td>
+<td class="px-6 py-4"><button class="text-primary hover:underline">عرض</button></td>
+</tr>
+<tr class="border-b border-primary/20 hover:bg-primary/10 dark:hover:bg-primary/20">
+<td class="px-6 py-4 whitespace-nowrap">2023-10-27 11:15</td>
+<td class="px-6 py-4">أمينة فلاح</td>
+<td class="px-6 py-4">تعديل عميل</td>
+<td class="px-6 py-4">-</td>
+<td class="px-6 py-4">C00122 - أحمد رضى</td>
+<td class="px-6 py-4"><button class="text-primary hover:underline">عرض</button></td>
+</tr>
+<tr class="border-b border-primary/20 hover:bg-primary/10 dark:hover:bg-primary/20">
+<td class="px-6 py-4 whitespace-nowrap">2023-10-26 18:00</td>
+<td class="px-6 py-4">يوسف العلمي</td>
+<td class="px-6 py-4">إنشاء وثيقة</td>
+<td class="px-6 py-4">تصريح بالشرف</td>
+<td class="px-6 py-4">C00121 - خديجة بناني</td>
+<td class="px-6 py-4"><button class="text-primary hover:underline">عرض</button></td>
+</tr>
+<tr class="border-b border-primary/20 hover:bg-primary/10 dark:hover:bg-primary/20">
+<td class="px-6 py-4 whitespace-nowrap">2023-10-26 09:45</td>
+<td class="px-6 py-4">يوسف العلمي</td>
+<td class="px-6 py-4">تسجيل الدخول</td>
+<td class="px-6 py-4">-</td>
+<td class="px-6 py-4">-</td>
+<td class="px-6 py-4">-</td>
+</tr>
+<tr class="hover:bg-primary/10 dark:hover:bg-primary/20">
+<td class="px-6 py-4 whitespace-nowrap">2023-10-25 16:20</td>
+<td class="px-6 py-4">أمينة فلاح</td>
+<td class="px-6 py-4">إنشاء وثيقة</td>
+<td class="px-6 py-4">وكالة</td>
+<td class="px-6 py-4">C00120 - محمد أمين</td>
+<td class="px-6 py-4"><button class="text-primary hover:underline">عرض</button></td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="flex items-center justify-between p-4">
+<button class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg hover:bg-primary/20 dark:hover:bg-primary/30 disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined">chevron_right</span>
+<span>السابق</span>
+</button>
+<span class="text-sm text-[#0d1b12] dark:text-gray-300">صفحة 1 من 15</span>
+<button class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg hover:bg-primary/20 dark:hover:bg-primary/30">
+<span>التالي</span>
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+</div>
+</div>
+</main>
+</div>
+</div>
+</div>
+</div>
+</body></html>

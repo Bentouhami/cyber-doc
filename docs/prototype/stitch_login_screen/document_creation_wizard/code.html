@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>إنشاء مستند جديد</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700;900&amp;family=Tajawal:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#13ec5b",
+                        "background-light": "#f8fcf9",
+                        "background-dark": "#102216",
+                    },
+                    fontFamily: {
+                        "display": ["Tajawal", "Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "0.75rem",
+                        "xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<div class="flex flex-1 justify-center py-5 sm:px-6 lg:px-8">
+<div class="layout-content-container flex flex-col w-full max-w-5xl flex-1">
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-primary/20 px-4 sm:px-6 lg:px-8 py-4">
+<div class="flex items-center gap-4 text-slate-800 dark:text-slate-200">
+<div class="size-8 text-primary">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_6_330)">
+<path clip-rule="evenodd" d="M24 0.757355L47.2426 24L24 47.2426L0.757355 24L24 0.757355ZM21 35.7574V12.2426L9.24264 24L21 35.7574Z" fill="currentColor" fill-rule="evenodd"></path>
+</g>
+<defs>
+<clippath id="clip0_6_330">
+<rect fill="white" height="48" width="48"></rect>
+</clippath>
+</defs></svg>
+</div>
+<h2 class="text-slate-800 dark:text-slate-100 text-xl font-bold leading-tight tracking-[-0.015em]">مقهى الإنترنت</h2>
+</div>
+<div class="flex flex-1 justify-end items-center gap-4">
+<div class="flex gap-2">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 w-10 bg-primary/10 text-slate-700 dark:bg-primary/20 dark:text-slate-300">
+<span class="material-symbols-outlined text-xl">notifications</span>
+</button>
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 w-10 bg-primary/10 text-slate-700 dark:bg-primary/20 dark:text-slate-300">
+<span class="material-symbols-outlined text-xl">help_outline</span>
+</button>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="User avatar image" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDKWqkWtBJDaaojy6PAnBLe5-bGd3DfsKv4TAYu-mqX88T2Vr9nc65CeYnizbuSMHd8xBYjJAqOoQaqBVyv7Jp0BGuFUJEygB2WbOduscroZ2RJwQRhtUIUUu5YED_BisCsck9K8TuK9TFzteTiT44Fyz1lZhq0-ioAA3rvngUbbYKMq8B0dcyjSpaoMuux_OJ1cFyqh6uqGhBYZxygopUAvHW-Fx5nkAxiEQ1FM-q2uRFrg9Rp8WPmE_8I3i_iRER81OCrKdqlvMM");'></div>
+</div>
+</header>
+<main class="flex-grow p-4 sm:p-6 lg:p-8">
+<div class="flex flex-wrap justify-between items-start gap-4 mb-6">
+<div class="flex min-w-72 flex-col gap-2">
+<p class="text-slate-900 dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">إنشاء مستند جديد</p>
+<p class="text-slate-500 dark:text-slate-400 text-base font-normal leading-normal">اتبع الخطوات لاختيار النموذج وملء المعلومات وإنشاء المستند.</p>
+</div>
+</div>
+<div class="mb-8">
+<div class="flex border-b border-primary/20 w-full">
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-primary text-slate-900 dark:text-white pb-[13px] pt-4 px-4 sm:px-6 flex-1 text-center" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em] sm:text-base">1. اختيار النموذج</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-slate-500 dark:text-slate-400 pb-[13px] pt-4 px-4 sm:px-6 flex-1 text-center" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em] sm:text-base">2. ملء المعلومات</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-slate-500 dark:text-slate-400 pb-[13px] pt-4 px-4 sm:px-6 flex-1 text-center" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em] sm:text-base">3. معاينة وإنشاء</p>
+</a>
+</div>
+</div>
+<div class="space-y-6">
+<div class="flex flex-col sm:flex-row gap-4">
+<label class="flex flex-col min-w-40 h-12 w-full flex-grow">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-slate-500 dark:text-slate-400 flex border-none bg-slate-100 dark:bg-slate-800 items-center justify-center pl-4 rounded-r-lg border-l-0">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border-none bg-slate-100 dark:bg-slate-800 h-full placeholder:text-slate-500 dark:placeholder:text-slate-400 px-4 rounded-r-none border-r-0 pr-2 text-base font-normal leading-normal" placeholder="ابحث عن مستند..." value=""/>
+</div>
+</label>
+</div>
+<div class="flex gap-3 flex-wrap">
+<div class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-primary/20 text-slate-800 dark:text-slate-200 pl-4 pr-4 cursor-pointer">
+<p class="text-sm font-medium leading-normal">الكل</p>
+</div>
+<div class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 pl-4 pr-4 cursor-pointer">
+<p class="text-sm font-medium leading-normal">عقود قانونية</p>
+</div>
+<div class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 pl-4 pr-4 cursor-pointer">
+<p class="text-sm font-medium leading-normal">نماذج إدارية</p>
+</div>
+<div class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 pl-4 pr-4 cursor-pointer">
+<p class="text-sm font-medium leading-normal">شخصي</p>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+<div class="group flex cursor-pointer flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 transition-all hover:border-primary/50 hover:shadow-lg hover:-translate-y-1">
+<div class="flex items-center gap-4">
+<div class="flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined text-3xl">home_work</span>
+</div>
+<div class="flex flex-col">
+<h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">عقد الكراء</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400">Contrat de Location</p>
+</div>
+</div>
+<p class="text-sm text-slate-600 dark:text-slate-300">نموذج رسمي لتوثيق اتفاقيات الإيجار بين المالك والمستأجر.</p>
+</div>
+<div class="group flex cursor-pointer flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 transition-all hover:border-primary/50 hover:shadow-lg hover:-translate-y-1">
+<div class="flex items-center gap-4">
+<div class="flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined text-3xl">group</span>
+</div>
+<div class="flex flex-col">
+<h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">وكالة</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400">Procuration</p>
+</div>
+</div>
+<p class="text-sm text-slate-600 dark:text-slate-300">مستند قانوني يمنح شخصًا سلطة التصرف نيابة عن شخص آخر.</p>
+</div>
+<div class="group flex cursor-pointer flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 transition-all hover:border-primary/50 hover:shadow-lg hover:-translate-y-1">
+<div class="flex items-center gap-4">
+<div class="flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined text-3xl">description</span>
+</div>
+<div class="flex flex-col">
+<h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">التزام</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400">Engagement</p>
+</div>
+</div>
+<p class="text-sm text-slate-600 dark:text-slate-300">وثيقة يقر فيها الشخص بالتزامه بشروط أو واجبات معينة.</p>
+</div>
+<div class="group flex cursor-pointer flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 transition-all hover:border-primary/50 hover:shadow-lg hover:-translate-y-1">
+<div class="flex items-center gap-4">
+<div class="flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined text-3xl">directions_car</span>
+</div>
+<div class="flex flex-col">
+<h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">عقد بيع سيارة</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400">Contrat de Vente Véhicule</p>
+</div>
+</div>
+<p class="text-sm text-slate-600 dark:text-slate-300">مستند رسمي لصفقة بيع وشراء المركبات بين طرفين.</p>
+</div>
+<div class="group flex cursor-pointer flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 transition-all hover:border-primary/50 hover:shadow-lg hover:-translate-y-1">
+<div class="flex items-center gap-4">
+<div class="flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined text-3xl">article</span>
+</div>
+<div class="flex flex-col">
+<h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">تصريح بالشرف</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400">Déclaration sur l'Honneur</p>
+</div>
+</div>
+<p class="text-sm text-slate-600 dark:text-slate-300">إقرار رسمي بصحة معلومات معينة يقدمها الشخص.</p>
+</div>
+<div class="group flex cursor-pointer flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 transition-all hover:border-primary/50 hover:shadow-lg hover:-translate-y-1">
+<div class="flex items-center gap-4">
+<div class="flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined text-3xl">work</span>
+</div>
+<div class="flex flex-col">
+<h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">عقد عمل</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400">Contrat de Travail</p>
+</div>
+</div>
+<p class="text-sm text-slate-600 dark:text-slate-300">اتفاقية قانونية تحدد شروط العمل بين الموظف وصاحب العمل.</p>
+</div>
+</div>
+<div class="flex justify-end pt-6 border-t border-slate-200 dark:border-slate-800">
+<button class="flex items-center justify-center gap-2 rounded-lg bg-primary text-black px-6 py-3 text-base font-bold transition-all hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
+<span>التالي</span>
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+</div>
+</div>
+</main>
+</div>
+</div>
+</div>
+</div>
+</body></html>

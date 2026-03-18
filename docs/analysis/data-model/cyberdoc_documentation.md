@@ -2,7 +2,7 @@
 
 ## Vue d'ensemble
 
-Cette documentation décrit la structure de la base de données de l'application CyberDoc, un système de gestion documentaire pour cybercafé au Maroc. Le schéma utilise Prisma avec PostgreSQL et privilégie les tables de référence plutôt que les enums pour une meilleure flexibilité.
+Cette documentation décrit la structure de la base de données de l'application CyberDoc, un système de gestion documentaire pour cybercafé au Maroc. Le schéma utilise Prisma avec PostgreSQL et privilégie les tables de référence plutôt que les enums pour une meilleure flexibilité. Les informations ci-dessous sont alignées sur `prisma/schema.prisma` (modèles actifs).
 
 ---
 
@@ -44,10 +44,11 @@ Cette documentation décrit la structure de la base de données de l'application
 | `id` | String (PK) | Identifiant unique CUID |
 | `firstName` | String? | Prénom de l'utilisateur |
 | `lastName` | String? | Nom de famille de l'utilisateur |
-| `name` | String? | Nom complet (peut être calculé) |
-| `email` | String? (unique) | Adresse email (obligatoire pour employés/admin) |
-| `emailVerified` | DateTime? | Date de vérification de l'email |
-| `passwordHash` | String? | Mot de passe haché (obligatoire pour employés/admin) |
+| `name` | String | Nom complet (peut être calculé) |
+| `email` | String (unique) | Adresse email (obligatoire) |
+| `emailVerified` | Boolean | Statut de vérification |
+| `emailVerifiedAt` | DateTime? | Date de vérification de l'email |
+| `passwordHash` | String | Mot de passe haché |
 | `cin` | String? (unique) | Carte d'Identité Nationale (pour les clients) |
 | `phone` | String? | Numéro de téléphone |
 | `address` | String? | Adresse complète |
@@ -112,6 +113,7 @@ Cette documentation décrit la structure de la base de données de l'application
 | Attribut | Type | Description |
 |----------|------|-------------|
 | `id` | String (PK) | Identifiant unique CUID |
+| `slug` | String (unique) | Identifiant stable pour URLs |
 | `title` | String | Titre du modèle |
 | `titleAr` | String? | Titre en arabe |
 | `description` | String? | Description du modèle |
@@ -119,13 +121,36 @@ Cette documentation décrit la structure de la base de données de l'application
 | `documentType` | DocumentType | Relation vers le type |
 | `categoryId` | Int (FK) | Catégorie du document |
 | `category` | DocumentCategory | Relation vers la catégorie |
-| `content` | String | Contenu/mise en page du modèle |
-| `language` | String | Langue du modèle ("fr", "ar", "both") |
+| `locale` | String | Locale du modèle (ex: ar-MA) |
+| `version` | Int | Version du modèle |
+| `language` | String | Langue du modèle (legacy) |
+| `content` | String? | Contenu brut legacy (optionnel) |
+| `assetId` | String? (FK) | Asset DOCX associé |
+| `asset` | TemplateAsset? | Relation vers l'asset |
 | `isActive` | Boolean | Modèle actif (défaut: true) |
 | `createdAt` | DateTime | Date de création |
 | `updatedAt` | DateTime | Date de modification |
 | `fields` | TemplateField[] | Relation vers les champs du modèle |
 | `documents` | Document[] | Relation vers les documents générés |
+
+### Model `TemplateAsset`
+
+**Rôle** : Stockage des fichiers DOCX associés aux modèles
+
+| Attribut | Type | Description |
+|----------|------|-------------|
+| `id` | String (PK) | Identifiant unique CUID |
+| `fileName` | String | Nom du fichier |
+| `filePath` | String | Chemin de stockage |
+| `fileType` | String | Type MIME (docx) |
+| `fileSize` | Int? | Taille du fichier |
+| `storageDriver` | String? | Driver de stockage |
+| `checksum` | String? | Checksum |
+| `version` | Int | Version du fichier |
+| `uploadedById` | String? (FK) | Utilisateur ayant uploadé |
+| `uploadedBy` | User? | Relation utilisateur |
+| `createdAt` | DateTime | Date de création |
+| `updatedAt` | DateTime | Date de modification |
 
 ### Model `FieldType`
 
@@ -159,6 +184,10 @@ Cette documentation décrit la structure de la base de données de l'application
 | `isRequired` | Boolean | Champ obligatoire (défaut: false) |
 | `defaultValue` | String? | Valeur par défaut |
 | `validationRules` | Json? | Règles de validation JSON |
+| `participantRoleKey` | String? | Rôle du participant (ex: debtor) |
+| `groupFieldId` | Int? (FK) | Lien vers un champ de groupe |
+| `allowMultiple` | Boolean | Autoriser valeurs multiples |
+| `section` | String? | Section UI |
 | `displayOrder` | Int | Ordre d'affichage (défaut: 0) |
 | `notes` | String? | Notes internes pour les admins |
 | `isActive` | Boolean | Champ actif (défaut: true) |
@@ -228,6 +257,19 @@ Cette documentation décrit la structure de la base de données de l'application
 | `fileFormat` | FileFormat | Relation vers le format |
 | `totalCopies` | Int | Nombre total de copies (défaut: 1) |
 | `notes` | String? | Notes sur le document |
+| `standardPrice` | Decimal? | Prix catalogue |
+| `negotiatedPrice` | Decimal? | Prix négocié |
+| `unitPrice` | Decimal? | Prix unitaire final |
+| `discount` | Decimal? | Remise |
+| `surcharge` | Decimal? | Surcharge |
+| `chargedTotal` | Decimal? | Total facturé |
+| `amountPaid` | Decimal? | Montant reçu |
+| `changeGiven` | Decimal? | Monnaie rendue |
+| `paidAt` | DateTime? | Date de paiement |
+| `paymentStatus` | String? | Statut du paiement |
+| `currency` | String | Devise (MAD) |
+| `cashierId` | String? (FK) | Utilisateur encaisseur |
+| `cashier` | User? | Relation encaisseur |
 | `createdAt` | DateTime | Date de création |
 | `updatedAt` | DateTime | Date de modification |
 | `clients` | DocumentClient[] | Relation vers les clients du document |
@@ -262,6 +304,7 @@ Cette documentation décrit la structure de la base de données de l'application
 | `fieldId` | String (FK) | Champ concerné |
 | `field` | TemplateField | Relation vers le champ |
 | `value` | String | Valeur saisie (stockée comme string) |
+| `valueJson` | Json? | Valeur structurée (champs multiples) |
 | `createdAt` | DateTime | Date de création |
 | `updatedAt` | DateTime | Date de modification |
 
@@ -385,6 +428,85 @@ Cette documentation décrit la structure de la base de données de l'application
 
 ---
 
+## 10. Groupes de Champs et Participants
+
+### Model `TemplateFieldGroup`
+
+**Rôle** : Groupes réutilisables de champs (identité, véhicule, etc.)
+
+| Attribut | Type | Description |
+|----------|------|-------------|
+| `code` | String (unique) | Code stable du groupe |
+| `name` | String | Nom du groupe |
+| `nameAr` | String? | Nom arabe |
+| `isActive` | Boolean | Actif |
+
+### Model `TemplateFieldGroupAssignment`
+
+**Rôle** : Association d'un groupe à un modèle (ordre/obligation)
+
+| Attribut | Type | Description |
+|----------|------|-------------|
+| `templateId` | String (FK) | Modèle |
+| `groupId` | Int (FK) | Groupe |
+| `displayOrder` | Int | Ordre |
+| `isRequired` | Boolean | Requis |
+
+### Model `TemplateFieldGroupField`
+
+**Rôle** : Champs appartenant à un groupe
+
+| Attribut | Type | Description |
+|----------|------|-------------|
+| `groupId` | Int (FK) | Groupe |
+| `fieldName` | String | Nom du champ |
+| `fieldLabel` | String | Label FR |
+| `fieldLabelAr` | String? | Label AR |
+| `fieldTypeId` | Int (FK) | Type |
+
+### Model `TemplateParticipantRole`
+
+**Rôle** : Rôles des participants liés au document (débiteur, créancier, etc.)
+
+| Attribut | Type | Description |
+|----------|------|-------------|
+| `templateId` | String (FK) | Modèle |
+| `roleKey` | String | Clé du rôle |
+| `roleLabel` | String | Libellé |
+| `roleLabelAr` | String? | Libellé AR |
+| `minParticipants` | Int | Minimum |
+| `maxParticipants` | Int? | Maximum |
+
+### Model `Persona`
+
+**Rôle** : Personnes réutilisables (clients/participants)
+
+| Attribut | Type | Description |
+|----------|------|-------------|
+| `fullName` | String? | Nom complet |
+| `fullNameAr` | String? | Nom complet arabe |
+| `nationalId` | String? (unique) | CIN |
+| `phone` | String? | Téléphone |
+| `locale` | String? | Locale |
+
+### Model `DocumentParticipant`
+
+**Rôle** : Liaison document ↔ persona + rôle
+
+| Attribut | Type | Description |
+|----------|------|-------------|
+| `documentId` | String (FK) | Document |
+| `personaId` | String (FK) | Persona |
+| `roleKey` | String | Rôle |
+
+---
+
+## 11. Auth Better Auth (tables techniques)
+
+### Model `Account`, `Session`, `Verification`, `RateLimit`
+
+Ces tables supportent la gestion des comptes, sessions, vérifications et limitations de requêtes pour Better Auth.
+
 ## Relations Clés
 
 ### Flux Principal des Documents
@@ -414,3 +536,5 @@ Un même `User` peut avoir plusieurs `Role` :
 - Client : peut consulter ses documents
 
 Cette architecture offre une flexibilité maximale pour l'évolution du système et permet une gestion fine des droits et des fonctionnalités.
+
+---
