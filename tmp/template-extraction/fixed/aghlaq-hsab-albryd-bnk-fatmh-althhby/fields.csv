@@ -1,0 +1,2 @@
+templateId,key,label_ar,label_fr,type,required,example,validation,notes,needsReview
+"aghlaq-hsab-albryd-bnk-fatmh-althhby","cin","ا","","cin","true","Example","{""required"":true,""regex"":""^[A-Z0-9s-]{3,20}$"",""maxLength"":20}","detectedBy=keyword","true"

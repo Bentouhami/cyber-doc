@@ -1,0 +1,39 @@
+{
+  "fileName": "طلـــــــب اذن الخروج هند وصفي.docx",
+  "templateId": "tlb-athn-alkhrwj-hnd-wsfy",
+  "title": {
+    "ar": "طلـــــــب",
+    "fr": null
+  },
+  "locale": "ar-MA",
+  "category": "uncategorized",
+  "tags": [],
+  "staticSections": [],
+  "fields": [
+    {
+      "key": "cin",
+      "label_ar": "ط",
+      "label_fr": null,
+      "type": "cin",
+      "required": true,
+      "example": "Example",
+      "validation": {
+        "required": true,
+        "regex": "^[A-Z0-9s-]{3,20}$",
+        "maxLength": 20
+      },
+      "notes": "detectedBy=keyword",
+      "needsReview": true,
+      "confidence": 0.8200000000000001
+    }
+  ],
+  "suggested_template_html": "<p><strong>طلـــــــب</strong> </p><p>السيدة: <strong>هند وصفي</strong>.</p><p>رقم البطاقة الوطنية: <strong>BK157638</strong></p><p><strong>إلى السيد مدير فندقية بنسليمان</strong></p><p><strong>بالدار البيضاء</strong></p><p><strong>الموضوع</strong>: الإذن بالخروج.</p><p>سلام تام بوجود مولانا الامام.</p><p>وبعد،</p><p>\tحسب الموضوع المشار إليه أعلاه أطلب من مؤسستكم الموقرة منح إذن الخروج لأبني <strong>قوام حمزة</strong> من المؤسسة يوم الأربعاء 2017.11.08 إلى غاية نهاية العطلة، و ذلك للاتحاق بمدينة السعيدية لدواعي صحية.</p><p>و تقبلو سيدي المدير فائق الشكر و التقدير و الإحترام.</p><p>و السلام.</p><p><strong>الإمضاء</strong></p>",
+  "typos": [],
+  "reviewFlags": [
+    {
+      "fieldKey": "cin",
+      "reason": "missing_fr_label"
+    }
+  ],
+  "confidence": 0.8200000000000001
+}

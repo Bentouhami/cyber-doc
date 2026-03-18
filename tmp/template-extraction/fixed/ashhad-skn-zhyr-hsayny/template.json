@@ -1,0 +1,67 @@
+{
+  "fileName": "اشهــــــاد سكن زهير حسايني.docx",
+  "templateId": "ashhad-skn-zhyr-hsayny",
+  "title": {
+    "ar": "تصريـــح بالشرف",
+    "fr": null
+  },
+  "locale": "ar-MA",
+  "category": "uncategorized",
+  "tags": [],
+  "staticSections": [],
+  "fields": [
+    {
+      "key": "cin",
+      "label_ar": "ت",
+      "label_fr": null,
+      "type": "cin",
+      "required": true,
+      "example": "Example",
+      "validation": {
+        "required": true,
+        "regex": "^[A-Z0-9s-]{3,20}$",
+        "maxLength": 20
+      },
+      "notes": "detectedBy=keyword",
+      "needsReview": true,
+      "confidence": 0.8599999999999999
+    },
+    {
+      "key": "signature",
+      "label_ar": "تصريـــح بالشرفأنا الموقع أسفله",
+      "label_fr": "تصريـــح بالشرفأنا الموقع أسفله :السيد                             : الزاهر الحسينالحامل للبطاقة الوطنية رقم     : S150859 العنوان                            : تجزئة الوحدة رقم 584  السعيدية.بموجب هذا اشهد على نفسي وأصرح بشرفي بأن السيدة سكينة عنصاري، الحاملة للبطاقة الوطنية رقم S786893 ، تقطن معي بمنزلي الكائن بالعنوان اعلاه لاكثر من ستة شهور. حررت هذا التصريح للإدلاء به عند الحاجة و الاقتضاء .السعيدية في 2017.09.12الإمضاء:",
+      "type": "signature",
+      "required": true,
+      "example": "Example",
+      "validation": {
+        "required": true,
+        "type": "signature"
+      },
+      "notes": "detectedBy=keyword",
+      "confidence": 0.8599999999999999
+    },
+    {
+      "key": "address",
+      "label_ar": "تصريـــح بالشرفأنا الموقع أسفله",
+      "label_fr": "تصريـــح بالشرفأنا الموقع أسفله :السيد                             : الزاهر الحسينالحامل للبطاقة الوطنية رقم     : S150859 العنوان                            : تجزئة الوحدة رقم 584  السعيدية.بموجب هذا اشهد على نفسي وأصرح بشرفي بأن السيدة سكينة عنصاري، الحاملة للبطاقة الوطنية رقم S786893 ، تقطن معي بمنزلي الكائن بالعنوان اعلاه لاكثر من ستة شهور. حررت هذا التصريح للإدلاء به عند الحاجة و الاقتضاء .السعيدية في 2017.09.12الإمضاء:",
+      "type": "multiline",
+      "required": false,
+      "example": "Example",
+      "validation": {
+        "required": false,
+        "maxLength": 500
+      },
+      "notes": "detectedBy=keyword",
+      "confidence": 0.8599999999999999
+    }
+  ],
+  "suggested_template_html": "<p><strong>تصريـــح بالشرف</strong></p><p><strong>أنا الموقع أسفله :</strong></p><p>السيد                             : <strong>الزاهر الحسين</strong></p><p>الحامل للبطاقة الوطنية رقم     : <strong>S150859</strong> </p><p>العنوان                            : تجزئة الوحدة رقم 584  السعيدية.</p><p>بموجب هذا اشهد على نفسي وأصرح بشرفي بأن السيدة <strong>سكينة عنصاري</strong>، الحاملة للبطاقة </p><p>الوطنية رقم <strong>S786893</strong> ، تقطن معي بمنزلي الكائن بالعنوان اعلاه لاكثر من ستة شهور. </p><p>حررت هذا التصريح للإدلاء به عند الحاجة و الاقتضاء .</p><p>السعيدية في 2017.09.12</p><p><strong>الإمضاء</strong>:</p>",
+  "typos": [],
+  "reviewFlags": [
+    {
+      "fieldKey": "cin",
+      "reason": "missing_fr_label"
+    }
+  ],
+  "confidence": 0.8599999999999999
+}

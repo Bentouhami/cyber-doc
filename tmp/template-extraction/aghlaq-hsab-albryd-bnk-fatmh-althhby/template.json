@@ -1,0 +1,28 @@
+{
+  "fileName": "اغلاق حساب البريد بنك فاطمة الذهبي.docx",
+  "templateId": "aghlaq-hsab-albryd-bnk-fatmh-althhby",
+  "title": {
+    "ar": "الحمــــــــــــــــــــــــــــــــــد لله وحده",
+    "fr": null
+  },
+  "locale": "ar-MA",
+  "category": "uncategorized",
+  "tags": [],
+  "staticSections": [],
+  "fields": [
+    {
+      "key": "cin",
+      "label_ar": "ا",
+      "label_fr": null,
+      "type": "cin",
+      "required": true,
+      "example": "Example",
+      "validation": {},
+      "notes": "detectedBy=keyword"
+    }
+  ],
+  "suggested_template_html": "<p><strong>الحمــــــــــــــــــــــــــــــــــد لله وحده</strong></p><p><strong>السعيدية فــي: 2017.01.04</strong></p><p>السيدة\t\t\t\t: <strong>فاطمة الذهبي</strong> </p><p>مزدادة بتـــاريخ\t\t: <strong>1986.07.13</strong></p><p>رقم  البطاقة الوطنية\t: <strong>M420362</strong></p><p>الساكنة\t\t\t: <strong>بتجزئة الصفاء السعيدية</strong>.</p><p><strong>الـــــــــى السيـــــــــد : مديــر مكتــب البريد بنــــــك</strong></p><p><strong> السعيديــــــــــــة</strong></p><p><strong>الموضوع</strong>: طلب غلق حساب.</p><p>سلام تام بوجود مولانا الامام.</p><p>علاقة بالموضوع المشار اليه اعلاه ، يسعدني ويشرفني سيدي المحترم ان اتقدم</p><p>اليكم بطلبي هذا بخصوص غلق حسابي لدى مؤسستكم البريد بنك بالسعيدية </p><p>الحامل للرقم : <strong>5178014</strong></p><p>وفـــي انتظار قبولكم، تقبلوا منــي فائق التقدير و الاحترام</p><p> و الســــلام.</p><p><strong>الإمضـــــــــــاء</strong> .</p>",
+  "typos": [],
+  "reviewFlags": [],
+  "confidence": 0.62
+}
