@@ -1,4 +1,5 @@
-import type { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 
 export type TemplateImportDocumentType = {
   name: string;
@@ -80,6 +81,14 @@ export type TemplateImportPayload = {
   groupAssignments?: TemplateImportGroupAssignment[] | null;
 };
 
+function toNullableJsonInput(
+  value: Prisma.JsonValue | null | undefined,
+): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return Prisma.JsonNull;
+  return value as Prisma.InputJsonValue;
+}
+
 export async function importTemplateWithAsset(
   prisma: PrismaClient,
   payload: TemplateImportPayload,
@@ -131,7 +140,7 @@ export async function importTemplateWithAsset(
           fileSize: payload.asset.fileSize ?? null,
           storageDriver: payload.asset.storageDriver ?? "local",
           checksum: payload.asset.checksum ?? null,
-          metadata: payload.asset.metadata ?? null,
+          metadata: toNullableJsonInput(payload.asset.metadata),
         },
         create: {
           fileName: payload.asset.fileName,
@@ -143,18 +152,24 @@ export async function importTemplateWithAsset(
           storageDriver: payload.asset.storageDriver ?? "local",
           checksum: payload.asset.checksum ?? null,
           version: assetVersion,
-          metadata: payload.asset.metadata ?? null,
+          metadata: toNullableJsonInput(payload.asset.metadata),
         },
       });
       assetId = asset.id;
     }
 
+    const metadataBase =
+      payload.metadata && typeof payload.metadata === "object" && !Array.isArray(payload.metadata)
+        ? (payload.metadata as Record<string, unknown>)
+        : {};
     const mergedMetadata = {
-      ...(payload.metadata ?? {}),
+      ...metadataBase,
       ...(payload.contentCss !== undefined ? { htmlCss: payload.contentCss } : {}),
       ...(payload.pdfOptions !== undefined ? { pdfOptions: payload.pdfOptions } : {}),
     };
-    const nextMetadata = Object.keys(mergedMetadata).length ? mergedMetadata : null;
+    const nextMetadata = Object.keys(mergedMetadata).length
+      ? (mergedMetadata as Prisma.InputJsonValue)
+      : undefined;
 
     const template = await tx.documentTemplate.upsert({
       where: { slug: payload.slug },
@@ -273,7 +288,7 @@ export async function importTemplateWithAsset(
             fieldTypeId: fieldType.id,
             isRequired: field.isRequired ?? false,
             defaultValue: field.defaultValue ?? null,
-            validationRules: field.validationRules ?? null,
+            validationRules: toNullableJsonInput(field.validationRules),
             placeholder: field.placeholder ?? null,
             placeholderAr: field.placeholderAr ?? null,
             helpText: field.helpText ?? null,
@@ -284,7 +299,7 @@ export async function importTemplateWithAsset(
             section: field.section ?? null,
             sectionAr: field.sectionAr ?? null,
             displayOrder: field.displayOrder ?? 0,
-            metadata: field.metadata ?? null,
+            metadata: toNullableJsonInput(field.metadata),
           },
           create: {
             templateId: template.id,
@@ -294,7 +309,7 @@ export async function importTemplateWithAsset(
             fieldTypeId: fieldType.id,
             isRequired: field.isRequired ?? false,
             defaultValue: field.defaultValue ?? null,
-            validationRules: field.validationRules ?? null,
+            validationRules: toNullableJsonInput(field.validationRules),
             placeholder: field.placeholder ?? null,
             placeholderAr: field.placeholderAr ?? null,
             helpText: field.helpText ?? null,
@@ -305,7 +320,7 @@ export async function importTemplateWithAsset(
             section: field.section ?? null,
             sectionAr: field.sectionAr ?? null,
             displayOrder: field.displayOrder ?? 0,
-            metadata: field.metadata ?? null,
+            metadata: toNullableJsonInput(field.metadata),
           },
         });
       }
