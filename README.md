@@ -1,55 +1,48 @@
-# CYBER SAIDIA – Gestion de contrats en arabe
+# CyberDoc
 
-Application web Next.js dédiée aux cybercafés arabophones pour créer, personnaliser et archiver des contrats métiers dans une interface RTL moderne.
+CyberDoc is a Next.js fullstack platform for cybercafes to create, print, and track legal/administrative documents in Arabic/French workflows.
 
-## Aperçu
+## What We Are Trying to Accomplish
 
-- Interface full RTL en arabe avec bascule sombre/clair et typographie optimisée.
-- Modules dédiés aux contrats : tableau de bord, génération, gestion de modèles et archivage.
-- Authentification simulée par `AuthProvider` (mock) avec rôles Admin/Employé prêts pour intégration backend.
-- Architecture modulaire réutilisable visant une montée en charge vers une vraie API/session sécurisée.
+Deliver a stable MVP where:
 
-## Fonctionnalités clés
+- admins manage templates and employees,
+- employees generate/preview/print/duplicate documents fast,
+- cash payment details are recorded accurately,
+- all actions are traceable (history, logs, stats),
+- the project is release-ready with clean quality gates.
 
-- **Authentification & rôles** : écran de connexion en arabe, distinction admin/employé, logique prête pour sessions sécurisées.
-- **Gestion des modèles** : cinq modèles prévus (location maison, vente domicile, vente voiture, vente moto, vente vélo) avec champs dynamiques.
-- **Génération de contrats** : formulaires contextuels, saisie vendeur/acheteur, conditions personnalisées, dates occidentales et chiffres arabes.
-- **Archives & reporting** : recherche multi-critères, statuts (Actif, Expiré, Annulé) et historique détaillé.
-- **Expérience utilisateur** : navigation responsive avec onglets, composants shadcn/ui, transitions cohérentes en arabe.
+## Current Stack
 
-## Architecture technique
+- Next.js 16 App Router + React 19 + TypeScript
+- Prisma + PostgreSQL
+- Better Auth (session-based auth)
+- Tailwind v4 + shadcn/ui + Radix UI
+- i18next (Arabic/French localization)
 
-- **Framework** : Next.js 15.5.3 (App Router) avec React 18.3 et TypeScript.
-- **UI & styles** : Tailwind CSS v4, shadcn/ui, support RTL natif, `next-themes` pour le thème.
-- **Formulaires** : `react-hook-form` + validation `zod`, composants Radix pour l’accessibilité.
-- **Visualisations** : `recharts`, `lucide-react`, `embla-carousel`, `react-resizable-panels`.
-- **État & données** : données mockées côté client, architecture prête pour API REST/GraphQL ou services server actions.
+## Current Reality
 
-## Démarrage rapide
+The repository now contains most target features, but `dev` still needs stabilization work after branch consolidation (lint/type-check/runtime integration fixes).
 
-1. Installer les dépendances : `pnpm install` (ou `npm install`).
-2. Lancer l’environnement de dev : `pnpm dev`.
-3. Ouvrir `http://localhost:3000` pour accéder à l’interface en arabe.
-4. Scripts utiles :
-   - `pnpm dev` : serveur de développement.
-   - `pnpm build` : build de production.
-   - `pnpm start` : serveur Next.js en mode production.
-   - `pnpm lint` : vérification ESLint.
+See the latest project steering docs:
 
-## Documentation interne
+- [Project Mission](docs/project-state/mission-and-product-scope.md)
+- [Feature Inventory](docs/project-state/feature-inventory.md)
+- [Current State Audit (2026-03-19)](docs/project-state/current-state-audit-2026-03-19.md)
+- [Recovery Plan to Release](docs/project-state/recovery-plan-to-release.md)
 
-- `docs/README.md` : structure globale de la documentation.
-- `docs/analysis/` : analyses fonctionnelles/techniques (MCD, MLD, MPD + PlantUML).
-- `docs/user-stories/user-stories.md` : backlog initial de user stories.
-- `docs/use-cases/` : cas d’utilisation détaillés + diagrammes UML.
-- `docs/sequence-diagrams/` : scénarios dynamiques et diagrammes de séquence.
+## Quick Start
 
-## Feuille de route suggérée
+1. Install dependencies: `npm install`
+2. Configure environment variables (`.env`, `.env.local`)
+3. Run database migrations and seed data
+4. Start dev server: `npm run dev`
 
-- Connecter l’authentification mock à un fournisseur (NextAuth, Keycloak, etc.).
-- Persister les contrats et modèles via une base (PostgreSQL + Prisma ou autre).
-- Générer les documents PDF/signatures électroniques côté serveur.
-- Ajouter des tests e2e (Playwright) et unitaires sur les modules critiques.
-- Internationaliser l’interface (arabe par défaut, ouverture FR/EN en option).
+## Scripts
 
-CYBER SAIDIA vise une gestion documentaire fiable et adaptée aux usages arabophones, avec une base solide pour des intégrations futures (paiement, signature, reporting avancé).
+- `npm run dev`
+- `npm run build`
+- `npm run lint`
+- `npm run type-check`
+- `npm run start`
+

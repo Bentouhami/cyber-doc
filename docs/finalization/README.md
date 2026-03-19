@@ -13,3 +13,12 @@ This folder contains the end-to-end project health audit and finalization plan.
 1. Read the health audit to understand current architecture and status.
 2. Use the gap matrix to prioritize fixes by severity and impact.
 3. Execute the finalization checklist phase by phase until release-ready.
+
+## Latest steering docs
+
+For the latest feature-level inventory and release execution plan, use:
+
+- `../project-state/mission-and-product-scope.md`
+- `../project-state/feature-inventory.md`
+- `../project-state/current-state-audit-2026-03-19.md`
+- `../project-state/recovery-plan-to-release.md`
