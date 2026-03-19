@@ -1,14 +1,18 @@
 "use client"
 
 import { Suspense, useEffect } from "react"
+import dynamic from "next/dynamic"
 import { Shield, FileText, Lock } from "lucide-react"
 import { useRouter } from "next/navigation"
-import LoginForm from '@/components/auth/login';
 import { EmployeeHeader } from "@/components/layout/employee-header"
 import { EmployeeFooter } from "@/components/layout/employee-footer"
 import { useLocale } from "@/hooks/use-locale"
 import { useSession } from "@/lib/auth-client"
 import { useUserProfile } from "@/components/providers/user-profile-provider"
+
+const LoginForm = dynamic(() => import("@/components/auth/login"), {
+  ssr: false,
+})
 
 function LoginFormWithSearchParams() {
   return <LoginForm />
