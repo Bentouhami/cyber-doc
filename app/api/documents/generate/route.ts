@@ -68,7 +68,7 @@ type NormalizedFieldValue = {
   fieldId: string
   fieldName: string
   value: string
-  valueJson?: Prisma.JsonValue
+  valueJson?: Prisma.InputJsonValue
 }
 
 function normalizeTemplateValues(
@@ -135,7 +135,7 @@ function normalizeTemplateValues(
     const jsonValue =
       typeof rawValue === "string" || rawValue === null || rawValue === undefined
         ? undefined
-        : (rawValue as Prisma.JsonValue)
+        : (rawValue as Prisma.InputJsonValue)
 
     normalized.push({
       fieldId: field.id,
@@ -246,7 +246,7 @@ export async function POST(request: Request) {
       const chargedTotal = unitPrice ? unitPrice * copies : undefined
       const amountPaidValue = amountPaid ?? undefined
       const paymentStatus =
-        chargedTotal && amountPaidValue !== undefined
+        chargedTotal !== undefined && amountPaidValue !== undefined
           ? amountPaidValue >= chargedTotal
             ? "PAID"
             : amountPaidValue > 0
@@ -283,7 +283,9 @@ export async function POST(request: Request) {
             documentId: created.id,
             fieldId: value.fieldId,
             value: value.value,
-            valueJson: value.valueJson,
+            ...(value.valueJson !== null && value.valueJson !== undefined
+              ? { valueJson: value.valueJson }
+              : {}),
           })),
         })
       }

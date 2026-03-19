@@ -134,7 +134,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         },
       });
 
-      return new NextResponse(buffer, {
+      return new NextResponse(new Uint8Array(buffer), {
         headers: {
           "Content-Type": "application/pdf",
           "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${nextFileName}"`,
@@ -165,7 +165,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     const absolutePath = path.join(storageRoot, normalizedPath);
     const buffer = await fs.readFile(absolutePath);
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": isPdf
           ? "application/pdf"

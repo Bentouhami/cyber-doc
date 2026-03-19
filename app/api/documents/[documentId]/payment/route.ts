@@ -73,13 +73,27 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         throw new Error("Document not found");
       }
 
-      const unitPrice = data.unitPrice ?? existing.unitPrice ?? existing.standardPrice ?? undefined;
-      const discount = data.discount ?? existing.discount ?? 0;
-      const surcharge = data.surcharge ?? existing.surcharge ?? 0;
+      const unitPrice =
+        data.unitPrice ??
+        (existing.unitPrice !== null && existing.unitPrice !== undefined
+          ? Number(existing.unitPrice)
+          : existing.standardPrice !== null && existing.standardPrice !== undefined
+            ? Number(existing.standardPrice)
+            : undefined);
+      const discount =
+        data.discount ??
+        (existing.discount !== null && existing.discount !== undefined ? Number(existing.discount) : 0);
+      const surcharge =
+        data.surcharge ??
+        (existing.surcharge !== null && existing.surcharge !== undefined ? Number(existing.surcharge) : 0);
       const totalCopies = existing.totalCopies ?? 1;
       const chargedTotal =
         data.chargedTotal ?? (unitPrice ? unitPrice * totalCopies - discount + surcharge : undefined);
-      const amountPaid = data.amountPaid ?? existing.amountPaid ?? undefined;
+      const amountPaid =
+        data.amountPaid ??
+        (existing.amountPaid !== null && existing.amountPaid !== undefined
+          ? Number(existing.amountPaid)
+          : undefined);
       const changeGiven =
         data.changeGiven ?? (chargedTotal !== undefined && amountPaid !== undefined
           ? Math.max(0, amountPaid - chargedTotal)
@@ -117,14 +131,20 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       });
     });
 
-    await prisma.activityLog.create({
-      data: {
-        userId: currentUser.id,
-        activityType: { connect: { name: "UPDATE_DOCUMENT" } },
-        resourceType: "Document",
-        resourceId: document.id,
-      },
+    const updateDocumentActivity = await prisma.activityType.findFirst({
+      where: { name: "UPDATE_DOCUMENT" },
+      select: { id: true },
     });
+    if (updateDocumentActivity) {
+      await prisma.activityLog.create({
+        data: {
+          userId: currentUser.id,
+          activityTypeId: updateDocumentActivity.id,
+          resourceType: "Document",
+          resourceId: document.id,
+        },
+      });
+    }
 
     return NextResponse.json({
       id: document.id,
