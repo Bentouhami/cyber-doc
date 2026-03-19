@@ -1,0 +1,118 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [dev]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+
+jobs:
+  php:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      APP_ENV: test
+      APP_DEBUG: "0"
+      APP_RUNTIME_ENV: test
+
+      DATABASE_URL: "sqlite:////home/runner/work/ASDHO-Connect/ASDHO-Connect/backend/var/test.db"
+      LOCK_DSN: "flock"
+
+      # Microsoft Mail / Graph (dummy values for CI)
+      MICROSOFT_MAIL_TENANT_ID: "00000000-0000-0000-0000-000000000000"
+      MICROSOFT_MAIL_CLIENT_ID: "00000000-0000-0000-0000-000000000000"
+      MICROSOFT_MAIL_CLIENT_SECRET: "dummy"
+      MICROSOFT_MAIL_FROM: "noreply@example.test"
+      MICROSOFT_MAIL_SENDER: "noreply@example.test"
+
+      GRAPH_API_BASE_URL: "https://graph.microsoft.com"
+      GRAPH_API_VERSION: "v1.0"
+      GRAPH_SCOPE_DEFAULT: "https://graph.microsoft.com/.default"
+      GRAPH_TOKEN_URL_TEMPLATE: "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
+      GRAPH_SELECT_PROFILE: "id,displayName,mail,userPrincipalName,jobTitle"
+      GRAPH_SELECT_GROUP: "id,displayName"
+      GRAPH_PAGE_TOP: "999"
+
+      NOTIFICATIONS_DEFAULT_CHANNEL_CODE: "EMAIL_DEFAULT"
+      NOTIFICATIONS_DEFAULT_LOCALE: "fr-BE"
+      NOTIFICATIONS_FROM_EMAIL: "noreply@example.test"
+      NOTIFICATIONS_FROM_NAME: "ASDHO Connect"
+      FRONTEND_URL: "http://localhost:3000"
+      FRONTEND_AUTH_SUCCESS_URL: "http://localhost:3000/auth/success"
+      FRONTEND_AUTH_FAILURE_URL: "http://localhost:3000/auth/failure"
+      FRONTEND_COOKIE_DOMAIN: ""
+      ASDHO_COOKIE_NAME: "ASDHO_APP"
+      COOKIE_SAMESITE: "Lax"
+      COOKIE_SECURE: "false"
+      COOKIE_MAX_AGE: "3600"
+      COOKIE_DOMAIN: ""
+      REFRESH_COOKIE_NAME: "ASDHO_REFRESH"
+      REFRESH_TTL_DAYS: "30"
+      REFRESH_TOKEN_PEPPER: "test-pepper"
+
+      TRUSTED_PROXIES: "10.0.1.0/24,127.0.0.1,REMOTE_ADDR"
+      TRUSTED_HEADERS: "x-forwarded-for,x-forwarded-proto,x-forwarded-port,x-forwarded-host"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: composer
+          extensions: pdo_sqlite, sqlite3
+
+      # IMPORTANT : créer backend/.env avant composer install (auto-scripts cache:clear)
+      - name: Prepare .env for CI
+        run: |
+          if [ ! -f .env ]; then
+            if [ -f .env.ci ]; then
+              cp .env.ci .env
+            elif [ -f .env.example ]; then
+              cp .env.example .env
+            elif [ -f .env.exemple ]; then
+              cp .env.exemple .env
+            else
+              echo "APP_ENV=test" > .env
+              echo "APP_DEBUG=0" >> .env
+            fi
+          fi
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('backend/composer.lock') }}
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Lint (php-cs-fixer)
+        run: composer lint
+
+      - name: Static analysis (phpstan)
+        run: composer analyse
+
+      - name: List test JWT keys (debug)
+        run: ls -la config/jwt/test
+
+      - name: Reset test cache/database
+        run: |
+          rm -rf var/cache/test*
+          rm -f var/test.db
+
+      - name: PHPUnit (skips if no tests)
+        run: |
+          if compgen -G "tests/**/*.php" > /dev/null; then
+            php bin/console doctrine:schema:create --no-interaction
+            APP_ENV=test APP_RUNTIME_ENV=test composer test
+          else
+            echo "No PHPUnit tests found, skipping";
+          fi

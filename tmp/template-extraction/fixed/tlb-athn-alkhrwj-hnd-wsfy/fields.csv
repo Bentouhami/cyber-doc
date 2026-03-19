@@ -1,0 +1,2 @@
+templateId,key,label_ar,label_fr,type,required,example,validation,notes,needsReview
+"tlb-athn-alkhrwj-hnd-wsfy","cin","ط","","cin","true","Example","{""required"":true,""regex"":""^[A-Z0-9s-]{3,20}$"",""maxLength"":20}","detectedBy=keyword","true"

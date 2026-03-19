@@ -1,0 +1,53 @@
+{
+  "fileName": "تصريح بالشرف دراجة نارية.docx",
+  "templateId": "tsryh-balshrf-drajh-naryh",
+  "title": {
+    "ar": "تصريح بالشرف",
+    "fr": null
+  },
+  "locale": "ar-MA",
+  "category": "uncategorized",
+  "tags": [],
+  "staticSections": [],
+  "fields": [
+    {
+      "key": "cin",
+      "label_ar": "ت",
+      "label_fr": null,
+      "type": "cin",
+      "required": true,
+      "example": "Example",
+      "validation": {
+        "required": true,
+        "regex": "^[A-Z0-9s-]{3,20}$",
+        "maxLength": 20
+      },
+      "notes": "detectedBy=keyword",
+      "needsReview": true,
+      "confidence": 0.8400000000000001
+    },
+    {
+      "key": "signature",
+      "label_ar": "تصريح بالشرفأنا الموقعة أسفله",
+      "label_fr": "تصريح بالشرفأنا الموقعة أسفله :السيدة زعيمة بوطويل ، المزدادة في 1963  ، الحاملة للبطاقة الوطنية عدد F311140 و الساكنة بتجزئة تريفة 02 السعيدية  بموجب هذا اشهد على نفسي واصرح بشرفي بان الدراجة النارية الواردة بياناتها اسفله في ملكي BLET CYCLOMOTEUR    النوع                :رقم الاطار الحديدي :  LBFXCBGL8H1117504اللون                 : رماديحرر  للإدلاء به عند الحاجة و الاقتضاء .2017.11.07   السعيدية فيالإمضاء:",
+      "type": "signature",
+      "required": true,
+      "example": "Example",
+      "validation": {
+        "required": true,
+        "type": "signature"
+      },
+      "notes": "detectedBy=keyword",
+      "confidence": 0.8400000000000001
+    }
+  ],
+  "suggested_template_html": "<p><strong>تصريح بالشرف</strong></p><p><strong>أنا الموقعة أسفله :</strong></p><p>السيدة <strong>زعيمة بوطويل </strong>، المزدادة في <strong>1963  </strong>، الحاملة للبطاقة الوطنية عدد <strong>F311140</strong> و الساكنة بتجزئة تريفة 02 السعيدية  </p><p><strong>بموجب هذا اشهد على نفسي واصرح بشرفي بان الدراجة النارية الواردة بياناتها اسفله في ملكي </strong></p><p><strong>BLET CYCLOMOTEUR  </strong>  النوع                :</p><p>رقم الاطار الحديدي :  <strong>LBFXCBGL8H1117504</strong></p><p>اللون                 : <strong>رمادي</strong></p><p>حرر  للإدلاء به عند الحاجة و الاقتضاء .</p><p><strong>2017.11.07   السعيدية في</strong></p><p>الإمضاء:</p>",
+  "typos": [],
+  "reviewFlags": [
+    {
+      "fieldKey": "cin",
+      "reason": "missing_fr_label"
+    }
+  ],
+  "confidence": 0.8400000000000001
+}

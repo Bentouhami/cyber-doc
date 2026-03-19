@@ -1,0 +1,8 @@
+{
+  "template.aqd-bya-docker.field.cin.label": "ع",
+  "template.aqd-bya-docker.field.cin.placeholder": "أدخل ع",
+  "template.aqd-bya-docker.field.date.label": "عقد بيع دراجة نارية بين الموقعين أسفله",
+  "template.aqd-bya-docker.field.date.placeholder": "أدخل عقد بيع دراجة نارية بين الموقعين أسفله",
+  "template.aqd-bya-docker.field.signature.label": "عقد بيع دراجة نارية بين الموقعين أسفله",
+  "template.aqd-bya-docker.field.signature.placeholder": "أدخل عقد بيع دراجة نارية بين الموقعين أسفله"
+}
