@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,7 +11,7 @@ interface User {
   id: string
   name: string
   email: string
-  role: "admin" | "user"
+  role: "admin" | "employee"
 }
 
 interface AuthContextType {
@@ -27,39 +25,60 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 const mockUsers: User[] = [
   { id: "1", name: "أحمد محمد", email: "admin@cybercafe.com", role: "admin" },
-  { id: "2", name: "فاطمة علي", email: "user@cybercafe.com", role: "user" },
+  { id: "2", name: "فاطمة علي", email: "employee@cybercafe.com", role: "employee" },
 ]
 
+function readStoredUser(): User | null {
+  if (typeof window === "undefined") {
+    return null
+  }
+
+  const storedUser = window.localStorage.getItem("user")
+  if (!storedUser) {
+    return null
+  }
+
+  try {
+    return JSON.parse(storedUser) as User
+  } catch {
+    return null
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(() => readStoredUser())
+  const isClientReady = typeof window !== "undefined"
 
-  useEffect(() => {
-    // Check for stored user session
-    const storedUser = localStorage.getItem("user")
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-    }
-    setIsLoading(false)
-  }, [])
-
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Mock authentication
+  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     const foundUser = mockUsers.find((u) => u.email === email)
     if (foundUser && password === "123456") {
       setUser(foundUser)
-      localStorage.setItem("user", JSON.stringify(foundUser))
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("user", JSON.stringify(foundUser))
+      }
       return true
     }
     return false
-  }
+  }, [])
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null)
-    localStorage.removeItem("user")
-  }
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("user")
+    }
+  }, [])
 
-  if (isLoading) {
+  const contextValue = useMemo<AuthContextType>(
+    () => ({
+      user,
+      login,
+      logout,
+      isLoading: !isClientReady,
+    }),
+    [isClientReady, login, logout, user],
+  )
+
+  if (!isClientReady) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -74,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return <LoginForm onLogin={login} />
   }
 
-  return <AuthContext.Provider value={{ user, login, logout, isLoading }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
 }
 
 function LoginForm({ onLogin }: { onLogin: (email: string, password: string) => Promise<boolean> }) {
@@ -137,7 +156,7 @@ function LoginForm({ onLogin }: { onLogin: (email: string, password: string) => 
           <div className="mt-4 text-sm text-muted-foreground text-center">
             <p>حسابات تجريبية:</p>
             <p>مدير: admin@cybercafe.com / 123456</p>
-            <p>مستخدم: user@cybercafe.com / 123456</p>
+            <p>موظف: employee@cybercafe.com / 123456</p>
           </div>
         </CardContent>
       </Card>

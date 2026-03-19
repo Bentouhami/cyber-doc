@@ -1,159 +1,109 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { FileText, Users, Settings, Archive, Plus, Moon, Sun, LogOut } from "lucide-react"
-import { useTheme } from "next-themes"
-import { ContractTemplateManager } from "@/components/contract-template-manager"
-import { ContractGenerator } from "@/components/contract-generator"
-import { ContractArchive } from "@/components/contract-archive"
-import { AuthProvider, useAuth } from "@/components/auth-provider"
+import { Suspense, useEffect } from "react"
+import { Shield, FileText, Lock } from "lucide-react"
+import { useRouter } from "next/navigation"
+import LoginForm from '@/components/auth/login';
+import { EmployeeHeader } from "@/components/layout/employee-header"
+import { EmployeeFooter } from "@/components/layout/employee-footer"
+import { useLocale } from "@/hooks/use-locale"
+import { useSession } from "@/lib/auth-client"
+import { useUserProfile } from "@/components/providers/user-profile-provider"
 
-function Dashboard() {
-  const { user, logout } = useAuth()
-  const { theme, setTheme } = useTheme()
-  const [activeTab, setActiveTab] = useState("dashboard")
-
-  const stats = [
-    { title: "العقود المُنشأة", value: "24", icon: FileText, color: "text-secondary" },
-    { title: "النماذج النشطة", value: "5", icon: Settings, color: "text-chart-3" },
-    { title: "قيد المراجعة", value: "3", icon: Users, color: "text-chart-4" },
-    { title: "الأرشيف", value: "156", icon: Archive, color: "text-muted-foreground" },
-  ]
-
-  const recentActivity = [
-    { type: "عقد إيجار منزل", client: "فاطمة أحمد", date: "2024-01-15", status: "مُنشأ" },
-    { type: "عقد بيع سيارة", client: "محمد علي", date: "2024-01-14", status: "قيد المراجعة" },
-    { type: "عقد بيع دراجة نارية", client: "سارة محمود", date: "2024-01-13", status: "مكتمل" },
-  ]
-
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-card border-b border-border shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4 rtl:space-x-reverse">
-              <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                <FileText className="h-8 w-8 text-secondary" />
-                <h1 className="text-xl font-bold text-foreground">سايبر السعيدية - إدارة العقود</h1>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4 rtl:space-x-reverse">
-              <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-                <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              </Button>
-              <Badge variant="outline" className="text-sm">
-                {user?.role === "admin" ? "مدير" : "مستخدم"}
-              </Badge>
-              <div className="text-sm text-muted-foreground">{user?.name}</div>
-              <Button variant="ghost" size="icon" onClick={logout}>
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-fit lg:grid-cols-4">
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              لوحة التحكم
-            </TabsTrigger>
-            <TabsTrigger value="generate" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              إنشاء عقد
-            </TabsTrigger>
-            {user?.role === "admin" && (
-              <>
-                <TabsTrigger value="templates" className="flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  إدارة النماذج
-                </TabsTrigger>
-                <a href="/admin/employees" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                  <Users className="h-4 w-4 mr-2" />
-                  Gestion des Employés
-                </a>
-              </>
-            )}
-            <TabsTrigger value="archive" className="flex items-center gap-2">
-              <Archive className="h-4 w-4" />
-              الأرشيف
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="dashboard" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {stats.map((stat, index) => (
-                <Card key={index} className="bg-card shadow-sm hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                        <p className="text-3xl font-bold text-foreground">{stat.value}</p>
-                      </div>
-                      <stat.icon className={`h-8 w-8 ${stat.color}`} />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <Card className="bg-card shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-foreground">النشاط الأخير</CardTitle>
-                <CardDescription>آخر العقود المُنشأة والإجراءات المتخذة</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {recentActivity.map((activity, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                      <div className="flex items-center space-x-4 rtl:space-x-reverse">
-                        <FileText className="h-5 w-5 text-secondary" />
-                        <div>
-                          <p className="font-medium text-foreground">{activity.type}</p>
-                          <p className="text-sm text-muted-foreground">{activity.client}</p>
-                        </div>
-                      </div>
-                      <div className="text-right rtl:text-left">
-                        <Badge variant={activity.status === "مكتمل" ? "default" : "secondary"}>{activity.status}</Badge>
-                        <p className="text-sm text-muted-foreground mt-1">{activity.date}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="generate">
-            <ContractGenerator />
-          </TabsContent>
-
-          {user?.role === "admin" && (
-            <TabsContent value="templates">
-              <ContractTemplateManager />
-            </TabsContent>
-          )}
-
-          <TabsContent value="archive">
-            <ContractArchive />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  )
+function LoginFormWithSearchParams() {
+  return <LoginForm />
 }
 
-export default function ContractManagementApp() {
+export default function HomePage() {
+  const { dir } = useLocale()
+  const router = useRouter()
+  const { data: session, isPending } = useSession()
+  const { user: profile, status: profileStatus } = useUserProfile()
+
+  useEffect(() => {
+    if (isPending || !session?.user?.email) {
+      return
+    }
+
+    if (profileStatus === "loading" || profileStatus === "idle") {
+      return
+    }
+
+    const isAdmin = profile?.roles?.some((role) => role.name === "admin")
+    const target = isAdmin ? "/admin/templates" : "/documents"
+    router.replace(target)
+  }, [isPending, profile, profileStatus, router, session?.user?.email])
+
   return (
-    <AuthProvider>
-      <Dashboard />
-    </AuthProvider>
+    <main className="flex min-h-dvh flex-col bg-background" dir={dir}>
+      <EmployeeHeader />
+      <div className="grid flex-1 lg:grid-cols-2">
+        {/* Left side - Hero content */}
+        <section className="relative flex items-center justify-center bg-primary px-6 py-12 text-primary-foreground lg:px-12">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.05),transparent_50%)]" />
+
+          <div className="relative z-10 w-full max-w-xl space-y-8 text-right">
+            {/* Logo/Brand */}
+            <div className="flex items-center justify-end gap-3">
+              <h2 className="text-2xl font-bold tracking-tight">سايبر دوك</h2>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-foreground/10 backdrop-blur-sm">
+                <Shield className="h-6 w-6" />
+              </div>
+            </div>
+
+            {/* Main heading */}
+            <div className="space-y-4">
+              <h1 className="text-balance text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+                إدارة العقود القانونية بثقة وسهولة
+              </h1>
+              <p className="text-pretty text-lg leading-relaxed text-primary-foreground/80 sm:text-xl">
+                منصة متكاملة لإنشاء وإدارة ومتابعة جميع عقودك القانونية في مكان واحد آمن
+              </p>
+            </div>
+
+            {/* Features */}
+            <div className="space-y-4 pt-4">
+              <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/10">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-semibold">إنشاء مستندات احترافية</h3>
+                  <p className="text-sm text-primary-foreground/70">
+                    قوالب قانونية متوافقة مع المعايير المحلية والدولية
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/10">
+                  <Lock className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-semibold">أمان وخصوصية عالية</h3>
+                  <p className="text-sm text-primary-foreground/70">تشفير متقدم وحماية كاملة لبياناتك الحساسة</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Right side - Login form */}
+        <section className="flex items-center justify-center bg-secondary/30 px-6 py-12">
+          <div className="w-full max-w-md">
+            <Suspense
+              fallback={
+                <div className="flex h-96 items-center justify-center">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                </div>
+              }
+            >
+              <LoginFormWithSearchParams />
+            </Suspense>
+          </div>
+        </section>
+      </div>
+      <EmployeeFooter />
+    </main>
   )
 }
