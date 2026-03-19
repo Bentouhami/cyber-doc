@@ -12,14 +12,29 @@ type RouteContext = {
   params: Promise<{ slug: string }>;
 };
 
-function isSafeRelativePath(filePath: string) {
-  if (filePath.startsWith("/") || filePath.includes(":")) {
-    return false;
+const TEMPLATE_ASSETS_DIR = path.join(process.cwd(), "templates_docs");
+
+function resolveTemplateAssetPath(filePath: string) {
+  const normalized = filePath.replaceAll("\\", "/").replace(/^\/+/, "");
+  const relativePath = normalized.startsWith("templates_docs/")
+    ? normalized.slice("templates_docs/".length)
+    : normalized;
+
+  if (!relativePath || relativePath.includes("..")) {
+    return null;
   }
-  if (filePath.includes("..")) {
-    return false;
+
+  const absolutePath = path.join(TEMPLATE_ASSETS_DIR, relativePath);
+  const relativeFromBase = path.relative(TEMPLATE_ASSETS_DIR, absolutePath);
+
+  if (
+    relativeFromBase.startsWith("..") ||
+    path.isAbsolute(relativeFromBase)
+  ) {
+    return null;
   }
-  return true;
+
+  return absolutePath;
 }
 
 export async function GET(request: NextRequest, { params }: RouteContext) {
@@ -42,12 +57,12 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     return new NextResponse("File not found", { status: 404 });
   }
 
-  if (!isSafeRelativePath(template.asset.filePath)) {
+  const absolutePath = resolveTemplateAssetPath(template.asset.filePath);
+  if (!absolutePath) {
     return new NextResponse("Invalid file path", { status: 400 });
   }
 
   try {
-    const absolutePath = path.resolve(process.cwd(), template.asset.filePath);
     const buffer = await fs.readFile(absolutePath);
     return new NextResponse(buffer, {
       headers: {
