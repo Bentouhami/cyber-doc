@@ -61,6 +61,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       const printedStatus = await tx.documentStatus.findFirst({
         where: { name: "PRINTED" },
       });
+      const printDocumentActivity = await tx.activityType.findFirst({
+        where: { name: "PRINT_DOCUMENT" },
+        select: { id: true },
+      });
 
       let printer = data.printerId
         ? await tx.printer.findUnique({ where: { id: data.printerId } })
@@ -92,14 +96,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         },
       });
 
-      await tx.activityLog.create({
-        data: {
-          userId: currentUser.id,
-          activityType: { connect: { name: "PRINT_DOCUMENT" } },
-          resourceType: "Document",
-          resourceId: document.id,
-        },
-      });
+      if (printDocumentActivity) {
+        await tx.activityLog.create({
+          data: {
+            userId: currentUser.id,
+            activityTypeId: printDocumentActivity.id,
+            resourceType: "Document",
+            resourceId: document.id,
+          },
+        });
+      }
 
       await incrementDailyStats(tx, new Date(), {
         documentsPrinted: 1,

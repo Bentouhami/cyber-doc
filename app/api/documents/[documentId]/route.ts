@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import prisma from "@/lib/prisma";
@@ -204,10 +205,18 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       const normalizedValues = normalizeTemplateValues(template.fields, payload);
       const metadata = (template.metadata ?? {}) as Record<string, unknown>;
       const basePrice = typeof metadata.basePrice === "number" ? metadata.basePrice : undefined;
-      const unitPrice = basePrice ?? existing.unitPrice ?? undefined;
+      const unitPrice =
+        basePrice ??
+        (existing.unitPrice !== null && existing.unitPrice !== undefined
+          ? Number(existing.unitPrice)
+          : undefined);
       const nextCopies = copies ?? existing.totalCopies ?? 1;
       const chargedTotal = unitPrice ? unitPrice * nextCopies : undefined;
-      const amountPaidValue = amountPaid ?? existing.amountPaid ?? undefined;
+      const amountPaidValue =
+        amountPaid ??
+        (existing.amountPaid !== null && existing.amountPaid !== undefined
+          ? Number(existing.amountPaid)
+          : undefined);
       const paymentStatus =
         chargedTotal !== undefined && amountPaidValue !== undefined
           ? amountPaidValue >= chargedTotal
@@ -242,7 +251,9 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
             documentId,
             fieldId: value.fieldId,
             value: value.value,
-            valueJson: value.valueJson as any,
+            ...(value.valueJson !== null && value.valueJson !== undefined
+              ? { valueJson: value.valueJson as Prisma.InputJsonValue }
+              : {}),
           })),
         });
       }

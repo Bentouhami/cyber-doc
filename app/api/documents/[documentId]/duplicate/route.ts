@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/admin-auth";
@@ -77,7 +78,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             documentId: created.id,
             fieldId: value.fieldId,
             value: value.value,
-            valueJson: value.valueJson,
+            ...(value.valueJson !== null && value.valueJson !== undefined
+              ? { valueJson: value.valueJson as Prisma.InputJsonValue }
+              : {}),
           })),
         });
       }
