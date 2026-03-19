@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+
+<html class="light" dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>لوحة تحكم العملاء</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Cairo', sans-serif;
+        }
+    </style>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#13ec5b",
+              "background-light": "#f6f8f6",
+              "background-dark": "#102216",
+              "brand-primary": "#0D47A1",
+              "brand-secondary": "#1E8449",
+              "brand-warning": "#FFC107",
+              "brand-error": "#D32F2F",
+              "neutral-bg": "#F5F5F5",
+              "neutral-border": "#BDBDBD",
+              "neutral-text-primary": "#212121",
+            },
+            fontFamily: {
+              "display": ["Cairo", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-neutral-text-primary dark:text-gray-200">
+<div class="flex h-screen">
+<!-- SideNavBar -->
+<aside class="flex-shrink-0 w-64 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800">
+<div class="flex h-full flex-col justify-between p-4">
+<div class="flex flex-col gap-4">
+<div class="flex gap-3 items-center">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="Cyber cafe logo" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDpPdhvFxGMbcjwm3Clie2_4AFdv7XWobMNT0wWv7o0Tt4kRk-lbbB5KNdrg_h6CaONDOj6UYjsJdKxZl3AbjCgF0k6C8AsROSn8AFqOqnqXgBrlHYN2386ucLXse7KDAjF5t1IGVM5NRmsZo3WBQPgJX1hdAeZW-WybP4zSSvRbX3VELspEKsXzxltDr_0Os70hYuho0Og0Fgh3VuV9p6Uq0RmjX2xOoJOUPqMSj1C9xZwIiV3OPQ8Eu7bJlVTzfak38JdwjV4cnM");'></div>
+<div class="flex flex-col">
+<h1 class="text-neutral-text-primary dark:text-white text-base font-bold leading-normal">مقهى الإنترنت</h1>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal">لوحة التحكم</p>
+</div>
+</div>
+<nav class="flex flex-col gap-2 mt-4">
+<a class="flex items-center gap-3 px-3 py-2 text-gray-600 dark:text-gray-300" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<p class="text-sm font-medium leading-normal">لوحة التحكم</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-brand-primary/10 text-brand-primary dark:bg-brand-primary/20 dark:text-blue-300" href="#">
+<span class="material-symbols-outlined">group</span>
+<p class="text-sm font-medium leading-normal">العملاء</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-gray-600 dark:text-gray-300" href="#">
+<span class="material-symbols-outlined">description</span>
+<p class="text-sm font-medium leading-normal">الطلبات</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-gray-600 dark:text-gray-300" href="#">
+<span class="material-symbols-outlined">monitoring</span>
+<p class="text-sm font-medium leading-normal">المالية</p>
+</a>
+</nav>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-3 px-3 py-2 cursor-pointer text-gray-600 dark:text-gray-300">
+<span class="material-symbols-outlined">settings</span>
+<p class="text-sm font-medium leading-normal">الإعدادات</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 cursor-pointer text-gray-600 dark:text-gray-300">
+<span class="material-symbols-outlined">logout</span>
+<p class="text-sm font-medium leading-normal">تسجيل الخروج</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 overflow-y-auto">
+<!-- Left Panel: Client List -->
+<div class="lg:col-span-1 flex flex-col bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800">
+<div class="p-4 border-b border-gray-200 dark:border-gray-800">
+<label class="flex flex-col min-w-40 h-12 w-full">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-gray-500 dark:text-gray-400 flex bg-neutral-bg dark:bg-gray-800 items-center justify-center pr-4 rounded-r-lg">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-neutral-text-primary dark:text-white focus:outline-0 focus:ring-0 border-none bg-neutral-bg dark:bg-gray-800 focus:border-none h-full placeholder:text-gray-500 dark:placeholder:text-gray-400 px-4 rounded-r-none border-r-0 pl-2 text-sm font-normal leading-normal" placeholder="البحث بالاسم أو رقم البطاقة الوطنية..." value=""/>
+</div>
+</label>
+</div>
+<div class="flex-1 overflow-y-auto">
+<!-- List Item (Selected) -->
+<div class="flex items-center gap-4 bg-brand-primary/10 dark:bg-brand-primary/20 px-4 min-h-[72px] py-2 justify-between border-r-4 border-brand-primary">
+<div class="flex items-center gap-4">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-12 w-12" data-alt="User avatar for Fatima Ezzahra El Alami" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDbUBOX8PYrPvZY8lhR9txO6wyrdIhaQ5LnbxsYXLIoDvVf1D0X9DCwgZIFjxCTTJMiH5QVyRD3q7dSaRLHRFQ0bKkFnzwUF1RIAuZJ69qVWBlypFBjByfo7EmNLksImYDegrnCV4bAIR3iT7qRW7GbgSftbUW2ZAg0S0NN9rWnKq84GgqPsaEaVGl_M1Vu0Uh6XOaKvChu2AbnH3krj5Fhc_Q2_6eJpP8jNOgZiR3ItjzrV4sS9tT4qBAlliM8tastYa1tbCdwUF4");'></div>
+<div class="flex flex-col justify-center">
+<p class="text-neutral-text-primary dark:text-white text-base font-semibold leading-normal line-clamp-1">فاطمة الزهراء العلمي</p>
+<p class="text-brand-primary dark:text-blue-300 text-sm font-normal leading-normal line-clamp-2">D789012</p>
+</div>
+</div>
+<div class="shrink-0">
+<div class="text-brand-primary dark:text-blue-300 flex size-7 items-center justify-center">
+<span class="material-symbols-outlined">chevron_left</span>
+</div>
+</div>
+</div>
+<!-- List Item -->
+<div class="flex items-center gap-4 hover:bg-neutral-bg dark:hover:bg-gray-800/50 cursor-pointer px-4 min-h-[72px] py-2 justify-between">
+<div class="flex items-center gap-4">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-12 w-12" data-alt="User avatar for Abdellah El Filali" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuALU5E5M2WPsb0pP0NV-33dxxVni0_FetIVhbRRuln-c591KN0guPDX9hmQIG5UBp-gtEHRe1QCsW3MxzAmQPsLaLCO15yqtLXuz7qvI3r8bjeI-cTm3oPs14BwFNZIrMygga1NqqVLkhSMkxS2CVlHKGlaM2UL8DE0jOuTCjH58Oc5AQRyv8psVFf-xUyyVS8caph6zbH3y7XV5oENc1Q6cmmAJdAok24MLzdRM21YZrSKEyiNTdSSILo9CtpJBOSjlBZ3XGVTEq8");'></div>
+<div class="flex flex-col justify-center">
+<p class="text-neutral-text-primary dark:text-white text-base font-medium leading-normal line-clamp-1">عبدالله الفيلالي</p>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal line-clamp-2">C123456</p>
+</div>
+</div>
+<div class="shrink-0">
+<div class="text-gray-400 flex size-7 items-center justify-center">
+<span class="material-symbols-outlined">chevron_left</span>
+</div>
+</div>
+</div>
+<!-- List Item -->
+<div class="flex items-center gap-4 hover:bg-neutral-bg dark:hover:bg-gray-800/50 cursor-pointer px-4 min-h-[72px] py-2 justify-between">
+<div class="flex items-center gap-4">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-12 w-12" data-alt="User avatar for Ahmed Bouzidi" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDFIhusd_4CGqxSqBBnFV8_GIBmJfa3aa6Ljg8M_YGKJAaIK6Bnd_72Ku_6qejUy3PF7HM9eQO8YJKj7v19G-9g6T-5vw-3ncwPl5KHJhSrHnsexndJvfV0izEJhfFF-BxFeU0Mgnn8K9tZZ4EtjnJA8T58fzGv0gIq76O62Lb3hxmw0OAWlXh5bvl17zCXi3J3D0EWDhxLS9AvvzNUeQ9Hr6AXcr_9PaHi6OByfo7AuCs8OgYGVPpPkR0eEhDzc-Er5sfgfcru6g4");'></div>
+<div class="flex flex-col justify-center">
+<p class="text-neutral-text-primary dark:text-white text-base font-medium leading-normal line-clamp-1">أحمد بوزيدي</p>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal line-clamp-2">E554433</p>
+</div>
+</div>
+<div class="shrink-0">
+<div class="text-gray-400 flex size-7 items-center justify-center">
+<span class="material-symbols-outlined">chevron_left</span>
+</div>
+</div>
+</div>
+</div>
+<div class="p-4 border-t border-gray-200 dark:border-gray-800">
+<button class="flex min-w-[84px] w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-brand-secondary text-white gap-2 text-base font-bold leading-normal tracking-[0.015em]">
+<span class="material-symbols-outlined">add_circle</span>
+<span class="truncate">إضافة عميل جديد</span>
+</button>
+</div>
+</div>
+<!-- Right Panel: Client Details -->
+<div class="lg:col-span-2 flex flex-col bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+<div class="p-6 border-b border-gray-200 dark:border-gray-800">
+<div class="flex justify-between items-start">
+<div>
+<h2 class="text-2xl font-bold text-neutral-text-primary dark:text-white">فاطمة الزهراء العلمي</h2>
+<p class="text-gray-500 dark:text-gray-400 mt-1">D789012 - 06 12 34 56 78</p>
+</div>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-lg h-10 px-4 bg-gray-200 dark:bg-gray-700 text-neutral-text-primary dark:text-white text-sm font-medium gap-2">
+<span class="material-symbols-outlined text-base">edit</span>
+<span>تعديل</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-10 px-4 bg-brand-error/10 dark:bg-brand-error/20 text-brand-error dark:text-red-300 text-sm font-medium gap-2">
+<span class="material-symbols-outlined text-base">delete</span>
+<span>حذف</span>
+</button>
+</div>
+</div>
+<!-- Alert Banner -->
+<div class="mt-4 p-4 rounded-lg bg-brand-warning/10 dark:bg-brand-warning/20 border border-brand-warning/30 flex items-center gap-3">
+<span class="material-symbols-outlined text-brand-warning">warning</span>
+<p class="text-sm font-medium text-amber-800 dark:text-amber-200">تنبيه: بطاقة التعريف الوطنية تنتهي صلاحيتها في غضون 25 يومًا.</p>
+</div>
+</div>
+<div class="flex-1 p-6 flex flex-col">
+<!-- Tabs -->
+<div class="border-b border-gray-200 dark:border-gray-700">
+<nav aria-label="Tabs" class="-mb-px flex gap-6">
+<a aria-current="page" class="shrink-0 border-b-2 border-brand-primary px-1 pb-4 text-sm font-medium text-brand-primary" href="#">المعلومات الشخصية</a>
+<a class="shrink-0 border-b-2 border-transparent px-1 pb-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-300" href="#">سجل الطلبات</a>
+<a class="shrink-0 border-b-2 border-transparent px-1 pb-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-300" href="#">الوثائق المرفقة</a>
+</nav>
+</div>
+<!-- Tab Content: Personal Information -->
+<div class="pt-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+<div>
+<label class="text-sm font-medium text-gray-500 dark:text-gray-400">الاسم الكامل (بالعربية)</label>
+<p class="mt-1 text-base font-semibold text-neutral-text-primary dark:text-white">فاطمة الزهراء العلمي</p>
+</div>
+<div>
+<label class="text-sm font-medium text-gray-500 dark:text-gray-400">الاسم الكامل (باللاتينية)</label>
+<p class="mt-1 text-base font-semibold text-neutral-text-primary dark:text-white">Fatima Ezzahra El Alami</p>
+</div>
+<div>
+<label class="text-sm font-medium text-gray-500 dark:text-gray-400">رقم ب.ت.و</label>
+<p class="mt-1 text-base font-semibold text-neutral-text-primary dark:text-white">D789012</p>
+</div>
+<div>
+<label class="text-sm font-medium text-gray-500 dark:text-gray-400">تاريخ الميلاد</label>
+<p class="mt-1 text-base font-semibold text-neutral-text-primary dark:text-white">15 / 03 / 1992</p>
+</div>
+<div class="md:col-span-2">
+<label class="text-sm font-medium text-gray-500 dark:text-gray-400">العنوان</label>
+<p class="mt-1 text-base font-semibold text-neutral-text-primary dark:text-white">شارع الحرية، رقم 42، حي الأمل، الدار البيضاء</p>
+</div>
+<div>
+<label class="text-sm font-medium text-gray-500 dark:text-gray-400">رقم الهاتف</label>
+<p class="mt-1 text-base font-semibold text-neutral-text-primary dark:text-white">06 12 34 56 78</p>
+</div>
+<div>
+<label class="text-sm font-medium text-gray-500 dark:text-gray-400">البريد الإلكتروني</label>
+<p class="mt-1 text-base font-semibold text-neutral-text-primary dark:text-white">fatima.elalami@email.com</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

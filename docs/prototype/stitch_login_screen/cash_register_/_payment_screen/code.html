@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html class="light" dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>نظام نقطة البيع</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700;900&amp;family=Tajawal:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#4A90E2",
+                        "secondary": "#50E3C2",
+                        "danger": "#D0021B",
+                        "background-light": "#F4F7FA",
+                        "background-dark": "#102216",
+                        "content-light": "#ffffff",
+                        "content-dark": "#1a1a1a",
+                        "text-light": "#333333",
+                        "text-dark": "#F4F7FA",
+                        "border-light": "#E0E0E0",
+                        "border-dark": "#333333",
+                    },
+                    fontFamily: {
+                        "display": ["Tajawal", "Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            direction: rtl;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-text-light dark:text-text-dark">
+<div class="flex h-screen w-full flex-col">
+<!-- TopNavBar -->
+<header class="flex shrink-0 items-center justify-between border-b border-solid border-border-light dark:border-border-dark px-6 py-3 bg-content-light dark:bg-content-dark">
+<div class="flex items-center gap-4 text-text-light dark:text-text-dark">
+<span class="material-symbols-outlined text-primary text-3xl">
+                    point_of_sale
+                </span>
+<h2 class="text-xl font-bold leading-tight tracking-[-0.015em]">نظام نقطة البيع</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="text-right">
+<p class="text-base font-bold">محمد أمين</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">24 أكتوبر 2023، 10:30 صباحًا</p>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-12" data-alt="User avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCklWY4teZ38nKU4fPTC5IL4-7N_mTtUgF9Aa7u0AMVnGeOKMfHcnpiWWM5p29i9qXnGWZEDlLxiXys00wd0dV4zUj5DQkXjll-1Ar0U6bK7sih7bO876SxkDhGbdz2kp-G4vnQ6Bnbf3JP2cwABA0bCd3GRT62glwwYT8T36DtQMBHVp8BlaQ5BJtRyMH4HdY5wvknZzD7B3E5dWiIkorQq1RaPTQMIzzgTamaFztn5WQYRwqKSndwhlYF0_GVtCW1hR6q-8AHgdU");'></div>
+<div class="flex gap-2">
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-danger/10 text-danger text-sm font-bold leading-normal tracking-[0.015em] gap-2">
+<span class="material-symbols-outlined">logout</span>
+<span class="truncate">الخروج</span>
+</button>
+<button class="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-primary/10 text-primary gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-3">
+<span class="material-symbols-outlined">lock</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 overflow-auto p-6">
+<div class="mx-auto flex h-full max-w-screen-2xl gap-6">
+<!-- Left Column: Document List -->
+<div class="flex w-3/5 flex-col gap-6">
+<div class="flex items-center justify-between">
+<h1 class="text-3xl font-black leading-tight tracking-[-0.033em]">قائمة الوثائق</h1>
+</div>
+<!-- SearchBar -->
+<div>
+<label class="flex h-14 w-full flex-col">
+<div class="flex h-full w-full flex-1 items-stretch rounded-xl bg-content-light dark:bg-content-dark border border-border-light dark:border-border-dark">
+<div class="text-primary flex items-center justify-center pl-4">
+<span class="material-symbols-outlined text-2xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-text-light dark:text-text-dark focus:outline-0 focus:ring-0 border-none bg-transparent h-full placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 text-base font-normal leading-normal" placeholder="ابحث عن وثيقة..." value=""/>
+</div>
+</label>
+</div>
+<!-- Table -->
+<div class="flex-1 overflow-hidden rounded-xl border border-border-light dark:border-border-dark bg-content-light dark:bg-content-dark">
+<div class="overflow-y-auto h-full">
+<table class="w-full">
+<thead class="sticky top-0 bg-background-light dark:bg-background-dark">
+<tr>
+<th class="px-6 py-4 text-right text-sm font-bold uppercase text-gray-500 dark:text-gray-400">الوثيقة</th>
+<th class="px-6 py-4 text-right text-sm font-bold uppercase text-gray-500 dark:text-gray-400">السعر</th>
+<th class="px-6 py-4 text-center text-sm font-bold uppercase text-gray-500 dark:text-gray-400">إجراء</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-t border-t-border-light dark:border-border-dark">
+<td class="h-[72px] px-6 py-2 text-base font-medium">عقد كراء</td>
+<td class="h-[72px] px-6 py-2 text-base">50.00 درهم</td>
+<td class="h-[72px] px-6 py-2 text-center">
+<button class="flex items-center justify-center gap-2 rounded-lg bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
+<span class="material-symbols-outlined text-base">add</span>
+<span>إضافة</span>
+</button>
+</td>
+</tr>
+<tr class="border-t border-t-border-light dark:border-border-dark">
+<td class="h-[72px] px-6 py-2 text-base font-medium">تصريح بالشرف</td>
+<td class="h-[72px] px-6 py-2 text-base">20.00 درهم</td>
+<td class="h-[72px] px-6 py-2 text-center">
+<button class="flex items-center justify-center gap-2 rounded-lg bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
+<span class="material-symbols-outlined text-base">add</span>
+<span>إضافة</span>
+</button>
+</td>
+</tr>
+<tr class="border-t border-t-border-light dark:border-border-dark">
+<td class="h-[72px] px-6 py-2 text-base font-medium">وكالة</td>
+<td class="h-[72px] px-6 py-2 text-base">40.00 درهم</td>
+<td class="h-[72px] px-6 py-2 text-center">
+<button class="flex items-center justify-center gap-2 rounded-lg bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
+<span class="material-symbols-outlined text-base">add</span>
+<span>إضافة</span>
+</button>
+</td>
+</tr>
+<tr class="border-t border-t-border-light dark:border-border-dark">
+<td class="h-[72px] px-6 py-2 text-base font-medium">طلب خطي</td>
+<td class="h-[72px] px-6 py-2 text-base">30.00 درهم</td>
+<td class="h-[72px] px-6 py-2 text-center">
+<button class="flex items-center justify-center gap-2 rounded-lg bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
+<span class="material-symbols-outlined text-base">add</span>
+<span>إضافة</span>
+</button>
+</td>
+</tr>
+<tr class="border-t border-t-border-light dark:border-border-dark">
+<td class="h-[72px] px-6 py-2 text-base font-medium">التزام</td>
+<td class="h-[72px] px-6 py-2 text-base">25.00 درهم</td>
+<td class="h-[72px] px-6 py-2 text-center">
+<button class="flex items-center justify-center gap-2 rounded-lg bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
+<span class="material-symbols-outlined text-base">add</span>
+<span>إضافة</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Right Column: Bill and Stats -->
+<div class="flex w-2/5 flex-col gap-6">
+<!-- Current Bill Panel -->
+<div class="flex flex-1 flex-col rounded-xl border border-border-light dark:border-border-dark bg-content-light dark:bg-content-dark p-6">
+<h3 class="mb-4 text-xl font-bold">فاتورة حالية</h3>
+<div class="flex-1 overflow-y-auto pr-2">
+<!-- Bill Items -->
+<div class="space-y-4">
+<!-- Item 1 -->
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-medium">عقد كراء</span>
+<span class="text-sm text-gray-500 dark:text-gray-400">50.00 درهم</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex h-8 items-center rounded-lg border border-border-light dark:border-border-dark">
+<button class="px-2 text-primary">-</button>
+<span class="px-2 text-sm">1</span>
+<button class="px-2 text-primary">+</button>
+</div>
+<span class="w-20 text-left font-medium">50.00 د.م</span>
+<button class="text-danger">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-medium">تصريح بالشرف</span>
+<span class="text-sm text-gray-500 dark:text-gray-400">20.00 درهم</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex h-8 items-center rounded-lg border border-border-light dark:border-border-dark">
+<button class="px-2 text-primary">-</button>
+<span class="px-2 text-sm">2</span>
+<button class="px-2 text-primary">+</button>
+</div>
+<span class="w-20 text-left font-medium">40.00 د.م</span>
+<button class="text-danger">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Payment Module -->
+<div class="mt-6 border-t border-border-light dark:border-border-dark pt-6">
+<div class="space-y-3">
+<div class="flex items-center justify-between text-lg font-bold">
+<span>المجموع</span>
+<span>90.00 درهم</span>
+</div>
+<div class="flex items-center justify-between">
+<span>المبلغ المستلم</span>
+<input class="form-input h-8 w-28 rounded-lg border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-right text-text-light dark:text-text-dark" type="text" value="100.00"/>
+</div>
+<div class="flex items-center justify-between font-medium text-primary">
+<span>الباقي</span>
+<span>10.00 درهم</span>
+</div>
+</div>
+<div class="mt-6 grid grid-cols-2 gap-4">
+<button class="flex h-12 w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-lg bg-primary/20 text-primary text-base font-bold">
+<span class="material-symbols-outlined">print</span>
+<span class="truncate">طباعة الوصل</span>
+</button>
+<button class="flex h-12 w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-lg bg-secondary text-white text-base font-bold">
+<span class="material-symbols-outlined">check_circle</span>
+<span class="truncate">تأكيد الدفع</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Daily Stats Card -->
+<div class="rounded-xl border border-border-light dark:border-border-dark bg-content-light dark:bg-content-dark p-6">
+<h3 class="mb-4 text-xl font-bold">إحصائيات اليوم</h3>
+<div class="grid grid-cols-2 gap-4 mb-4">
+<div class="rounded-lg bg-background-light dark:bg-background-dark p-4">
+<p class="text-sm text-gray-500 dark:text-gray-400">إجمالي الإيرادات</p>
+<p class="text-2xl font-bold text-secondary">1,250.00 د.م</p>
+</div>
+<div class="rounded-lg bg-background-light dark:bg-background-dark p-4">
+<p class="text-sm text-gray-500 dark:text-gray-400">عدد المعاملات</p>
+<p class="text-2xl font-bold text-primary">32</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<button class="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-border-light dark:border-border-dark text-sm font-bold">
+<span class="material-symbols-outlined text-base">inventory</span>
+<span>تقرير نهاية اليوم</span>
+</button>
+<button class="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-border-light dark:border-border-dark text-sm font-bold">
+<span class="material-symbols-outlined text-base">lock_open</span>
+<span>إغلاق الصندوق</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

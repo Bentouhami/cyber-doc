@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+
+<html class="light" dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>إدارة النماذج - Template Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#2A4D8E",
+              "secondary": "#D97706",
+              "success": "#10B981",
+              "warning": "#F59E0B",
+              "danger": "#EF4444",
+              "background-light": "#F3F4F6",
+              "background-dark": "#1F2937",
+              "text-light": "#1F2937",
+              "text-dark": "#F3F4F6",
+              "border-light": "#E5E7EB",
+              "border-dark": "#4B5563",
+            },
+            fontFamily: {
+              "display": ["Public Sans", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<div class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="flex flex-col w-72 bg-white dark:bg-gray-800 border-e border-border-light dark:border-border-dark shadow-sm shrink-0">
+<div class="flex h-full flex-col justify-between p-4">
+<div class="flex flex-col gap-4">
+<div class="flex items-center gap-3 px-2">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="User profile picture" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDaZpJD7_HYaFwP2jAYDwSDZ1q92p87awU7PHCqRhP-xCe0mlnpa4tpydz6ZOHXf3vHey7Wmub980BRW9ix0nl4P7_7ruyEq-oMZRZu29i8eKuIBl1hhDtvmVaEMLFiFn9Z70DuP3PpsPDLlKEd0RgXjKuSrgXytWfhvWSTe236LtQINUc3S45MBcGSh2TqToHd4lUNpcRnkQIlclvmPKi_EQwTsDY0I-meWQUnr-rA3PxLWPnrLIqFyHeu0a0wbvG7JCHj28_sF-w");'></div>
+<div class="flex flex-col">
+<h1 class="text-base font-bold text-text-light dark:text-text-dark">مسؤول النظام</h1>
+<p class="text-sm font-normal text-gray-500 dark:text-gray-400">Administrator</p>
+</div>
+</div>
+<div class="flex flex-col gap-2 pt-4">
+<a class="flex items-center gap-3 px-3 py-2 text-gray-600 dark:text-gray-300 hover:bg-background-light dark:hover:bg-background-dark rounded-lg" href="#">
+<span class="material-symbols-outlined text-xl">dashboard</span>
+<p class="text-sm font-medium">لوحة التحكم</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary" href="#">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">description</span>
+<p class="text-sm font-bold">إدارة النماذج</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-gray-600 dark:text-gray-300 hover:bg-background-light dark:hover:bg-background-dark rounded-lg" href="#">
+<span class="material-symbols-outlined text-xl">group</span>
+<p class="text-sm font-medium">إدارة العملاء</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-gray-600 dark:text-gray-300 hover:bg-background-light dark:hover:bg-background-dark rounded-lg" href="#">
+<span class="material-symbols-outlined text-xl">receipt_long</span>
+<p class="text-sm font-medium">المالية</p>
+</a>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 text-gray-600 dark:text-gray-300 hover:bg-background-light dark:hover:bg-background-dark rounded-lg" href="#">
+<span class="material-symbols-outlined text-xl">settings</span>
+<p class="text-sm font-medium">الإعدادات</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-gray-600 dark:text-gray-300 hover:bg-background-light dark:hover:bg-background-dark rounded-lg" href="#">
+<span class="material-symbols-outlined text-xl">help_outline</span>
+<p class="text-sm font-medium">المساعدة</p>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col p-6">
+<!-- PageHeading -->
+<div class="flex flex-wrap justify-between gap-4 items-center mb-6">
+<div class="flex flex-col gap-1">
+<p class="text-text-light dark:text-text-dark text-3xl font-black leading-tight">إدارة النماذج</p>
+<p class="text-gray-500 dark:text-gray-400 text-base font-normal leading-normal">استيراد وتكوين ونشر نماذج المستندات.</p>
+</div>
+<div class="flex items-center gap-4">
+<!-- SegmentedButtons for Language -->
+<div class="flex h-10 items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-700 p-1">
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-4 has-[:checked]:bg-white dark:has-[:checked]:bg-gray-800 has-[:checked]:shadow-sm text-sm font-bold text-primary">
+<span class="truncate">AR</span>
+<input checked="" class="invisible w-0" name="language-toggle" type="radio" value="AR"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-4 has-[:checked]:bg-white dark:has-[:checked]:bg-gray-800 has-[:checked]:shadow-sm text-gray-500 dark:text-gray-400 text-sm font-medium">
+<span class="truncate">FR</span>
+<input class="invisible w-0" name="language-toggle" type="radio" value="FR"/>
+</label>
+</div>
+<button class="flex min-w-[84px] items-center justify-center gap-2 overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90">
+<span class="material-symbols-outlined text-xl">add</span>
+<span class="truncate">إضافة نموذج جديد</span>
+</button>
+</div>
+</div>
+<!-- Main Layout -->
+<div class="flex flex-1 gap-6">
+<!-- Left Sidebar of Main Content -->
+<div class="w-1/3 flex flex-col gap-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+<input class="w-full ps-10 p-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:ring-primary focus:border-primary" placeholder="البحث عن نموذج..." type="text"/>
+</div>
+<!-- Accordions for templates -->
+<div class="flex flex-col gap-3">
+<details class="flex flex-col rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-gray-800 group" open="">
+<summary class="flex cursor-pointer list-none items-center justify-between gap-6 p-4">
+<p class="text-base font-bold">العقود القانونية</p>
+<span class="material-symbols-outlined text-text-light dark:text-text-dark group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="border-t border-border-light dark:border-border-dark p-2 space-y-1">
+<a class="block p-3 rounded-lg bg-primary/10 dark:bg-primary/20" href="#">
+<div class="flex justify-between items-center">
+<p class="font-semibold text-primary">عقد بيع سيارة</p>
+<span class="text-xs font-medium text-white bg-success rounded-full px-2 py-0.5">منشور</span>
+</div>
+<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">الإصدار 2.1 | تم التحديث في 15 يونيو 2024</p>
+</a>
+<a class="block p-3 rounded-lg hover:bg-background-light dark:hover:bg-background-dark" href="#">
+<div class="flex justify-between items-center">
+<p class="font-medium text-text-light dark:text-text-dark">عقد إيجار شقة</p>
+<span class="text-xs font-medium text-text-light dark:text-text-dark bg-warning rounded-full px-2 py-0.5">مسودة</span>
+</div>
+<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">الإصدار 1.0 | تم التحديث في 20 يونيو 2024</p>
+</a>
+</div>
+</details>
+<details class="flex flex-col rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-gray-800 group">
+<summary class="flex cursor-pointer list-none items-center justify-between gap-6 p-4">
+<p class="text-base font-bold">النماذج الإدارية</p>
+<span class="material-symbols-outlined text-text-light dark:text-text-dark group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="border-t border-border-light dark:border-border-dark p-2 space-y-1">
+<!-- Content for administrative forms -->
+<p class="text-gray-500 dark:text-gray-400 text-sm p-3">لا توجد نماذج في هذه الفئة بعد.</p>
+</div>
+</details>
+</div>
+</div>
+<!-- Right Main Content Area -->
+<div class="w-2/3 flex flex-col bg-white dark:bg-gray-800 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
+<!-- Tabs -->
+<div class="pb-0">
+<div class="flex border-b border-border-light dark:border-border-dark px-4 gap-8">
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-primary text-primary pb-[13px] pt-4" href="#">
+<p class="text-sm font-bold tracking-[0.015em]">المحرر</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-gray-500 dark:text-gray-400 pb-[13px] pt-4 hover:text-primary dark:hover:text-primary" href="#">
+<p class="text-sm font-bold tracking-[0.015em]">الترجمات</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-gray-500 dark:text-gray-400 pb-[13px] pt-4 hover:text-primary dark:hover:text-primary" href="#">
+<p class="text-sm font-bold tracking-[0.015em]">الإعدادات</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-gray-500 dark:text-gray-400 pb-[13px] pt-4 hover:text-primary dark:hover:text-primary" href="#">
+<p class="text-sm font-bold tracking-[0.015em]">السجل</p>
+</a>
+</div>
+</div>
+<!-- Tab Content: Editor -->
+<div class="p-6 flex-1 flex flex-col">
+<div class="flex justify-between items-center mb-4">
+<div>
+<h3 class="text-xl font-bold text-text-light dark:text-text-dark">عقد بيع سيارة</h3>
+<p class="text-sm text-gray-500 dark:text-gray-400">الإصدار 2.1 - <span class="text-success font-semibold">منشور</span></p>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex min-w-[84px] items-center justify-center overflow-hidden rounded-lg h-9 px-4 bg-secondary text-white text-sm font-bold hover:bg-secondary/90">
+<span>حفظ كمسودة</span>
+</button>
+<button class="flex min-w-[84px] items-center justify-center overflow-hidden rounded-lg h-9 px-4 bg-success text-white text-sm font-bold hover:bg-success/90">
+<span>نشر</span>
+</button>
+</div>
+</div>
+<div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center flex-1 flex flex-col justify-center items-center bg-background-light dark:bg-background-dark">
+<span class="material-symbols-outlined text-5xl text-gray-400 dark:text-gray-500">upload_file</span>
+<p class="mt-2 font-semibold text-text-light dark:text-text-dark">اسحب وأفلت ملف .docx هنا</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">أو</p>
+<button class="mt-2 text-sm font-bold text-primary hover:underline">تصفح الملفات</button>
+<p class="mt-4 text-xs text-gray-400 dark:text-gray-500">هذه هي منطقة معاينة المستند والمحرر التفاعلي.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</div>
+</body></html>

@@ -6,6 +6,7 @@ Ce répertoire regroupe toutes les ressources d'analyse fonctionnelle et techniq
 
 - `analysis/` : synthèses fonctionnelles et techniques.
 - `analysis/data-model/` : modèles conceptuel, logique et physique (+ PlantUML).
+- `finalization/` : audit projet complet, plan d'amélioration et checklist de finalisation.
 - `user-stories/` : backlog fonctionnel sous forme de user stories.
 - `use-cases/` : diagrammes et descriptions textuelles des cas d'utilisation.
 - `sequence-diagrams/` : scénarios dynamiques et diagrammes de séquence.
