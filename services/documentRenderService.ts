@@ -1,28 +1,4 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-
-import Docxtemplater from "docxtemplater";
-import PizZip from "pizzip";
 import { chromium } from "playwright";
-
-export type DocumentGenerationInput = {
-  templatePath: string;
-  data: Record<string, unknown>;
-};
-
-export async function generateDocxBuffer({ templatePath, data }: DocumentGenerationInput) {
-  const templateBuffer = await fs.readFile(templatePath);
-  const zip = new PizZip(templateBuffer);
-  const doc = new Docxtemplater(zip, {
-    paragraphLoop: true,
-    linebreaks: true,
-    delimiters: { start: "{{", end: "}}" },
-  });
-
-  doc.render(data);
-
-  return doc.getZip().generate({ type: "nodebuffer" });
-}
 
 const BLOCKED_PATHS = new Set(["__proto__", "prototype", "constructor"]);
 
@@ -50,18 +26,6 @@ export function buildNestedPayload(flat: Record<string, unknown>) {
   }
 
   return result;
-}
-
-export function resolveStorageRoot() {
-  const storageDir = process.env.DOCS_STORAGE_DIR;
-  if (storageDir && path.isAbsolute(storageDir)) {
-    return storageDir;
-  }
-  return path.join(/* turbopackIgnore: true */ process.cwd(), "storage");
-}
-
-export function buildDocumentStoragePath(fileName: string) {
-  return path.posix.join("documents", fileName);
 }
 
 function escapeHtml(value: string) {
@@ -214,11 +178,4 @@ export async function generatePdfBufferFromHtml(html: string, options?: PdfOptio
   });
   await browser.close();
   return buffer;
-}
-
-export async function ensureStoragePath(relativePath: string) {
-  const storageRoot = resolveStorageRoot();
-  const absolutePath = path.join(storageRoot, relativePath);
-  await fs.mkdir(path.dirname(absolutePath), { recursive: true });
-  return absolutePath;
 }

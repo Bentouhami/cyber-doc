@@ -4,7 +4,6 @@ import { PrismaClient } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { hashPassword as betterAuthHashPassword } from "better-auth/crypto";
-import { Pool } from "pg";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -12,7 +11,7 @@ if (!connectionString) {
   throw new Error("DATABASE_URL is not set");
 }
 
-const adapter = new PrismaPg(new Pool({ connectionString }));
+const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
 const prismaAny = prisma as any;
 

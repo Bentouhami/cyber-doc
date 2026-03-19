@@ -5,13 +5,15 @@ import fs from "node:fs/promises";
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/admin-auth";
 import {
-  buildDocumentStoragePath,
   buildNestedPayload,
-  ensureStoragePath,
   generatePdfBufferFromHtml,
   renderHtmlTemplate,
+} from "@/services/documentRenderService";
+import {
+  buildDocumentStoragePath,
+  ensureStoragePath,
   resolveStorageRoot,
-} from "@/services/documentGenerationService";
+} from "@/services/documentStorageService";
 
 export const runtime = "nodejs";
 

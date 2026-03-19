@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import prisma from "@/lib/prisma";
 import { ensureAdminUser } from "@/lib/admin-auth";
-import { buildNestedPayload, generatePdfBufferFromHtml, renderHtmlTemplate } from "@/services/documentGenerationService";
+import { buildNestedPayload, generatePdfBufferFromHtml, renderHtmlTemplate } from "@/services/documentRenderService";
 
 export const runtime = "nodejs";
 

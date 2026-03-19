@@ -7,12 +7,11 @@ import { getAuthenticatedUser } from "@/lib/admin-auth"
 import { hasAnyRole } from "@/lib/permissions"
 import { incrementDailyStats } from "@/services/dailyStatsService"
 import {
-  buildDocumentStoragePath,
   buildNestedPayload,
-  ensureStoragePath,
   generatePdfBufferFromHtml,
   renderHtmlTemplate,
-} from "@/services/documentGenerationService"
+} from "@/services/documentRenderService"
+import { buildDocumentStoragePath, ensureStoragePath } from "@/services/documentStorageService"
 import path from "node:path"
 
 export const runtime = "nodejs"
