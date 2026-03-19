@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import prisma from "@/lib/prisma";
 import { ensureAdminUser, getAuthenticatedUser } from "@/lib/admin-auth";
 import { hasAnyRole } from "@/lib/permissions";
+
+function toNullableJsonInput(
+  value: Prisma.JsonValue | null | undefined,
+): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return Prisma.JsonNull;
+  return value as Prisma.InputJsonValue;
+}
 
 const fieldSchema = z.object({
   fieldName: z.string().min(1),
@@ -294,9 +303,9 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     }
     const metadataValue =
       shouldMergeMetadata && mergedMetadata && Object.keys(mergedMetadata).length
-        ? mergedMetadata
+        ? (mergedMetadata as Prisma.InputJsonValue)
         : shouldMergeMetadata
-          ? null
+          ? Prisma.JsonNull
           : undefined;
 
     const updated = await prisma.$transaction(async (tx) => {
@@ -375,7 +384,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
               fieldTypeId: fieldType.id,
               isRequired: field.isRequired ?? false,
               defaultValue: field.defaultValue ?? null,
-              validationRules: field.validationRules ?? null,
+              validationRules: toNullableJsonInput(field.validationRules),
               placeholder: field.placeholder ?? null,
               placeholderAr: field.placeholderAr ?? null,
               helpText: field.helpText ?? null,
@@ -386,7 +395,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
               section: field.section ?? null,
               sectionAr: field.sectionAr ?? null,
               displayOrder: field.displayOrder ?? 0,
-              metadata: field.metadata ?? null,
+              metadata: toNullableJsonInput(field.metadata),
             },
             create: {
               templateId: template.id,
@@ -396,7 +405,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
               fieldTypeId: fieldType.id,
               isRequired: field.isRequired ?? false,
               defaultValue: field.defaultValue ?? null,
-              validationRules: field.validationRules ?? null,
+              validationRules: toNullableJsonInput(field.validationRules),
               placeholder: field.placeholder ?? null,
               placeholderAr: field.placeholderAr ?? null,
               helpText: field.helpText ?? null,
@@ -407,7 +416,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
               section: field.section ?? null,
               sectionAr: field.sectionAr ?? null,
               displayOrder: field.displayOrder ?? 0,
-              metadata: field.metadata ?? null,
+              metadata: toNullableJsonInput(field.metadata),
             },
           });
         }
@@ -453,16 +462,20 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       return updatedTemplate;
     });
 
-    await prisma.activityLog.create({
-      data: {
-        userId: currentUser.id,
-        activityType: {
-          connect: { name: "UPDATE_TEMPLATE" },
-        },
-        resourceType: "DocumentTemplate",
-        resourceId: updated.id,
-      },
+    const updateTemplateActivity = await prisma.activityType.findFirst({
+      where: { name: "UPDATE_TEMPLATE" },
+      select: { id: true },
     });
+    if (updateTemplateActivity) {
+      await prisma.activityLog.create({
+        data: {
+          userId: currentUser.id,
+          activityTypeId: updateTemplateActivity.id,
+          resourceType: "DocumentTemplate",
+          resourceId: updated.id,
+        },
+      });
+    }
 
     return NextResponse.json({ id: updated.id, slug: updated.slug });
   } catch (error) {
@@ -488,16 +501,20 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
     await prisma.documentTemplate.delete({ where: { id: template.id } });
 
-    await prisma.activityLog.create({
-      data: {
-        userId: currentUser.id,
-        activityType: {
-          connect: { name: "UPDATE_TEMPLATE" },
-        },
-        resourceType: "DocumentTemplate",
-        resourceId: template.id,
-      },
+    const updateTemplateActivity = await prisma.activityType.findFirst({
+      where: { name: "UPDATE_TEMPLATE" },
+      select: { id: true },
     });
+    if (updateTemplateActivity) {
+      await prisma.activityLog.create({
+        data: {
+          userId: currentUser.id,
+          activityTypeId: updateTemplateActivity.id,
+          resourceType: "DocumentTemplate",
+          resourceId: template.id,
+        },
+      });
+    }
 
     return NextResponse.json({ message: "Template deleted" });
   } catch (error) {

@@ -161,7 +161,6 @@ export function TemplateWorkbench({
                 variant="outline"
                 size="sm"
                 onClick={() => setCurrentStep(1)}
-                disabled={currentStep === 1}
               >
                 {t("templates.steps.backAction")}
               </Button>

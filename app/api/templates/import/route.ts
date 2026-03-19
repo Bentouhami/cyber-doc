@@ -138,17 +138,21 @@ export async function POST(request: Request) {
   try {
     const template = await importTemplateWithAsset(prisma, data);
     const activityName = existingTemplate ? "UPDATE_TEMPLATE" : "CREATE_TEMPLATE";
-
-    await prisma.activityLog.create({
-      data: {
-        userId: currentUser.id,
-        activityType: {
-          connect: { name: activityName },
-        },
-        resourceType: "DocumentTemplate",
-        resourceId: template.id,
-      },
+    const activityType = await prisma.activityType.findFirst({
+      where: { name: activityName },
+      select: { id: true },
     });
+
+    if (activityType) {
+      await prisma.activityLog.create({
+        data: {
+          userId: currentUser.id,
+          activityTypeId: activityType.id,
+          resourceType: "DocumentTemplate",
+          resourceId: template.id,
+        },
+      });
+    }
 
     return NextResponse.json({
       message: existingTemplate ? "Template updated" : "Template created",

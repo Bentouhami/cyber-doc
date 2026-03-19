@@ -64,7 +64,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         }
       : undefined;
     const buffer = await generatePdfBufferFromHtml(html, pdfConfig, contentCss);
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${template.slug}-preview.pdf"`,

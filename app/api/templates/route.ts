@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import prisma from "@/lib/prisma";
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
   const includeAsset = url.searchParams.get("withAsset") === "true";
 
   try {
-    const templates = await prisma.documentTemplate.findMany({
+    const templates = (await prisma.documentTemplate.findMany({
       where: {
         ...(onlyActive ? { isActive: true } : {}),
       },
@@ -74,7 +75,7 @@ export async function GET(request: Request) {
         asset: includeAsset ? true : false,
       },
       orderBy: { updatedAt: "desc" },
-    });
+    })) as any[];
 
     return NextResponse.json(
       templates.map((template) => ({
@@ -87,7 +88,7 @@ export async function GET(request: Request) {
         version: template.version,
         isActive: template.isActive,
         fields: includeFields
-          ? template.fields.map((field) => ({
+          ? template.fields.map((field: any) => ({
               id: field.id,
               name: field.fieldName,
               label: field.fieldLabel,
@@ -107,7 +108,7 @@ export async function GET(request: Request) {
             }))
           : undefined,
         participantRoles: includeRoles
-          ? template.participantRoles.map((role) => ({
+          ? template.participantRoles.map((role: any) => ({
               roleKey: role.roleKey,
               roleLabel: role.roleLabel,
               roleLabelAr: role.roleLabelAr,
@@ -164,7 +165,9 @@ export async function POST(request: Request) {
       ...(data.contentCss !== undefined ? { htmlCss: data.contentCss } : {}),
       ...(data.pdfOptions !== undefined ? { pdfOptions: data.pdfOptions } : {}),
     };
-    const nextMetadata = Object.keys(mergedMetadata).length ? mergedMetadata : null;
+    const nextMetadata = Object.keys(mergedMetadata).length
+      ? (mergedMetadata as Prisma.InputJsonValue)
+      : undefined;
 
     const template = await prisma.$transaction(async (tx) => {
       const documentType = await tx.documentType.upsert({
@@ -214,16 +217,20 @@ export async function POST(request: Request) {
       });
     });
 
-    await prisma.activityLog.create({
-      data: {
-        userId: currentUser.id,
-        activityType: {
-          connect: { name: "CREATE_TEMPLATE" },
-        },
-        resourceType: "DocumentTemplate",
-        resourceId: template.id,
-      },
+    const createTemplateActivity = await prisma.activityType.findFirst({
+      where: { name: "CREATE_TEMPLATE" },
+      select: { id: true },
     });
+    if (createTemplateActivity) {
+      await prisma.activityLog.create({
+        data: {
+          userId: currentUser.id,
+          activityTypeId: createTemplateActivity.id,
+          resourceType: "DocumentTemplate",
+          resourceId: template.id,
+        },
+      });
+    }
 
     return NextResponse.json(
       {
