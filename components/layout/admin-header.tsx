@@ -1,16 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, LogOut, ShieldCheck, Users } from "lucide-react";
 
-import { LanguageSwitcher } from "@/components/language-switcher";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useUserProfile } from "@/components/providers/user-profile-provider";
 import { useLocale } from "@/hooks/use-locale";
 import { signOut } from "@/lib/auth-client";
 import { translateRoleName } from "@/utils/roles";
+
+const LanguageSwitcher = dynamic(
+  () => import("@/components/language-switcher").then((mod) => mod.LanguageSwitcher),
+  { ssr: false },
+);
 
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, labelKey: "navigation.admin.dashboard" },

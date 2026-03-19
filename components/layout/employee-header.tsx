@@ -1,13 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { FileText, Home, LogOut, User } from "lucide-react";
 
-import { LanguageSwitcher } from "@/components/language-switcher";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/hooks/use-locale";
 import { useUserProfile } from "@/components/providers/user-profile-provider";
 import { signOut } from "@/lib/auth-client";
+
+const LanguageSwitcher = dynamic(
+  () => import("@/components/language-switcher").then((mod) => mod.LanguageSwitcher),
+  { ssr: false },
+);
 
 const navItems = [
   { href: "/", icon: Home, labelKey: "navigation.employee.home" },
