@@ -1,0 +1,6 @@
+interface:
+  display_name: "Atlassian ACLI Jira"
+  short_description: "Manage Jira issues with official acli"
+  icon_small: "./assets/atlassian-acli-jira-small.svg"
+  icon_large: "./assets/atlassian-acli-jira.png"
+  default_prompt: "Use Atlassian CLI (acli) to plan and execute Jira CRUD safely with dry-run, dedup checks, and parent-child issue ordering."

@@ -1,0 +1,2 @@
+prefix_rule(pattern=["C:\\Program Files\\PowerShell\\7\\pwsh.exe", "-Command", "cmd /c \"icacls C:\\Projects\\DEV\\ASDHO-CONNECT-CLEAN /grant %USERNAME%:(OI)(CI)F /t /c /q\"; Rename-Item -Force \"C:\\Projects\\DEV\\ASDHO-CONNECT-CLEAN\" \"ASDHO-CONNECT\""], decision="allow")
+prefix_rule(pattern=["C:\\Program Files\\PowerShell\\7\\pwsh.exe", "-Command", "cmd /c \"icacls C:\\Projects\\DEV\\ASDHO-CONNECT-CLEAN /grant %USERNAME%:(OI)(CI)F /t /c /q\""], decision="allow")
