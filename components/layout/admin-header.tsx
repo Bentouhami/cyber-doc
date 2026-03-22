@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { usePathname } from "next/navigation";
-import { LayoutDashboard, LogOut, ShieldCheck, Users } from "lucide-react";
+import { LogOut, ShieldCheck } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -17,13 +16,12 @@ const LanguageSwitcher = dynamic(
   { ssr: false },
 );
 
-const navItems = [
-  { href: "/admin", icon: LayoutDashboard, labelKey: "navigation.admin.dashboard" },
-  { href: "/admin/employees", icon: Users, labelKey: "navigation.admin.employees" },
-];
+const ThemeToggle = dynamic(
+  () => import("@/components/theme-toggle").then((mod) => mod.ThemeToggle),
+  { ssr: false },
+);
 
 export function AdminHeader() {
-  const pathname = usePathname();
   const { t, dir } = useLocale();
   const { user } = useUserProfile();
 
@@ -37,37 +35,22 @@ export function AdminHeader() {
 
   return (
     <header
-      className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+      className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70"
       dir={dir}
     >
-      <div className="container mx-auto flex h-16 items-center justify-between gap-6 px-4">
-        <div className="flex items-center gap-8">
+      <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-4">
           <Link href="/admin" className="flex items-center gap-2 font-semibold tracking-tight">
             <ShieldCheck className="h-5 w-5" />
             <span>{t("navigation.brand")}</span>
           </Link>
-          <nav className="flex items-center gap-2 text-sm font-medium">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-1 rounded-full px-3 py-1.5 transition-colors ${
-                    isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {t(item.labelKey)}
-                </Link>
-              );
-            })}
-          </nav>
+          <span className="hidden rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-xs font-medium text-muted-foreground sm:inline-flex">
+            {t("roles.labels.admin")}
+          </span>
         </div>
         <div className="flex items-center gap-3">
           <LanguageSwitcher />
+          <ThemeToggle />
           {user ? (
             <div className="flex items-center gap-3">
               <div className="text-right">

@@ -54,6 +54,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       email,
       password,
       roleNames: rawRoleNames,
+      isActive,
     } = body as Record<string, unknown>;
 
     if (
@@ -61,9 +62,18 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       typeof lastName === "undefined" &&
       typeof email === "undefined" &&
       typeof password === "undefined" &&
-      typeof rawRoleNames === "undefined"
+      typeof rawRoleNames === "undefined" &&
+      typeof isActive === "undefined"
     ) {
       return new NextResponse("No updates provided", { status: 400 });
+    }
+
+    if (typeof isActive !== "undefined" && typeof isActive !== "boolean") {
+      return new NextResponse("Invalid isActive value", { status: 400 });
+    }
+
+    if (currentUser.id === userId && isActive === false) {
+      return new NextResponse("You cannot deactivate your own account", { status: 403 });
     }
 
     const existingUser = await prisma.user.findUnique({
@@ -90,6 +100,14 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
     if (typeof rawRoleNames !== "undefined" && !roleNames) {
       return new NextResponse("Invalid roles payload", { status: 400 });
+    }
+
+    if (
+      currentUser.id === userId &&
+      roleNames &&
+      !roleNames.includes("admin")
+    ) {
+      return new NextResponse("You cannot remove your own admin role", { status: 403 });
     }
 
     const updatedFirstName =
@@ -128,6 +146,14 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
           email: updatedEmail,
           name: `${updatedFirstName ?? ""} ${updatedLastName ?? ""}`.trim(),
           ...(passwordHash ? { passwordHash } : {}),
+          ...(typeof isActive === "boolean"
+            ? {
+                activatedAt: isActive
+                  ? existingUser.activatedAt ?? new Date()
+                  : existingUser.activatedAt,
+                deactivatedAt: isActive ? null : new Date(),
+              }
+            : {}),
           roles: roleNames
             ? {
                 deleteMany: {},
@@ -197,6 +223,10 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
     return adminCheck.error;
   }
   const { currentUser } = adminCheck;
+
+  if (currentUser.id === userId) {
+    return new NextResponse("You cannot delete your own account", { status: 403 });
+  }
 
   try {
     const user = await prisma.user.update({

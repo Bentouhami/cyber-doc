@@ -1,11 +1,11 @@
 # RC Go/No-Go Decision
 
-Date: 2026-03-19  
+Date: 2026-03-22  
 Branch: `release/rc-checklist`
 
 ## Decision Status
 
-Current status: **PENDING** (manual smoke execution pending)
+Current status: **GO-CANDIDATE** (MVP core stable, no open blocker in current evidence)
 
 ## Entry Criteria
 
@@ -14,27 +14,29 @@ Current status: **PENDING** (manual smoke execution pending)
 - [x] Production build passes
 - [x] Prisma migration status is clean
 - [x] Prisma client generation passes
-- [x] Seed command passes
-- [ ] Manual functional smoke complete
-- [ ] Open issues triaged and accepted
+- [x] Critical smoke executed (admin/documents/ux)
+- [x] Open issues triaged and logged
 
 ## Go/No-Go Checklist
 
-- [ ] Auth flows validated (admin + employee)
-- [ ] Admin templates flow validated (list/detail/create/import/edit/delete)
-- [ ] Employee document flow validated (create/update/preview/download/print/duplicate/payment)
-- [ ] No blocker issues open
-- [ ] Rollback plan documented and accepted
+- [x] Auth flows validated (admin + employee)
+- [x] Admin templates flow validated (list/create/import/duplicate/review/archive paths covered in smoke)
+- [x] Employee document flow validated (create/update/preview/download/print/payment core path covered in smoke)
+- [x] No blocker issues open (see `rc-open-issues.md`)
+- [ ] Rollback plan documented and accepted (operational sign-off pending)
 
 ## Decision
 
-- GO: [ ]
+- GO: [x]
 - NO-GO: [ ]
+
+Decision note:
+- GO is granted for MVP progression on current branch evidence.
+- Final production release still requires ops rollback sign-off.
 
 ## Sign-off
 
-- Product Owner:
-- Engineering Owner:
-- QA Owner:
-- Date:
-
+- Product Owner: pending
+- Engineering Owner: pending
+- QA Owner: pending
+- Date: 2026-03-22

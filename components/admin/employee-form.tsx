@@ -32,16 +32,45 @@ interface EmployeeFormProps {
   onCancel?: () => void
   mode?: EmployeeFormMode
   employee?: EmployeeDTO | null
+  currentUserId?: string | null
 }
 
 const ROLE_OPTIONS = ["admin", "employee"]
 
-export function EmployeeForm({ onSuccess, onCancel, mode = "create", employee }: EmployeeFormProps) {
+export function EmployeeForm({ onSuccess, onCancel, mode = "create", employee, currentUserId = null }: EmployeeFormProps) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const isEditMode = mode === "edit"
+
+  const mapEmployeeApiError = (message: string) => {
+    if (message.includes("User already exists") || message.includes("Email already in use")) {
+      return t("employeeForm.errors.emailAlreadyUsed")
+    }
+    if (message.includes("Missing required fields")) {
+      return t("employeeForm.errors.missingFields")
+    }
+    if (message.includes("Invalid roles payload")) {
+      return t("employeeForm.errors.invalidRole")
+    }
+    if (message.includes("No updates provided")) {
+      return t("employeeForm.errors.noUpdates")
+    }
+    if (message.includes("User not found")) {
+      return t("employeeForm.errors.userNotFound")
+    }
+    if (message.includes("cannot remove your own admin role")) {
+      return t("employeeStatus.selfRoleBlocked")
+    }
+    if (message.includes("cannot deactivate your own account")) {
+      return t("employeeStatus.selfDeactivateBlocked")
+    }
+    if (message.includes("cannot delete your own account")) {
+      return t("employeeStatus.selfDeleteBlocked")
+    }
+    return message || t("employeeForm.errors.generic")
+  }
 
   const schema = useMemo(() => {
     const passwordSchema = z
@@ -99,6 +128,10 @@ export function EmployeeForm({ onSuccess, onCancel, mode = "create", employee }:
         throw new Error(t("employeeForm.errors.invalidRole"))
       }
 
+      if (isEditMode && employee?.id === currentUserId && values.roleName !== "admin") {
+        throw new Error(t("employeeStatus.selfRoleBlocked"))
+      }
+
       const payload: Record<string, unknown> = {
         firstName: values.firstName,
         lastName: values.lastName,
@@ -121,7 +154,7 @@ export function EmployeeForm({ onSuccess, onCancel, mode = "create", employee }:
 
       if (!res.ok) {
         const error = await res.text()
-        throw new Error(error || t("employeeForm.errors.generic"))
+        throw new Error(mapEmployeeApiError(error))
       }
 
       toast({

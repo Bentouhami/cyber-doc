@@ -72,6 +72,7 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
   const [isPaying, setIsPaying] = useState(false)
   const [isPrinting, setIsPrinting] = useState(false)
   const canRenderPdf = document.templateHasHtml
+  const uiLocale = dir === "rtl" ? "ar-MA" : "fr-FR"
 
   useEffect(() => {
     const charged = document.chargedTotal ? Number(document.chargedTotal) : 0
@@ -170,7 +171,10 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
           </div>
           <div className="text-sm text-muted-foreground">
             {t("documents.detail.createdAt")}:{" "}
-            {new Date(document.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+            {new Date(document.createdAt).toLocaleString(uiLocale, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })}
           </div>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center gap-3">

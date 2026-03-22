@@ -1,5 +1,3 @@
-import { chromium } from "playwright";
-
 const BLOCKED_PATHS = new Set(["__proto__", "prototype", "constructor"]);
 
 export function buildNestedPayload(flat: Record<string, unknown>) {
@@ -162,6 +160,7 @@ export type PdfOptions = {
 };
 
 export async function generatePdfBufferFromHtml(html: string, options?: PdfOptions, css?: string | null) {
+  const { chromium } = await import("playwright");
   const browser = await chromium.launch();
   const page = await browser.newPage();
   await page.setContent(ensureHtmlDocument(html, css), { waitUntil: "networkidle" });

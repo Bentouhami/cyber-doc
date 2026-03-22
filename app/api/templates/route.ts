@@ -4,9 +4,10 @@ import { z } from "zod";
 
 import prisma from "@/lib/prisma";
 import { ensureAdminUser, getAuthenticatedUser } from "@/lib/admin-auth";
+import { findTemplateDuplicateCandidates } from "@/services/templateDuplicateService";
 
 const templateCreateSchema = z.object({
-  slug: z.string().min(1),
+  slug: z.string().min(1).optional(),
   title: z.string().min(1),
   titleAr: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
@@ -39,8 +40,82 @@ const templateCreateSchema = z.object({
     name: z.string().min(1),
     nameAr: z.string().optional(),
   }),
+  fields: z
+    .array(
+      z.object({
+        fieldName: z.string().min(1),
+        fieldLabel: z.string().min(1),
+        fieldLabelAr: z.string().optional(),
+        fieldType: z.string().min(1),
+        isRequired: z.boolean().optional(),
+        defaultValue: z.string().optional(),
+        validationRules: z.record(z.any()).optional(),
+        placeholder: z.string().optional(),
+        placeholderAr: z.string().optional(),
+        helpText: z.string().optional(),
+        helpTextAr: z.string().optional(),
+        dataSource: z.string().optional(),
+        participantRoleKey: z.string().optional(),
+        allowMultiple: z.boolean().optional(),
+        section: z.string().optional(),
+        sectionAr: z.string().optional(),
+        displayOrder: z.number().int().optional(),
+        metadata: z.record(z.any()).optional(),
+      }),
+    )
+    .optional(),
   assetId: z.string().optional(),
+  forceDuplicateOverride: z.boolean().optional(),
 });
+
+function slugifyBase(input: string) {
+  return input
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+async function ensureUniqueSlug(base: string) {
+  const normalized = slugifyBase(base) || "template";
+  const seed = `${normalized}-${Date.now().toString(36)}`;
+  let slug = seed;
+  let counter = 1;
+
+  while (await prisma.documentTemplate.findUnique({ where: { slug }, select: { id: true } })) {
+    slug = `${seed}-${counter}`;
+    counter += 1;
+  }
+  return slug;
+}
+
+async function ensureUniqueTitleForScope(
+  tx: Prisma.TransactionClient,
+  baseTitle: string,
+  documentTypeId: number,
+  categoryId: number,
+) {
+  let title = baseTitle;
+  let counter = 1;
+
+  while (
+    await tx.documentTemplate.findFirst({
+      where: {
+        title,
+        documentTypeId,
+        categoryId,
+      },
+      select: { id: true },
+    })
+  ) {
+    counter += 1;
+    title = `${baseTitle} (${counter})`;
+  }
+
+  return title;
+}
 
 export async function GET(request: Request) {
   const authResult = await getAuthenticatedUser(request.headers);
@@ -159,6 +234,30 @@ export async function POST(request: Request) {
   }
 
   try {
+    const duplicateCandidates = await findTemplateDuplicateCandidates(prisma, {
+      title: data.title,
+      locale: data.locale,
+      documentTypeName: data.documentType.name,
+      categoryName: data.category.name,
+    });
+
+    if (duplicateCandidates.length > 0 && !data.forceDuplicateOverride) {
+      return NextResponse.json(
+        {
+          code: "DUPLICATE_CANDIDATE",
+          message: "Potential duplicate templates detected",
+          candidates: duplicateCandidates,
+        },
+        { status: 409 },
+      );
+    }
+
+    const requestedSlug = data.slug?.trim();
+    const fallbackSlugBase = `${data.documentType.name}-${data.category.name}-${data.title}`;
+    const finalSlug = requestedSlug?.length
+      ? await ensureUniqueSlug(requestedSlug)
+      : await ensureUniqueSlug(fallbackSlugBase);
+
     const mergedMetadata = {
       ...(data.metadata ?? {}),
       ...(data.basePrice !== undefined ? { basePrice: data.basePrice } : {}),
@@ -198,10 +297,19 @@ export async function POST(request: Request) {
         },
       });
 
-      return tx.documentTemplate.create({
+      const finalTitle = data.forceDuplicateOverride
+        ? await ensureUniqueTitleForScope(
+            tx,
+            data.title,
+            documentType.id,
+            category.id,
+          )
+        : data.title;
+
+      const createdTemplate = await tx.documentTemplate.create({
         data: {
-          slug: data.slug,
-          title: data.title,
+          slug: finalSlug,
+          title: finalTitle,
           titleAr: data.titleAr ?? null,
           description: data.description ?? null,
           documentTypeId: documentType.id,
@@ -215,6 +323,48 @@ export async function POST(request: Request) {
           content: data.contentHtml ?? null,
         },
       });
+
+      if (data.fields?.length) {
+        for (const field of data.fields) {
+          const fieldType = await tx.fieldType.upsert({
+            where: { name: field.fieldType },
+            update: { nameAr: null },
+            create: { name: field.fieldType },
+          });
+
+          await tx.templateField.create({
+            data: {
+              templateId: createdTemplate.id,
+              fieldName: field.fieldName,
+              fieldLabel: field.fieldLabel,
+              fieldLabelAr: field.fieldLabelAr ?? null,
+              fieldTypeId: fieldType.id,
+              isRequired: field.isRequired ?? false,
+              defaultValue: field.defaultValue ?? null,
+              validationRules:
+                field.validationRules === undefined
+                  ? undefined
+                  : (field.validationRules as Prisma.InputJsonValue),
+              placeholder: field.placeholder ?? null,
+              placeholderAr: field.placeholderAr ?? null,
+              helpText: field.helpText ?? null,
+              helpTextAr: field.helpTextAr ?? null,
+              dataSource: field.dataSource ?? null,
+              participantRoleKey: field.participantRoleKey ?? null,
+              allowMultiple: field.allowMultiple ?? false,
+              section: field.section ?? null,
+              sectionAr: field.sectionAr ?? null,
+              displayOrder: field.displayOrder ?? 0,
+              metadata:
+                field.metadata === undefined
+                  ? undefined
+                  : (field.metadata as Prisma.InputJsonValue),
+            },
+          });
+        }
+      }
+
+      return createdTemplate;
     });
 
     const createTemplateActivity = await prisma.activityType.findFirst({

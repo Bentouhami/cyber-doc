@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Copy, Download, Edit3, Eye } from "lucide-react"
+import { Copy, Download, Edit3, Eye, Filter, Search } from "lucide-react"
 
 import { useLocale } from "@/hooks/use-locale"
 import { useToast } from "@/hooks/use-toast"
@@ -96,14 +96,23 @@ export function DocumentsTable({
 
   return (
     <div className="space-y-6" dir={dir}>
-      <div className="grid gap-4 rounded-lg border bg-card p-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="rounded-xl border border-border/80 bg-muted/30 p-4">
+        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
+          <Filter className="h-4 w-4 text-primary" />
+          {t("documents.applyFilters")}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <div className="space-y-2">
           <label className="text-sm font-medium">{t("documents.searchLabel")}</label>
-          <Input
-            placeholder={t("documents.searchPlaceholder")}
-            value={filters.search}
-            onChange={(event) => onFiltersChange({ search: event.target.value })}
-          />
+            <div className="relative">
+              <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-9"
+                placeholder={t("documents.searchPlaceholder")}
+                value={filters.search}
+                onChange={(event) => onFiltersChange({ search: event.target.value })}
+              />
+            </div>
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium">{t("documents.statusFilter")}</label>
@@ -163,20 +172,21 @@ export function DocumentsTable({
             <Input type="date" value={filters.dateTo} onChange={(event) => onFiltersChange({ dateTo: event.target.value })} />
           </div>
         </div>
-        <div className="flex items-end gap-2 md:col-span-2 lg:col-span-5">
-          <Button variant="default" onClick={onApplyFilters}>
+          <div className="flex items-end gap-2 md:col-span-2 lg:col-span-5">
+            <Button variant="default" onClick={onApplyFilters}>
             {t("documents.applyFilters")}
-          </Button>
-          <Button variant="outline" onClick={onResetFilters}>
+            </Button>
+            <Button variant="outline" onClick={onResetFilters}>
             {t("documents.resetFilters")}
-          </Button>
-          <span className="ml-auto text-sm text-muted-foreground">
+            </Button>
+            <span className="ml-auto text-sm text-muted-foreground">
             {data.length}/{total}
-          </span>
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card">
+      <div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
@@ -214,9 +224,9 @@ export function DocumentsTable({
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/documents/create?documentId=${row.id}`}>
+                        <Link href={`/documents/create?documentId=${row.id}&entryMode=existing`}>
                           <Edit3 className="mr-1 h-4 w-4" />
-                          {t("documents.actions.edit")}
+                          {t("documents.actions.newVersion")}
                         </Link>
                       </Button>
                       <Button

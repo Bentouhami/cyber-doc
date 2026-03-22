@@ -291,6 +291,11 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         }
       : undefined;
     if (shouldMergeMetadata && mergedMetadata) {
+      const incomingMetadata =
+        data.metadata && typeof data.metadata === "object"
+          ? (data.metadata as Record<string, unknown>)
+          : {};
+
       if (data.basePrice !== undefined) {
         mergedMetadata.basePrice = data.basePrice;
       }
@@ -299,6 +304,24 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       }
       if (data.pdfOptions !== undefined) {
         mergedMetadata.pdfOptions = data.pdfOptions;
+      }
+
+      if ("reviewStatus" in incomingMetadata) {
+        mergedMetadata.reviewedByUserId = currentUser.id;
+        if (typeof incomingMetadata.reviewedAt !== "string") {
+          mergedMetadata.reviewedAt = new Date().toISOString();
+        }
+      }
+
+      if ("archivedAt" in incomingMetadata) {
+        if (incomingMetadata.archivedAt) {
+          mergedMetadata.archivedByUserId = currentUser.id;
+          if (typeof incomingMetadata.archivedAt !== "string") {
+            mergedMetadata.archivedAt = new Date().toISOString();
+          }
+        } else {
+          mergedMetadata.archivedByUserId = null;
+        }
       }
     }
     const metadataValue =
