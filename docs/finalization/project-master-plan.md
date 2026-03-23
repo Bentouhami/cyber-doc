@@ -91,7 +91,7 @@ Purpose: single execution checklist from project stabilization to production rel
 
 | ID | Task | Owner | Status | Due | Notes |
 |---|---|---|---|---|---|
-| P8-1 | Merge release branch to `dev` and `main` with tag | Bentouhami | IN_PROGRESS | 2026-03-23 | Gate is `npm run release:freeze-audit` clean; see `release-commit-freeze-checklist.md` + `2026-03-23-release-freeze-audit.md` |
+| P8-1 | Merge release branch to `dev` and `main` with tag | Bentouhami | IN_PROGRESS | 2026-03-23 | Release PR opened: #12 (`release/v1.0.0-candidate` -> `dev`), freeze audit clean on candidate |
 | P8-2 | Run production migration and post-deploy smoke | Bentouhami | TODO | TBD | Execute `deploy-runbook.md` after P8-1 |
 | P8-3 | Monitor logs/errors for 24-48h | Bentouhami | TODO | TBD | Execute `post-release-monitoring-checklist.md` after deploy |
 
