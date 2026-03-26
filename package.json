@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate",
     "build": "next build",
     "check:data": "tsx scripts/data-quality-check.ts",
     "check:contracts": "node scripts/contract-audit.mjs",
