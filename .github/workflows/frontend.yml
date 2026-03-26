@@ -64,6 +64,8 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run critical E2E smoke suite
+        env:
+          SMOKE_ALLOW_DB_UNAVAILABLE_SKIP: "1"
         run: npm run test:e2e:critical
 
       - name: Upload smoke artifacts

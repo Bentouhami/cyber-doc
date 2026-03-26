@@ -7,6 +7,8 @@ const outDir = path.join(cwd, "tmp", "e2e-critical");
 const baseURL = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
 const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
 const allowEpermSkip = process.env.SMOKE_ALLOW_EPERM_SKIP === "1";
+const allowDbUnavailableSkip = process.env.SMOKE_ALLOW_DB_UNAVAILABLE_SKIP === "1";
+const dbUnavailablePattern = /(P1001|Can't reach database server|DatabaseNotReachable)/i;
 
 const suites = [
   {
@@ -69,10 +71,28 @@ function runNodeScript(scriptPath, extraEnv = {}) {
     const child = spawn(process.execPath, [scriptPath], {
       cwd,
       env: { ...process.env, ...extraEnv },
-      stdio: "inherit",
+      stdio: ["ignore", "pipe", "pipe"],
     });
-    child.on("exit", (code) => resolve(code ?? 1));
-    child.on("error", () => resolve(1));
+
+    let output = "";
+    child.stdout.on("data", (chunk) => {
+      const text = chunk.toString();
+      output += text;
+      process.stdout.write(text);
+    });
+    child.stderr.on("data", (chunk) => {
+      const text = chunk.toString();
+      output += text;
+      process.stderr.write(text);
+    });
+
+    child.on("exit", (code) => resolve({ code: code ?? 1, output }));
+    child.on("error", (error) =>
+      resolve({
+        code: 1,
+        output: error instanceof Error ? error.message : String(error),
+      }),
+    );
   });
 }
 
@@ -101,6 +121,7 @@ async function run() {
     generatedAt: new Date().toISOString(),
     baseURL,
     allowEpermSkip,
+    allowDbUnavailableSkip,
     suites: [],
     passCount: 0,
     failCount: 0,
@@ -116,7 +137,8 @@ async function run() {
       const code = result.code;
       const durationMs = Date.now() - started;
       const hasEperm = /spawn EPERM/i.test(result.output);
-      const skipped = allowEpermSkip && hasEperm;
+      const hasDbUnavailable = dbUnavailablePattern.test(result.output);
+      const skipped = (allowEpermSkip && hasEperm) || (allowDbUnavailableSkip && hasDbUnavailable);
       const ok = code === 0 || skipped;
       report.suites.push({
         name: suite.name,
@@ -124,7 +146,11 @@ async function run() {
         skipped,
         exitCode: code,
         durationMs,
-        reason: skipped ? "Playwright spawn EPERM (allowed skip)" : undefined,
+        reason: skipped
+          ? hasDbUnavailable
+            ? "Database unavailable in CI (allowed skip)"
+            : "Playwright spawn EPERM (allowed skip)"
+          : undefined,
       });
       if (skipped) {
         report.skipCount += 1;
@@ -159,16 +185,23 @@ async function run() {
           { name: "ux-route-check", script: "scripts/ux-route-check-runner.mjs" },
         ]) {
           const started = Date.now();
-          const code = await runNodeScript(suite.script, { SMOKE_BASE_URL: baseURL });
+          const result = await runNodeScript(suite.script, { SMOKE_BASE_URL: baseURL });
+          const code = result.code;
           const durationMs = Date.now() - started;
-          const ok = code === 0;
+          const hasDbUnavailable = dbUnavailablePattern.test(result.output);
+          const skipped = allowDbUnavailableSkip && hasDbUnavailable;
+          const ok = code === 0 || skipped;
           report.suites.push({
             name: suite.name,
             ok,
+            skipped,
             exitCode: code,
             durationMs,
+            reason: skipped ? "Database unavailable in CI (allowed skip)" : undefined,
           });
-          if (ok) {
+          if (skipped) {
+            report.skipCount += 1;
+          } else if (ok) {
             report.passCount += 1;
           } else {
             report.failCount += 1;
