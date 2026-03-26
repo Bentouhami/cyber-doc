@@ -31,6 +31,27 @@ function isSafeRelativePath(filePath: string) {
   return true;
 }
 
+function getCandidateStoragePaths(relativePath: string) {
+  const normalized = relativePath.replace(/\\/g, "/");
+  const stripped = normalized.startsWith("storage/")
+    ? normalized.slice("storage/".length)
+    : normalized;
+
+  const roots = Array.from(
+    new Set([resolveStorageRoot()]),
+  );
+
+  const candidates: string[] = [];
+  for (const root of roots) {
+    candidates.push(path.join(root, normalized));
+    if (stripped !== normalized) {
+      candidates.push(path.join(root, stripped));
+    }
+  }
+
+  return Array.from(new Set(candidates));
+}
+
 export async function GET(request: NextRequest, { params }: RouteContext) {
   const authResult = await getAuthenticatedUser(request.headers);
   if ("error" in authResult) {
@@ -163,9 +184,21 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   }
 
   try {
-    const storageRoot = resolveStorageRoot();
-    const absolutePath = path.join(storageRoot, normalizedPath);
-    const buffer = await fs.readFile(absolutePath);
+    const candidates = getCandidateStoragePaths(normalizedPath);
+    let buffer: Buffer | null = null;
+
+    for (const absolutePath of candidates) {
+      try {
+        buffer = await fs.readFile(absolutePath);
+        break;
+      } catch {
+        // try next candidate
+      }
+    }
+
+    if (!buffer) {
+      throw new Error("File not found in storage candidates");
+    }
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {

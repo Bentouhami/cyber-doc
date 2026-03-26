@@ -30,6 +30,16 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Download, FileText, LayoutDashboard, PanelLeftClose, Users2 } from "lucide-react"
 
 import { useLocale } from "@/hooks/use-locale"
@@ -62,6 +72,14 @@ export type TemplateDetailData = {
     version: number | null
   } | null
   metadata?: Record<string, unknown> | null
+  requestedByName?: string | null
+  requestedAt?: string | null
+  activityTimeline?: {
+    type: "requested" | "reviewed" | "archived" | "duplicated"
+    at: string
+    actorName?: string | null
+    note?: string | null
+  }[]
   participantRoles: {
     roleKey: string
     roleLabel: string
@@ -116,6 +134,7 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [isValidating, setIsValidating] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
+  const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false)
   const [validationResult, setValidationResult] = useState<{
     ok: boolean
     missingRequired: { fieldName: string; label: string }[]
@@ -185,6 +204,73 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
       2,
     ),
   )
+  const previewSignature = useMemo(() => `${contentHtml}\n${contentCss}`, [contentCss, contentHtml])
+  const [lastPreviewedSignature, setLastPreviewedSignature] = useState<string | null>(null)
+
+  const timelineLabels: Record<NonNullable<TemplateDetailData["activityTimeline"]>[number]["type"], string> = {
+    requested: t("templates.timeline.requested"),
+    reviewed: t("templates.timeline.reviewed"),
+    duplicated: t("templates.timeline.duplicated"),
+    archived: t("templates.timeline.archived"),
+  }
+
+  const parsedFieldsCount = useMemo(() => {
+    try {
+      const parsed = JSON.parse(fieldsJson)
+      return Array.isArray(parsed) ? parsed.length : 0
+    } catch {
+      return 0
+    }
+  }, [fieldsJson])
+
+  const parsedRolesCount = useMemo(() => {
+    try {
+      const parsed = JSON.parse(rolesJson)
+      return Array.isArray(parsed) ? parsed.length : 0
+    } catch {
+      return 0
+    }
+  }, [rolesJson])
+
+  const isBasePriceValid = useMemo(() => {
+    if (!basePrice.trim()) return false
+    const value = Number.parseFloat(basePrice)
+    return Number.isFinite(value) && value >= 0
+  }, [basePrice])
+
+  const publishChecklist = useMemo(
+    () => [
+      { key: "html", label: t("templates.checklist.html"), ok: Boolean(contentHtml.trim()) },
+      { key: "fields", label: t("templates.checklist.fields"), ok: parsedFieldsCount > 0 },
+      { key: "roles", label: t("templates.checklist.roles"), ok: parsedRolesCount > 0 },
+      { key: "price", label: t("templates.checklist.price"), ok: isBasePriceValid },
+      {
+        key: "preview",
+        label: t("templates.checklist.preview"),
+        ok: lastPreviewedSignature === previewSignature,
+      },
+      {
+        key: "validation",
+        label: t("templates.checklist.validation"),
+        ok: validationResult ? validationResult.ok : false,
+      },
+    ],
+    [
+      contentHtml,
+      isBasePriceValid,
+      lastPreviewedSignature,
+      parsedFieldsCount,
+      parsedRolesCount,
+      previewSignature,
+      t,
+      validationResult,
+    ],
+  )
+  const checklistReadyCount = useMemo(
+    () => publishChecklist.filter((item) => item.ok).length,
+    [publishChecklist],
+  )
+  const isChecklistReady = checklistReadyCount === publishChecklist.length
 
   const groupedFields = useMemo(() => {
     const sections = new Map<string, TemplateDetailData["fields"]>()
@@ -225,6 +311,50 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
     }
   }, [assetOptions, assetId])
 
+  const handleConfirmPublish = async () => {
+    setIsPublishing(true)
+    try {
+      const validation = await fetch(`/api/templates/${template.slug}/validate`)
+      if (!validation.ok) {
+        const data = await validation.json()
+        throw new Error(data.message || "Validation failed")
+      }
+      const result = await validation.json()
+      setValidationResult(result)
+      if (!result.ok || !contentHtml.trim()) {
+        throw new Error(t("templates.validationBlocking"))
+      }
+      if (!parsedFieldsCount || !parsedRolesCount || !isBasePriceValid) {
+        throw new Error(t("templates.checklist.blocking"))
+      }
+      if (lastPreviewedSignature !== previewSignature) {
+        throw new Error(t("templates.checklist.previewBlocking"))
+      }
+      const response = await fetch(`/api/templates/${template.slug}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isActive: true,
+        }),
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.message || "Publish failed")
+      }
+      toast({ title: t("templates.publishSuccess") })
+      window.location.reload()
+    } catch (error) {
+      toast({
+        title: t("templates.publishError"),
+        description: error instanceof Error ? error.message : "Publish failed",
+        variant: "destructive",
+      })
+    } finally {
+      setIsPublishing(false)
+      setIsPublishConfirmOpen(false)
+    }
+  }
+
   return (
     <div className="space-y-6" dir={dir}>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -246,6 +376,22 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
               <Badge variant="secondary">{t("templates.statusDraft")}</Badge>
             ) : null}
           </h1>
+          {template.requestedByName || template.requestedAt ? (
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              {template.requestedByName ? (
+                <span>{t("templates.review.requestedBy")}: {template.requestedByName}</span>
+              ) : null}
+              {template.requestedAt ? (
+                <span>
+                  {t("templates.review.requestedAt")}:{" "}
+                  {new Date(template.requestedAt).toLocaleString(undefined, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           <p className="text-muted-foreground leading-relaxed">
             {template.description || t("templates.description")}
           </p>
@@ -327,6 +473,18 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
               label={t("templates.fields")}
               value={t("templates.fieldsCount", { count: template.fields.length })}
             />
+            {template.requestedByName ? (
+              <MetadataItem label={t("templates.review.requestedBy")} value={template.requestedByName} />
+            ) : null}
+            {template.requestedAt ? (
+              <MetadataItem
+                label={t("templates.review.requestedAt")}
+                value={new Date(template.requestedAt).toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              />
+            ) : null}
           </CardContent>
         </Card>
 
@@ -440,6 +598,7 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
                   const blob = await response.blob()
                   const url = window.URL.createObjectURL(blob)
                   window.open(url, "_blank")
+                  setLastPreviewedSignature(previewSignature)
                 } catch (error) {
                   toast({
                     title: t("templates.previewError"),
@@ -496,6 +655,7 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
                   const blob = await preview.blob()
                   const url = window.URL.createObjectURL(blob)
                   window.open(url, "_blank")
+                  setLastPreviewedSignature(previewSignature)
                 } catch (error) {
                   toast({
                     title: t("templates.previewError"),
@@ -512,6 +672,22 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
             </Button>
           </div>
           <div className="rounded-md border bg-muted/30 p-4 text-sm">
+            <div className="mb-4 rounded-md border bg-background p-3">
+              <p className="mb-2 text-sm font-medium">{t("templates.checklist.title")}</p>
+              <p className="mb-2 text-xs text-muted-foreground">
+                {checklistReadyCount}/{publishChecklist.length} {t("templates.checklist.readyCount")}
+              </p>
+              <div className="grid gap-2 md:grid-cols-2">
+                {publishChecklist.map((item) => (
+                  <div key={item.key} className="flex items-center justify-between rounded border px-2 py-1.5 text-xs">
+                    <span>{item.label}</span>
+                    <Badge variant={item.ok ? "default" : "secondary"}>
+                      {item.ok ? t("templates.checklist.ready") : t("templates.checklist.missing")}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
@@ -544,42 +720,7 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
               <Button
                 type="button"
                 disabled={isPublishing}
-                onClick={async () => {
-                  setIsPublishing(true)
-                  try {
-                    const validation = await fetch(`/api/templates/${template.slug}/validate`)
-                    if (!validation.ok) {
-                      const data = await validation.json()
-                      throw new Error(data.message || "Validation failed")
-                    }
-                    const result = await validation.json()
-                    setValidationResult(result)
-                    if (!result.ok || !template.contentHtml) {
-                      throw new Error(t("templates.validationBlocking"))
-                    }
-                    const response = await fetch(`/api/templates/${template.slug}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        isActive: true,
-                      }),
-                    })
-                    if (!response.ok) {
-                      const data = await response.json()
-                      throw new Error(data.message || "Publish failed")
-                    }
-                    toast({ title: t("templates.publishSuccess") })
-                    window.location.reload()
-                  } catch (error) {
-                    toast({
-                      title: t("templates.publishError"),
-                      description: error instanceof Error ? error.message : "Publish failed",
-                      variant: "destructive",
-                    })
-                  } finally {
-                    setIsPublishing(false)
-                  }
-                }}
+                onClick={() => setIsPublishConfirmOpen(true)}
               >
                 {isPublishing ? t("templates.publishPending") : t("templates.publishAction")}
               </Button>
@@ -1000,6 +1141,38 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
         </CardContent>
       </Card>
 
+      {template.activityTimeline?.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("templates.timeline.title")}</CardTitle>
+            <CardDescription>{t("templates.timeline.subtitle")}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {template.activityTimeline.map((event, index) => (
+              <div key={`${event.type}-${event.at}-${index}`} className="rounded-md border p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">{timelineLabels[event.type] ?? event.type}</p>
+                  <Badge variant="outline">
+                    {new Date(event.at).toLocaleString(undefined, {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </Badge>
+                </div>
+                {event.actorName ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("templates.timeline.by")}: {event.actorName}
+                  </p>
+                ) : null}
+                {event.note ? (
+                  <p className="mt-1 text-xs text-muted-foreground">{event.note}</p>
+                ) : null}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
       {template.metadata && Object.keys(template.metadata).length ? (
         <Card>
           <CardHeader>
@@ -1012,6 +1185,39 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
           </CardContent>
         </Card>
       ) : null}
+
+      <AlertDialog open={isPublishConfirmOpen} onOpenChange={setIsPublishConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("templates.publishConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("templates.publishConfirmDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-xs">
+            {publishChecklist.map((item) => (
+              <div key={`confirm-${item.key}`} className="flex items-center justify-between">
+                <span>{item.label}</span>
+                <Badge variant={item.ok ? "default" : "secondary"}>
+                  {item.ok ? t("templates.checklist.ready") : t("templates.checklist.missing")}
+                </Badge>
+              </div>
+            ))}
+            <p className="text-muted-foreground">
+              {checklistReadyCount}/{publishChecklist.length} {t("templates.checklist.readyCount")}
+            </p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPublishing}>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmPublish}
+              disabled={isPublishing || !isChecklistReady}
+            >
+              {isPublishing ? t("templates.publishPending") : t("templates.publishAction")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

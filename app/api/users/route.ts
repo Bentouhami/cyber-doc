@@ -75,6 +75,8 @@ export async function POST(req: Request) {
           firstName,
           lastName,
           name: `${firstName} ${lastName}`.trim(),
+          activatedAt: new Date(),
+          deactivatedAt: null,
           roles: {
             createMany: {
               data: roles.map((role) => ({ roleId: role.id })),

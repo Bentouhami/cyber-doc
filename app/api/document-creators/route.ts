@@ -14,7 +14,13 @@ export async function GET(request: Request) {
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? 50), 5), 200);
 
   try {
-    const users = await prisma.user.findMany({
+    type DocumentCreatorRow = {
+      id: string;
+      name: string | null;
+      email: string;
+    };
+
+    const users: DocumentCreatorRow[] = await prisma.user.findMany({
       where: {
         deletedAt: null,
         createdDocuments: {
@@ -39,7 +45,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(
-      users.map((user) => ({
+      users.map((user: DocumentCreatorRow) => ({
         id: user.id,
         label: user.name || user.email,
         email: user.email,

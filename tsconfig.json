@@ -42,6 +42,7 @@
     "tmp/**",
     ".codex/**",
     ".agents/**",
-    "skills-legacy/**"
+    "skills-legacy/**",
+    "docs/new-to-test/**"
   ]
 }

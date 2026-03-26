@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import prisma from "@/lib/prisma";
 import { ensureAdminUser } from "@/lib/admin-auth";
+import { findTemplateDuplicateCandidates } from "@/services/templateDuplicateService";
 import { importTemplateWithAsset } from "@/services/templateImportService";
 
 const assetSchema = z.object({
@@ -91,6 +92,7 @@ const payloadSchema = z.object({
   participantRoles: z.array(participantRoleSchema).optional(),
   fields: z.array(fieldSchema).optional(),
   groupAssignments: z.array(groupAssignmentSchema).optional(),
+  forceDuplicateOverride: z.boolean().optional(),
 });
 
 function isInvalidPath(filePath: string) {
@@ -136,7 +138,59 @@ export async function POST(request: Request) {
   });
 
   try {
-    const template = await importTemplateWithAsset(prisma, data);
+    const duplicateCandidates = await findTemplateDuplicateCandidates(prisma, {
+      title: data.title,
+      locale: data.locale,
+      documentTypeName: data.documentType.name,
+      categoryName: data.category.name,
+      checksum: data.asset?.checksum ?? null,
+      excludeSlug: data.slug,
+    });
+
+    if (duplicateCandidates.length > 0 && !data.forceDuplicateOverride) {
+      return NextResponse.json(
+        {
+          code: "DUPLICATE_CANDIDATE",
+          message: "Potential duplicate templates detected",
+          candidates: duplicateCandidates,
+        },
+        { status: 409 },
+      );
+    }
+
+    const payloadForImport =
+      data.forceDuplicateOverride && duplicateCandidates.length > 0 && !existingTemplate
+        ? (() => {
+            const overrideSeed = Date.now().toString(36);
+            return {
+              ...data,
+              slug: `${data.slug}-${overrideSeed}`,
+              title: `${data.title} (${overrideSeed})`,
+            };
+          })()
+        : data;
+
+    let template: Awaited<ReturnType<typeof importTemplateWithAsset>>;
+    try {
+      template = await importTemplateWithAsset(prisma, payloadForImport);
+    } catch (error) {
+      const shouldRetryWithForcedTitle =
+        data.forceDuplicateOverride &&
+        error instanceof Error &&
+        error.message.includes("Unique constraint failed");
+
+      if (!shouldRetryWithForcedTitle) {
+        throw error;
+      }
+
+      const retrySeed = Date.now().toString(36);
+      const retryTitle = `${payloadForImport.title} (${retrySeed})`;
+      template = await importTemplateWithAsset(prisma, {
+        ...payloadForImport,
+        slug: `${payloadForImport.slug}-${retrySeed}`,
+        title: retryTitle,
+      });
+    }
     const activityName = existingTemplate ? "UPDATE_TEMPLATE" : "CREATE_TEMPLATE";
     const activityType = await prisma.activityType.findFirst({
       where: { name: activityName },

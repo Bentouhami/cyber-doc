@@ -12,7 +12,10 @@ type RouteContext = {
   params: Promise<{ slug: string }>;
 };
 
-const TEMPLATE_ASSETS_DIR = path.join(process.cwd(), "templates_docs");
+const TEMPLATE_ASSETS_DIR = path.join(
+  /*turbopackIgnore: true*/ process.cwd(),
+  "templates_docs",
+);
 
 function resolveTemplateAssetPath(filePath: string) {
   const normalized = filePath.replaceAll("\\", "/").replace(/^\/+/, "");

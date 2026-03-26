@@ -1,66 +1,52 @@
 # RC Smoke Report
 
-Date: 2026-03-19  
+Date: 2026-03-22  
 Branch: `release/rc-checklist`  
-Scope: Release candidate baseline checks
+Scope: Release candidate baseline + critical smoke checks
 
 ## 1) Automated Quality Gates
 
 - `npm run lint`: PASS
 - `npm run type-check`: PASS
+- `npm run i18n:audit`: PASS
 - `npm run build`: PASS
 
 Notes:
-- Build completed with all routes generated.
-- Non-blocking warning observed:
-  - `baseline-browser-mapping` data is older than two months.
+- Next.js build is green with current route set.
+- Security headers are configured in `next.config.ts`.
 
 ## 2) Database and Prisma Checks
 
 - `npx prisma migrate status`: PASS (schema up to date)
 - `npx prisma generate`: PASS
-- `npx prisma db seed`: PASS (after adding `migrations.seed` to `prisma.config.ts`)
 
-Seed summary:
-- Roles: 2
-- Activity types: 11
-- Document statuses: 4
-- File formats: 3
-- Field types: 8
-- Templates: 3
-- Template fields: 61
-- Participant roles: 6
-- Printers: 1
-- App settings: 3
+## 3) Critical Smoke Evidence (latest)
 
-## 3) Manual Functional Smoke (To Execute)
+Evidence files:
+- `tmp/admin-smoke/results.json`
+- `tmp/documents-smoke/results.json`
+- `tmp/ux-check/results.json`
 
-### Auth & Session
-- [ ] Login as admin
-- [ ] Login as employee
-- [ ] Logout flow
+Summary:
+- Admin smoke: PASS (`passCount: 26`, `failCount: 0`)
+- Documents smoke: PASS (`passCount: 13`, `failCount: 0`)
+- UX route checks: PASS (`passCount: 28`, `failCount: 0`)
 
-### Admin
-- [ ] `/admin/templates` list renders
-- [ ] template detail page renders
-- [ ] create template works
-- [ ] import template works
-- [ ] edit/update template works
-- [ ] delete template works
-- [ ] `/admin/employees` CRUD works
+## 4) UX Simplification Validation
 
-### Employee Documents
-- [ ] `/documents` list renders
-- [ ] `/documents/create` generation flow works
-- [ ] update existing document works
-- [ ] duplicate document works
-- [ ] preview works
-- [ ] download works
-- [ ] print flow logs history
-- [ ] payment patch works and computes status correctly
+- Raw i18n key leakage: none on critical routes.
+- Field quality warnings: cleared on critical routes (`fieldWarning=false` in latest UX report).
+- FR/AR + RTL/LTR checks: passing on desktop and mobile profiles.
 
-## 4) RC Summary
+## 5) Remaining Non-Blocking Risks
 
-Current state: automated gates are green and DB baseline is healthy.  
-Pending before release decision: complete manual functional smoke list and record any defects.
+- RC-006: unified critical runner in restricted local Windows sandbox may still fail with Playwright `spawn EPERM`; CI is now wired for Linux Playwright profile.
+- Domain-specific quality items to monitor during real operator usage:
+  - payment arithmetic in edge multi-copy scenarios,
+  - complex `.docx` import edge cases,
+  - persona identity collision when CIN is absent.
 
+## 6) RC Summary
+
+Current state: baseline + critical smoke are green for MVP core routes and flows.  
+Blocking defects from 2026-03-19 are resolved in current branch state.

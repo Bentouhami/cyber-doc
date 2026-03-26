@@ -8,6 +8,22 @@ This folder contains the end-to-end project health audit and finalization plan.
 - `2026-03-18-gap-matrix-and-enhancement-plan.md`
 - `2026-03-18-finalization-checklist.md`
 - `project-master-plan.md`
+- `cahier-des-charges-v1.md`
+- `mvp-execution-todo.md`
+- `pre-feature-discovery-checklist.md`
+- `feature-service-matrix.md`
+- `pr-checklist.md`
+- `issue-board-priority-map.md`
+- `branch-protection-policy.md`
+- `deploy-runbook.md`
+- `environment-reference.md`
+- `backup-restore-checklist.md`
+- `release-notes-v1.0.0-rc.md`
+- `production-release-checklist.md`
+- `release-commit-freeze-checklist.md`
+- `post-release-monitoring-checklist.md`
+- `v1.1-backlog-prioritized.md`
+- `release-closure-note-template.md`
 
 ## How to use
 

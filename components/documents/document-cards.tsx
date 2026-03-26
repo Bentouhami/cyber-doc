@@ -111,13 +111,13 @@ export function DocumentCards({ data }: DocumentCardsProps) {
                 <div className="flex items-center gap-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="outline" size="icon" aria-label={t("documents.actions.edit")} asChild>
-                        <Link href={`/documents/create?documentId=${row.id}`}>
+                      <Button variant="outline" size="icon" aria-label={t("documents.actions.newVersion")} asChild>
+                        <Link href={`/documents/create?documentId=${row.id}&entryMode=existing`}>
                           <Edit3 className="h-4 w-4" />
                         </Link>
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>{t("documents.actions.edit")}</TooltipContent>
+                    <TooltipContent>{t("documents.actions.newVersion")}</TooltipContent>
                   </Tooltip>
 
                   <Tooltip>
