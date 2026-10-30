@@ -83,8 +83,6 @@ export function DocumentsDashboard() {
   useEffect(() => {
     const trimmed = clientQuery.trim()
     if (trimmed.length < 2) {
-      setClientResults([])
-      setIsSearchingClients(false)
       return
     }
 
@@ -115,6 +113,8 @@ export function DocumentsDashboard() {
       controller.abort()
     }
   }, [clientQuery])
+
+  const visibleClientResults = clientQuery.trim().length >= 2 ? clientResults : []
 
   const loadClientHistory = async (client: {
     id: string
@@ -360,9 +360,9 @@ export function DocumentsDashboard() {
                   <p className="text-sm text-muted-foreground">
                     {t("documents.clients.searching", { defaultValue: "Recherche en cours..." })}
                   </p>
-                ) : clientResults.length ? (
+                ) : visibleClientResults.length ? (
                   <div className="space-y-2">
-                    {clientResults.map((client) => (
+                    {visibleClientResults.map((client) => (
                       <button
                         key={client.id}
                         type="button"

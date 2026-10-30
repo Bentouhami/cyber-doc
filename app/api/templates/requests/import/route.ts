@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { NextResponse } from "next/server";
@@ -7,18 +7,34 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/admin-auth";
 import { hasAnyRole } from "@/lib/permissions";
+import { logApiError } from "@/lib/api-error";
+import {
+  DocxUploadError,
+  MAX_DOCX_BYTES,
+  multipartBodyExceedsDocxLimit,
+  readBoundedMultipartFormData,
+  validateDocxBuffer,
+} from "@/services/docxUploadSecurity";
 import { findTemplateDuplicateCandidates } from "@/services/templateDuplicateService";
 import { importTemplateWithAsset } from "@/services/templateImportService";
+import {
+  buildUploadedTemplateAssetPath,
+  ensureUploadedTemplateAssetPath,
+} from "@/services/templateAssetStorageService";
+import {
+  escapeHtmlText,
+  TEMPLATE_TEXT_LIMITS,
+} from "@/services/templateContentSecurity";
 
 export const runtime = "nodejs";
 
 const metaSchema = z.object({
-  title: z.string().min(3),
-  titleAr: z.string().optional(),
+  title: z.string().trim().min(3).max(TEMPLATE_TEXT_LIMITS.title),
+  titleAr: z.string().trim().max(TEMPLATE_TEXT_LIMITS.title).optional(),
   description: z.string().optional(),
-  documentTypeName: z.string().min(2),
+  documentTypeName: z.string().trim().min(2).max(TEMPLATE_TEXT_LIMITS.taxonomyName),
   documentTypeNameAr: z.string().optional(),
-  categoryName: z.string().min(2),
+  categoryName: z.string().trim().min(2).max(TEMPLATE_TEXT_LIMITS.taxonomyName),
   categoryNameAr: z.string().optional(),
 });
 
@@ -65,7 +81,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
-  const formData = await request.formData();
+  if (multipartBodyExceedsDocxLimit(request.headers.get("content-length"))) {
+    return NextResponse.json({ message: "File too large (max 10MB)" }, { status: 413 });
+  }
+
+  let formData: FormData;
+  try {
+    formData = await readBoundedMultipartFormData(request);
+  } catch (error) {
+    if (error instanceof DocxUploadError && error.code === "TOO_LARGE") {
+      return NextResponse.json({ message: "File too large (max 10MB)" }, { status: 413 });
+    }
+    logApiError(
+      { route: "/api/templates/requests/import", operation: "parse_multipart" },
+      error,
+    );
+    return NextResponse.json({ message: "Invalid multipart body" }, { status: 400 });
+  }
   const file = formData.get("file");
   const metaRaw = formData.get("meta");
 
@@ -93,11 +125,22 @@ export async function POST(request: Request) {
   if (!fileName.toLowerCase().endsWith(".docx")) {
     return NextResponse.json({ message: "Only .docx files are allowed" }, { status: 400 });
   }
-  if (file.size > 10 * 1024 * 1024) {
-    return NextResponse.json({ message: "File too large (max 10MB)" }, { status: 400 });
+  if (file.size > MAX_DOCX_BYTES) {
+    return NextResponse.json({ message: "File too large (max 10MB)" }, { status: 413 });
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
+  try {
+    validateDocxBuffer(buffer);
+  } catch (error) {
+    if (error instanceof DocxUploadError) {
+      return NextResponse.json(
+        { message: error.message },
+        { status: error.code === "TOO_LARGE" ? 413 : 400 },
+      );
+    }
+    throw error;
+  }
   const checksum = createHash("sha256").update(buffer).digest("hex");
   const forceDuplicateOverride = formData.get("forceDuplicateOverride") === "true";
 
@@ -123,67 +166,74 @@ export async function POST(request: Request) {
   const slug = await ensureUniqueSlug(meta.title);
   const ext = path.extname(fileName).toLowerCase();
   const storedName = `${slug}${ext}`;
-  const relativeDir = path.join("storage", "template-requests");
-  const absoluteDir = path.join(
-    /*turbopackIgnore: true*/ process.cwd(),
-    relativeDir,
-  );
-  await mkdir(absoluteDir, { recursive: true });
-
-  const relativePath = path.join("template-requests", storedName).replace(/\\/g, "/");
-  await writeFile(path.join(absoluteDir, storedName), buffer);
+  const relativePath = buildUploadedTemplateAssetPath(storedName);
+  const absolutePath = await ensureUploadedTemplateAssetPath(relativePath);
+  await writeFile(absolutePath, buffer, { flag: "wx" });
 
   const extractedHtml = await extractDocxHtml(buffer);
+  const safeDisplayTitle = escapeHtmlText(meta.titleAr || meta.title);
   const contentHtml = extractedHtml
     ? `<div class="page">${extractedHtml}</div>`
-    : `<div class="page"><h1>${meta.titleAr || meta.title}</h1><p>Template imported from Word and pending admin review.</p></div>`;
+    : `<div class="page"><h1>${safeDisplayTitle}</h1><p>Template imported from Word and pending admin review.</p></div>`;
 
-  const template = await importTemplateWithAsset(prisma, {
-    slug,
-    title: meta.title,
-    titleAr: meta.titleAr ?? null,
-    description: meta.description ?? null,
-    locale: "ar-MA",
-    language: "ar",
-    version: 1,
-    isActive: false,
-    metadata: {
-      requestSource: "employee_docx_import",
-      reviewStatus: "PENDING",
-      requestedByUserId: currentUser.id,
-      requestedAt: new Date().toISOString(),
-      importFileName: fileName,
-      basePrice: null,
-      htmlCss:
-        'body { direction: rtl; font-family: "Tajawal", "Segoe UI", Arial, sans-serif; } .page { padding: 24px; }',
-      pdfOptions: {
-        format: "A4",
-        margin: { top: "1cm", right: "1cm", bottom: "1cm", left: "1cm" },
-      },
-    },
-    contentHtml,
-    documentType: {
-      name: meta.documentTypeName,
-      nameAr: meta.documentTypeNameAr ?? undefined,
-    },
-    category: {
-      name: meta.categoryName,
-      nameAr: meta.categoryNameAr ?? undefined,
-    },
-    asset: {
-      fileName,
-      filePath: relativePath,
-      fileType: file.type || "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      fileSize: file.size,
-      storageDriver: "local",
-      checksum,
+  let template;
+  try {
+    template = await importTemplateWithAsset(prisma, {
+      slug,
+      title: meta.title,
+      titleAr: meta.titleAr ?? null,
+      description: meta.description ?? null,
+      locale: "ar-MA",
+      language: "ar",
       version: 1,
+      isActive: false,
       metadata: {
-        source: "employee_import",
-        storedIn: relativeDir.replace(/\\/g, "/"),
+        requestSource: "employee_docx_import",
+        reviewStatus: "PENDING",
+        requestedByUserId: currentUser.id,
+        requestedAt: new Date().toISOString(),
+        importFileName: fileName,
+        basePrice: null,
+        htmlCss:
+          'body { direction: rtl; font-family: "Tajawal", "Segoe UI", Arial, sans-serif; } .page { padding: 24px; }',
+        pdfOptions: {
+          format: "A4",
+          margin: { top: "1cm", right: "1cm", bottom: "1cm", left: "1cm" },
+        },
       },
-    },
-  });
+      contentHtml,
+      documentType: {
+        name: meta.documentTypeName,
+        nameAr: meta.documentTypeNameAr ?? undefined,
+      },
+      category: {
+        name: meta.categoryName,
+        nameAr: meta.categoryNameAr ?? undefined,
+      },
+      asset: {
+        fileName,
+        filePath: relativePath,
+        fileType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        fileSize: buffer.length,
+        storageDriver: "local",
+        checksum,
+        version: 1,
+        metadata: {
+          source: "employee_import",
+          storedIn: "storage/template-assets",
+        },
+      },
+    });
+  } catch (error) {
+    await rm(absolutePath, { force: true }).catch((cleanupError: unknown) => {
+      logApiError(
+        { route: "/api/templates/requests/import", operation: "cleanup_failed_import" },
+        cleanupError,
+      );
+    });
+    throw error;
+  }
 
   return NextResponse.json(
     {

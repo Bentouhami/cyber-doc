@@ -2,14 +2,16 @@ import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { z } from "zod"
 import fs from "node:fs/promises"
+import { randomUUID } from "node:crypto"
 
 import prisma from "@/lib/prisma"
 import { getAuthenticatedUser } from "@/lib/admin-auth"
+import { internalServerError, logApiError } from "@/lib/api-error"
 import { hasAnyRole } from "@/lib/permissions"
 import { incrementDailyStats } from "@/services/dailyStatsService"
 import {
   buildDocumentStoragePath,
-  ensureStoragePath,
+  writeDocumentFileAtomically,
 } from "@/services/documentStorageService"
 import {
   buildNestedPayload,
@@ -17,6 +19,11 @@ import {
   renderHtmlTemplate,
 } from "@/services/documentRenderService"
 import { validateDocumentLanguage } from "@/lib/document-language-guard"
+import {
+  hasParticipantIdentity,
+  validateParticipantSubmission,
+} from "@/lib/document-generation-policy"
+import { calculatePaymentState, paymentUpdateSchema } from "@/lib/payment-policy"
 
 export const runtime = "nodejs"
 
@@ -25,9 +32,9 @@ const requestSchema = z.object({
   slug: z.string().min(1, "slug is required"),
   locale: z.string().min(2, "locale is required"),
   sourceDocumentId: z.string().optional(),
-  payload: z.record(z.any()).default({}),
+  payload: z.record(z.string(), z.json()).default({}),
   copies: z.number().int().min(1).optional(),
-  amountPaid: z.number().optional(),
+  amountPaid: z.number().finite().nonnegative().optional(),
   languageOverrideConfirmed: z.boolean().optional(),
   participants: z
     .array(
@@ -300,7 +307,10 @@ export async function POST(request: Request) {
     }
     parsedBody = result.data
   } catch (error) {
-    console.error("Invalid JSON payload:", error)
+    logApiError(
+      { route: "/api/documents/generate", operation: "parse_request" },
+      error,
+    )
     return NextResponse.json(
       { message: "Unable to parse request body", code: "INVALID_JSON_PAYLOAD" },
       { status: 400 },
@@ -338,6 +348,8 @@ export async function POST(request: Request) {
         select: {
           roleKey: true,
           isRequired: true,
+          minParticipants: true,
+          maxParticipants: true,
         },
       },
     },
@@ -347,6 +359,107 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Template not found" }, { status: 404 })
   }
 
+  if (!template.isActive) {
+    return NextResponse.json(
+      { message: "Template is inactive", code: "TEMPLATE_INACTIVE" },
+      { status: 409 },
+    )
+  }
+
+  if (!template.content?.trim()) {
+    return NextResponse.json(
+      { message: "HTML template is required to generate PDF.", code: "TEMPLATE_CONTENT_MISSING" },
+      { status: 422 },
+    )
+  }
+
+  const preparedParticipants = participants.map((participant) => ({
+    ...participant,
+    persona: mergePersonaInput(
+      participant.persona,
+      buildParticipantPersonaFromPayload(participant.roleKey, template.fields, payload),
+    ),
+  }))
+
+  const participantPersonaIds = Array.from(
+    new Set(
+      preparedParticipants
+        .map((participant) => participant.personaId?.trim())
+        .filter((personaId): personaId is string => Boolean(personaId)),
+    ),
+  )
+  const storedParticipantPersonas = participantPersonaIds.length
+    ? await prisma.persona.findMany({
+        where: { id: { in: participantPersonaIds }, deletedAt: null },
+        select: {
+          id: true,
+          fullName: true,
+          fullNameAr: true,
+          nationalId: true,
+          phone: true,
+          email: true,
+          birthDate: true,
+          birthPlace: true,
+          addressLine1: true,
+          city: true,
+          gender: true,
+          occupation: true,
+          employer: true,
+        },
+      })
+    : []
+  const storedPersonasById = new Map(
+    storedParticipantPersonas.map((persona) => [persona.id, persona]),
+  )
+  const policyParticipants = preparedParticipants.map((participant) => {
+    const stored = participant.personaId
+      ? storedPersonasById.get(participant.personaId)
+      : undefined
+    if (!stored) return participant
+    return {
+      ...participant,
+      persona: {
+        ...participant.persona,
+        fullName: stored.fullName ?? participant.persona.fullName,
+        fullNameAr: stored.fullNameAr ?? participant.persona.fullNameAr,
+        nationalId: stored.nationalId ?? participant.persona.nationalId,
+        phone: stored.phone ?? participant.persona.phone,
+        email: stored.email ?? participant.persona.email,
+        birthDate: stored.birthDate?.toISOString() ?? participant.persona.birthDate,
+        birthPlace: stored.birthPlace ?? participant.persona.birthPlace,
+        addressLine1: stored.addressLine1 ?? participant.persona.addressLine1,
+        city: stored.city ?? participant.persona.city,
+        gender: stored.gender ?? participant.persona.gender,
+        occupation: stored.occupation ?? participant.persona.occupation,
+        employer: stored.employer ?? participant.persona.employer,
+      },
+    }
+  })
+  const participantIssues = validateParticipantSubmission(
+    template.participantRoles,
+    policyParticipants,
+  )
+  const templateRoleConfigInvalid = participantIssues.some(
+    (issue) => issue.code === "PARTICIPANT_ROLE_CONFIG_INVALID",
+  )
+  if (templateRoleConfigInvalid) {
+    return internalServerError(
+      { route: "/api/documents/generate", operation: "validate_participant_role_config" },
+      new Error("Template participant role configuration is invalid"),
+    )
+  }
+  if (participantIssues.length) {
+    return NextResponse.json(
+      {
+        message: "Participant requirements are not satisfied",
+        code: "INVALID_PARTICIPANTS",
+        issues: participantIssues,
+      },
+      { status: 400 },
+    )
+  }
+
+  const effectiveParticipants = preparedParticipants.filter(hasParticipantIdentity)
   const fieldLabels = Object.fromEntries(
     template.fields.map((field) => [field.fieldName, field.fieldLabelAr || field.fieldLabel]),
   )
@@ -354,7 +467,7 @@ export async function POST(request: Request) {
     locale: template.locale || locale,
     payload,
     fieldLabels,
-    participants: participants.map((participant) => ({
+    participants: effectiveParticipants.map((participant) => ({
       roleKey: participant.roleKey,
       persona: participant.persona,
     })),
@@ -389,19 +502,90 @@ export async function POST(request: Request) {
     )
   }
 
-  const [defaultStatus, readyStatus, pdfFormat, createDocumentActivity] = await Promise.all([
-    prisma.documentStatus.findFirst({ where: { name: "DRAFT" } }),
+  const [readyStatus, pdfFormat, createDocumentActivity] = await Promise.all([
     prisma.documentStatus.findFirst({ where: { name: "READY" } }),
     prisma.fileFormat.findFirst({ where: { name: "PDF" } }),
     prisma.activityType.findFirst({ where: { name: "CREATE_DOCUMENT" } }),
   ])
 
-  if (!defaultStatus || !pdfFormat) {
+  if (!readyStatus || !pdfFormat || !createDocumentActivity) {
+    return internalServerError(
+      { route: "/api/documents/generate", operation: "load_document_defaults" },
+      new Error("Document defaults unavailable"),
+    )
+  }
+
+  const metadata = (template.metadata ?? {}) as Record<string, unknown>
+  const basePrice = typeof metadata.basePrice === "number" ? metadata.basePrice : null
+  if (amountPaid !== undefined && !paymentUpdateSchema.safeParse({ amountPaid }).success) {
     return NextResponse.json(
-      {
-        message: "Document defaults are not configured. Please seed the database.",
-      },
-      { status: 500 },
+      { message: "Invalid initial payment amount", code: "INVALID_PAYMENT" },
+      { status: 400 },
+    )
+  }
+  if (amountPaid !== undefined && amountPaid > 0 && basePrice === null) {
+    return NextResponse.json(
+      { message: "A template price is required before recording payment", code: "PRICE_REQUIRED" },
+      { status: 400 },
+    )
+  }
+
+  const paymentCalculation = basePrice === null
+    ? null
+    : calculatePaymentState(
+        {
+          totalCopies: copies,
+          standardPrice: basePrice,
+          negotiatedPrice: null,
+          unitPrice: basePrice,
+          discount: null,
+          surcharge: null,
+          amountPaid: null,
+          paidAt: null,
+          currency: "MAD",
+        },
+        { amountPaid: amountPaid ?? 0 },
+      )
+  if (paymentCalculation && !paymentCalculation.success) {
+    return NextResponse.json(
+      { message: paymentCalculation.message, code: paymentCalculation.code },
+      { status: 400 },
+    )
+  }
+
+  let fileName: string
+  let filePath: string
+  let outputPath = ""
+  try {
+    const payloadNested = buildNestedPayload(payload)
+    const html = renderHtmlTemplate(template.content, payloadNested)
+    const contentCss = typeof metadata.htmlCss === "string" ? metadata.htmlCss : null
+    const pdfOptions = metadata.pdfOptions as Record<string, unknown> | undefined
+    const pdfConfig = pdfOptions && typeof pdfOptions === "object"
+      ? {
+          format: typeof pdfOptions.format === "string" ? pdfOptions.format : undefined,
+          margin: typeof pdfOptions.margin === "object" && pdfOptions.margin
+            ? {
+                top: typeof (pdfOptions.margin as any).top === "string" ? (pdfOptions.margin as any).top : undefined,
+                right: typeof (pdfOptions.margin as any).right === "string" ? (pdfOptions.margin as any).right : undefined,
+                bottom: typeof (pdfOptions.margin as any).bottom === "string" ? (pdfOptions.margin as any).bottom : undefined,
+                left: typeof (pdfOptions.margin as any).left === "string" ? (pdfOptions.margin as any).left : undefined,
+              }
+            : undefined,
+        }
+      : undefined
+    fileName = `${template.slug}-${randomUUID()}.pdf`
+    filePath = buildDocumentStoragePath(fileName)
+    const buffer = await generatePdfBufferFromHtml(html, pdfConfig, contentCss)
+    outputPath = await writeDocumentFileAtomically(filePath, buffer)
+  } catch (error) {
+    if (outputPath) {
+      await fs.unlink(outputPath).catch(() => undefined)
+    }
+    return internalServerError(
+      { route: "/api/documents/generate", operation: "generate_pdf" },
+      error,
+      "PDF generation failed",
     )
   }
 
@@ -414,40 +598,30 @@ export async function POST(request: Request) {
   }> = []
   try {
     document = await prisma.$transaction(async (tx) => {
-      const metadata = (template.metadata ?? {}) as Record<string, unknown>
-      const basePrice =
-        typeof metadata.basePrice === "number" ? metadata.basePrice : undefined
-      const unitPrice = basePrice ?? undefined
-      const chargedTotal = unitPrice ? unitPrice * copies : undefined
-      const amountPaidValue = amountPaid ?? undefined
-      const paymentStatus =
-        chargedTotal !== undefined && amountPaidValue !== undefined
-          ? amountPaidValue >= chargedTotal
-            ? "PAID"
-            : amountPaidValue > 0
-              ? "PARTIAL"
-              : "UNPAID"
-          : amountPaidValue
-            ? "PARTIAL"
-            : undefined
+      const payment = paymentCalculation?.success ? paymentCalculation.value : null
 
       const created = await tx.document.create({
         data: {
           templateId: template.id,
           createdById: currentUser.id,
-          statusId: defaultStatus.id,
+          statusId: readyStatus.id,
           fileFormatId: pdfFormat.id,
+          fileName,
+          filePath,
           totalCopies: copies,
           notes: sourceDocumentId
             ? `version_from:${sourceDocumentId}`
             : null,
-          standardPrice: basePrice ?? null,
-          unitPrice: unitPrice ?? null,
-          chargedTotal: chargedTotal ?? null,
-          amountPaid: amountPaidValue ?? null,
-          paymentStatus,
-          paidAt: amountPaidValue ? new Date() : null,
-          cashierId: amountPaidValue ? currentUser.id : null,
+          standardPrice: payment?.standardPrice ?? null,
+          unitPrice: payment?.unitPrice ?? null,
+          discount: payment?.discount ?? null,
+          surcharge: payment?.surcharge ?? null,
+          chargedTotal: payment?.chargedTotal ?? null,
+          amountPaid: payment?.amountPaid ?? amountPaid ?? null,
+          changeGiven: payment?.changeGiven ?? null,
+          paymentStatus: payment?.paymentStatus,
+          paidAt: payment?.paidAt ?? null,
+          cashierId: amountPaid !== undefined && amountPaid > 0 ? currentUser.id : null,
         },
         include: {
           status: true,
@@ -467,7 +641,7 @@ export async function POST(request: Request) {
         })
       }
 
-      if (participants.length) {
+      if (effectiveParticipants.length) {
         const participantRows: {
           documentId: string
           personaId: string
@@ -481,7 +655,7 @@ export async function POST(request: Request) {
           action: "linked_existing" | "updated_existing" | "created_new"
         }> = []
 
-        for (const participant of participants) {
+        for (const participant of effectiveParticipants) {
           const roleDefinition = template.participantRoles.find(
             (role) => role.roleKey === participant.roleKey,
           )
@@ -616,16 +790,14 @@ export async function POST(request: Request) {
         persistedParticipants = participantResultRows
       }
 
-      if (createDocumentActivity) {
-        await tx.activityLog.create({
-          data: {
-            userId: currentUser.id,
-            activityTypeId: createDocumentActivity.id,
-            resourceType: "Document",
-            resourceId: created.id,
-          },
-        })
-      }
+      await tx.activityLog.create({
+        data: {
+          userId: currentUser.id,
+          activityTypeId: createDocumentActivity.id,
+          resourceType: "Document",
+          resourceId: created.id,
+        },
+      })
 
       await incrementDailyStats(tx, new Date(), {
         documentsCreated: 1,
@@ -636,80 +808,48 @@ export async function POST(request: Request) {
       return created
     })
   } catch (error) {
+    try {
+      await fs.unlink(outputPath)
+    } catch (cleanupError) {
+      logApiError(
+        { route: "/api/documents/generate", operation: "cleanup_pdf_after_transaction_failure" },
+        cleanupError,
+      )
+    }
     const message = error instanceof Error ? error.message : "Document creation failed"
     const isClientError =
       message.startsWith("Persona not found") ||
       message.startsWith("Participant persona data is required") ||
       message.startsWith("Participant identity is required")
-    return NextResponse.json({ message }, { status: isClientError ? 400 : 500 })
-  }
-
-  if (!document) {
-    return NextResponse.json({ message: "Document creation failed" }, { status: 500 })
-  }
-
-  let filePath: string | null = null
-  let fileName: string | null = null
-
-  if (!template.content) {
-    return NextResponse.json(
-      { message: "HTML template is required to generate PDF." },
-      { status: 400 },
+    if (isClientError) {
+      return NextResponse.json(
+        { message: "Invalid participant data", code: "INVALID_PARTICIPANT" },
+        { status: 400 },
+      )
+    }
+    return internalServerError(
+      { route: "/api/documents/generate", operation: "create_document" },
+      error,
+      "Document creation failed",
     )
   }
 
-  try {
-    const payloadNested = buildNestedPayload(payload)
-    const html = renderHtmlTemplate(template.content, payloadNested)
-    const metadata = (template.metadata ?? {}) as Record<string, unknown>
-    const contentCss = typeof metadata.htmlCss === "string" ? metadata.htmlCss : null
-    const pdfOptions = metadata.pdfOptions as Record<string, unknown> | undefined
-    const pdfConfig = pdfOptions && typeof pdfOptions === "object"
-      ? {
-          format: typeof pdfOptions.format === "string" ? pdfOptions.format : undefined,
-          margin: typeof pdfOptions.margin === "object" && pdfOptions.margin
-            ? {
-                top: typeof (pdfOptions.margin as any).top === "string" ? (pdfOptions.margin as any).top : undefined,
-                right: typeof (pdfOptions.margin as any).right === "string" ? (pdfOptions.margin as any).right : undefined,
-                bottom: typeof (pdfOptions.margin as any).bottom === "string" ? (pdfOptions.margin as any).bottom : undefined,
-                left: typeof (pdfOptions.margin as any).left === "string" ? (pdfOptions.margin as any).left : undefined,
-              }
-            : undefined,
-        }
-      : undefined
-    const nextFileName = `${template.slug}-${document.id}.pdf`
-    const nextFilePath = buildDocumentStoragePath(nextFileName)
-    const outputPath = await ensureStoragePath(nextFilePath)
-
-    const buffer = await generatePdfBufferFromHtml(html, pdfConfig, contentCss)
-    await fs.writeFile(outputPath, buffer)
-
-    await prisma.document.update({
-      where: { id: document.id },
-      data: {
-        fileName: nextFileName,
-        filePath: nextFilePath,
-        fileFormatId: pdfFormat.id,
-        statusId: readyStatus?.id ?? document.statusId,
-      },
-    })
-
-    fileName = nextFileName
-    filePath = nextFilePath
-  } catch (error) {
-    console.error("PDF generation failed:", error)
+  if (!document) {
+    return internalServerError(
+      { route: "/api/documents/generate", operation: "verify_created_document" },
+      new Error("Document transaction returned no record"),
+      "Document creation failed",
+    )
   }
 
   return NextResponse.json({
-    message: filePath
-      ? "Document generated."
-      : "Document saved as draft. No file was generated yet.",
+    message: "Document generated.",
     sourceDocumentId: sourceDocumentId ?? null,
     document: {
       id: document.id,
       templateId: template.id,
-      statusId: readyStatus?.id ?? document.statusId,
-      status: readyStatus?.name ?? document.status.name,
+      statusId: document.statusId,
+      status: document.status.name,
       createdAt: document.createdAt.toISOString(),
       locale,
       fileName,
@@ -719,7 +859,7 @@ export async function POST(request: Request) {
       fieldName: value.fieldName,
       value: value.value,
     })),
-    participants: participants.map((participant) => ({
+    participants: effectiveParticipants.map((participant) => ({
       roleKey: participant.roleKey,
       roleLabel: participant.roleLabel ?? null,
     })),

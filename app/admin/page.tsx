@@ -1,14 +1,26 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { FileClock, LayoutDashboard, Layers, Users } from "lucide-react"
+import Link from "next/link";
+import {
+  FileClock,
+  History,
+  LayoutDashboard,
+  Layers,
+  Users,
+} from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useLocale } from "@/hooks/use-locale"
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useLocale } from "@/hooks/use-locale";
 
 export default function AdminHomePage() {
-  const { t } = useLocale()
+  const { t } = useLocale();
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
@@ -17,7 +29,9 @@ export default function AdminHomePage() {
           <LayoutDashboard className="h-3.5 w-3.5" />
           {t("adminHome.badge")}
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight">{t("adminHome.title")}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {t("adminHome.title")}
+        </h1>
         <p className="mt-1 text-sm text-white/80">{t("adminHome.subtitle")}</p>
       </header>
 
@@ -28,11 +42,15 @@ export default function AdminHomePage() {
               <Layers className="h-5 w-5" />
             </div>
             <CardTitle>{t("adminHome.templatesTitle")}</CardTitle>
-            <CardDescription>{t("adminHome.templatesDescription")}</CardDescription>
+            <CardDescription>
+              {t("adminHome.templatesDescription")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild className="w-full">
-              <Link href="/admin/templates">{t("adminHome.templatesAction")}</Link>
+              <Link href="/admin/templates">
+                {t("adminHome.templatesAction")}
+              </Link>
             </Button>
           </CardContent>
         </Card>
@@ -43,11 +61,15 @@ export default function AdminHomePage() {
               <Users className="h-5 w-5" />
             </div>
             <CardTitle>{t("adminHome.employeesTitle")}</CardTitle>
-            <CardDescription>{t("adminHome.employeesDescription")}</CardDescription>
+            <CardDescription>
+              {t("adminHome.employeesDescription")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild className="w-full">
-              <Link href="/admin/employees">{t("adminHome.employeesAction")}</Link>
+              <Link href="/admin/employees">
+                {t("adminHome.employeesAction")}
+              </Link>
             </Button>
           </CardContent>
         </Card>
@@ -58,15 +80,38 @@ export default function AdminHomePage() {
               <FileClock className="h-5 w-5" />
             </div>
             <CardTitle>{t("adminHome.requestsTitle")}</CardTitle>
-            <CardDescription>{t("adminHome.requestsDescription")}</CardDescription>
+            <CardDescription>
+              {t("adminHome.requestsDescription")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild className="w-full" variant="outline">
-              <Link href="/admin/templates/requests">{t("adminHome.requestsAction")}</Link>
+              <Link href="/admin/templates/requests">
+                {t("adminHome.requestsAction")}
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card shadow-sm">
+          <CardHeader>
+            <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <History className="h-5 w-5" />
+            </div>
+            <CardTitle>{t("adminHome.activityTitle")}</CardTitle>
+            <CardDescription>
+              {t("adminHome.activityDescription")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full" variant="outline">
+              <Link href="/admin/activity">
+                {t("adminHome.activityAction")}
+              </Link>
             </Button>
           </CardContent>
         </Card>
       </section>
     </div>
-  )
+  );
 }

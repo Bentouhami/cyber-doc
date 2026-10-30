@@ -111,14 +111,18 @@ export function EmployeeForm({ onSuccess, onCancel, mode = "create", employee, c
   })
 
   useEffect(() => {
-    form.reset({
-      firstName: employee?.firstName ?? "",
-      lastName: employee?.lastName ?? "",
-      email: employee?.email ?? "",
-      password: "",
-      roleName: employee?.roles?.[0]?.name ?? "",
-    })
-    setShowPassword(false)
+    const timer = window.setTimeout(() => {
+      form.reset({
+        firstName: employee?.firstName ?? "",
+        lastName: employee?.lastName ?? "",
+        email: employee?.email ?? "",
+        password: "",
+        roleName: employee?.roles?.[0]?.name ?? "",
+      })
+      setShowPassword(false)
+    }, 0)
+
+    return () => window.clearTimeout(timer)
   }, [employee, form, mode])
 
   async function onSubmit(values: EmployeeFormValues) {

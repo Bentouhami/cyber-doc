@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { isUserActive } from "@/lib/user-access-policy";
 
 export async function ensureAdminUser(headers: Headers) {
   const session = await auth.api.getSession({
@@ -9,14 +10,14 @@ export async function ensureAdminUser(headers: Headers) {
     query: { disableRefresh: true },
   });
 
-  const userEmail = session?.user.email;
+  const userId = session?.user.id;
 
-  if (!userEmail) {
+  if (!userId) {
     return { error: new NextResponse("Unauthorized", { status: 401 }) };
   }
 
   const currentUser = await prisma.user.findUnique({
-    where: { email: userEmail },
+    where: { id: userId },
     include: {
       roles: {
         include: { role: true },
@@ -24,7 +25,7 @@ export async function ensureAdminUser(headers: Headers) {
     },
   });
 
-  if (!currentUser) {
+  if (!currentUser || !isUserActive(currentUser)) {
     return { error: new NextResponse("Unauthorized", { status: 401 }) };
   }
 
@@ -43,14 +44,14 @@ export async function getAuthenticatedUser(headers: Headers) {
     query: { disableRefresh: true },
   });
 
-  const userEmail = session?.user.email;
+  const userId = session?.user.id;
 
-  if (!userEmail) {
+  if (!userId) {
     return { error: new NextResponse("Unauthorized", { status: 401 }) };
   }
 
   const currentUser = await prisma.user.findUnique({
-    where: { email: userEmail },
+    where: { id: userId },
     include: {
       roles: {
         include: { role: true },
@@ -58,7 +59,7 @@ export async function getAuthenticatedUser(headers: Headers) {
     },
   });
 
-  if (!currentUser) {
+  if (!currentUser || !isUserActive(currentUser)) {
     return { error: new NextResponse("Unauthorized", { status: 401 }) };
   }
 

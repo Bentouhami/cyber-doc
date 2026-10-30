@@ -8,6 +8,11 @@ const adminPassword = process.env.SMOKE_ADMIN_PASSWORD ?? "12345678";
 const outDir = path.join(process.cwd(), "tmp", "documents-smoke");
 
 const results = [];
+const testArtifacts = {
+  documentIds: new Set(),
+  personaIds: new Set(),
+  printHistoryIds: new Set(),
+};
 
 function pushResult(name, ok, details = "") {
   results.push({ name, ok, details });
@@ -24,11 +29,7 @@ async function requestJson(api, method, routePath, data) {
 }
 
 async function loginAsAdmin(api) {
-  const candidates = [
-    "/api/auth/sign-in/email",
-    "/api/auth/sign-in/credential",
-    "/api/auth/sign-in",
-  ];
+  const candidates = ["/api/auth/sign-in/email", "/api/auth/sign-in/credential", "/api/auth/sign-in"];
 
   for (const endpoint of candidates) {
     try {
@@ -39,10 +40,7 @@ async function loginAsAdmin(api) {
       });
       if (!response.ok()) continue;
       const me = await requestJson(api, "GET", "/api/users/me");
-      const isPrivileged =
-        me.response.ok() &&
-        Array.isArray(me.body?.roles) &&
-        me.body.roles.some((role) => role?.name === "admin" || role?.name === "employee");
+      const isPrivileged = me.response.ok() && Array.isArray(me.body?.roles) && me.body.roles.some((role) => role?.name === "admin" || role?.name === "employee");
       if (isPrivileged) {
         pushResult("Auth login", true, `Authenticated via ${endpoint}`);
         return true;
@@ -142,11 +140,7 @@ async function chooseTemplate(api) {
     const roles = Array.isArray(detail.body?.participantRoles) ? detail.body.participantRoles : [];
     const hasContent = typeof detail.body?.contentHtml === "string" && detail.body.contentHtml.trim().length > 0;
     if (detail.response.ok() && hasContent && fields.length > 0 && roles.length > 0) {
-      pushResult(
-        "Template choose",
-        true,
-        `slug=${candidate.slug} locale=${detail.body.locale} roles=${roles.length} fields=${fields.length}`,
-      );
+      pushResult("Template choose", true, `slug=${candidate.slug} locale=${detail.body.locale} roles=${roles.length} fields=${fields.length}`);
       return detail.body;
     }
   }
@@ -176,6 +170,56 @@ function buildParticipantDraft(roleKey, index, unique, useArabic) {
   };
 }
 
+async function runGenerationGuardChecks(api, template) {
+  const missing = await requestJson(api, "POST", "/api/documents/generate", {
+    templateId: template.id,
+    slug: template.slug,
+    locale: template.locale,
+    payload: {},
+    participants: [],
+  });
+  const missingBlocked =
+    missing.response.status() === 400 &&
+    missing.body?.code === "INVALID_PARTICIPANTS" &&
+    !missing.body?.document?.id;
+  pushResult(
+    "Documents required participants guard",
+    missingBlocked,
+    `HTTP ${missing.response.status()} code=${missing.body?.code ?? "n/a"}`,
+  );
+
+  const unknown = await requestJson(api, "POST", "/api/documents/generate", {
+    templateId: template.id,
+    slug: template.slug,
+    locale: template.locale,
+    payload: {},
+    participants: [{ roleKey: "__unknown_smoke_role__", personaId: "not-used" }],
+  });
+  const unknownBlocked =
+    unknown.response.status() === 400 &&
+    unknown.body?.code === "INVALID_PARTICIPANTS" &&
+    Array.isArray(unknown.body?.issues) &&
+    unknown.body.issues.some((issue) => issue?.code === "PARTICIPANT_ROLE_UNKNOWN");
+  pushResult(
+    "Documents unknown participant role guard",
+    unknownBlocked,
+    `HTTP ${unknown.response.status()} code=${unknown.body?.code ?? "n/a"}`,
+  );
+
+  const negativePayment = await requestJson(api, "POST", "/api/documents/generate", {
+    templateId: template.id,
+    slug: template.slug,
+    locale: template.locale,
+    payload: {},
+    amountPaid: -1,
+  });
+  pushResult(
+    "Documents negative initial payment guard",
+    negativePayment.response.status() === 400 && negativePayment.body?.code === "INVALID_REQUEST_PAYLOAD",
+    `HTTP ${negativePayment.response.status()} code=${negativePayment.body?.code ?? "n/a"}`,
+  );
+}
+
 async function runNewClientFlow(api, template) {
   const unique = Date.now().toString(36);
   const useArabic = String(template.locale ?? "").startsWith("ar");
@@ -202,18 +246,13 @@ async function runNewClientFlow(api, template) {
 
   const persisted = Array.isArray(generate.body?.persistedParticipants) ? generate.body.persistedParticipants : [];
   const hasCreated = persisted.some((item) => item?.action === "created_new");
+  if (generate.body?.document?.id) testArtifacts.documentIds.add(generate.body.document.id);
   pushResult("Documents new-client persisted", hasCreated, `persisted=${persisted.length} document=${generate.body?.document?.id ?? "n/a"}`);
 
   const firstParticipant = participants[0];
-  const verifyPersona = await requestJson(
-    api,
-    "GET",
-    `/api/personas?q=${encodeURIComponent(firstParticipant.persona.nationalId)}&limit=5`,
-  );
-  const foundPersona =
-    verifyPersona.response.ok() &&
-    Array.isArray(verifyPersona.body) &&
-    verifyPersona.body.find((item) => item?.nationalId === firstParticipant.persona.nationalId);
+  const verifyPersona = await requestJson(api, "GET", `/api/personas?q=${encodeURIComponent(firstParticipant.persona.nationalId)}&limit=5`);
+  const foundPersona = verifyPersona.response.ok() && Array.isArray(verifyPersona.body) && verifyPersona.body.find((item) => item?.nationalId === firstParticipant.persona.nationalId);
+  if (foundPersona?.id) testArtifacts.personaIds.add(foundPersona.id);
   pushResult("Documents new-client persona searchable", Boolean(foundPersona), foundPersona ? `personaId=${foundPersona.id}` : `HTTP ${verifyPersona.response.status()}`);
 
   return {
@@ -245,6 +284,7 @@ async function runExistingClientFlow(api, template) {
     return;
   }
   const seedPersonaId = seedCreate.body.id;
+  testArtifacts.personaIds.add(seedPersonaId);
   pushResult("Documents existing-client setup", true, `personaId=${seedPersonaId}`);
 
   const participants = roles.map((role, index) => {
@@ -272,6 +312,47 @@ async function runExistingClientFlow(api, template) {
   const participantMap = Object.fromEntries(participants.map((p) => [p.roleKey, p.persona]));
   const payload = buildFieldPayload(template.fields, participantMap, useArabic);
 
+  const primaryParticipant = participants.find((participant) => participant.roleKey === primaryRoleKey);
+  const duplicateIdentity = primaryParticipant
+    ? await requestJson(api, "POST", "/api/documents/generate", {
+        templateId: template.id,
+        slug: template.slug,
+        locale: template.locale,
+        payload,
+        participants: [
+          ...participants.map((participant) =>
+            participant.roleKey === primaryRoleKey
+              ? {
+                  roleKey: participant.roleKey,
+                  roleLabel: participant.roleLabel,
+                  personaId: participant.personaId,
+                }
+              : participant,
+          ),
+          {
+            roleKey: primaryRoleKey,
+            roleLabel: primaryParticipant.roleLabel,
+            persona: primaryParticipant.persona,
+          },
+        ],
+        copies: 1,
+        languageOverrideConfirmed: true,
+      })
+    : null;
+  const duplicateIdentityBlocked =
+    duplicateIdentity?.response.status() === 400 &&
+    duplicateIdentity.body?.code === "INVALID_PARTICIPANTS" &&
+    duplicateIdentity.body?.issues?.some(
+      (issue) => issue?.code === "PARTICIPANT_DUPLICATE",
+    );
+  pushResult(
+    "Documents stored-plus-inline duplicate participant guard",
+    Boolean(duplicateIdentityBlocked),
+    duplicateIdentity
+      ? `HTTP ${duplicateIdentity.response.status()} duplicate=${Boolean(duplicateIdentityBlocked)}`
+      : "Primary participant unavailable",
+  );
+
   const generate = await requestJson(api, "POST", "/api/documents/generate", {
     templateId: template.id,
     slug: template.slug,
@@ -289,16 +370,13 @@ async function runExistingClientFlow(api, template) {
   }
 
   const persisted = Array.isArray(generate.body?.persistedParticipants) ? generate.body.persistedParticipants : [];
+  if (generate.body?.document?.id) testArtifacts.documentIds.add(generate.body.document.id);
   const primaryPersisted = persisted.find((item) => item?.roleKey === primaryRoleKey);
-  const actionOk =
-    primaryPersisted?.action === "updated_existing" || primaryPersisted?.action === "linked_existing";
+  const actionOk = primaryPersisted?.action === "updated_existing" || primaryPersisted?.action === "linked_existing";
   pushResult("Documents existing-client persisted", Boolean(actionOk), `action=${primaryPersisted?.action ?? "n/a"} document=${generate.body?.document?.id ?? "n/a"}`);
 
   const verifyPersona = await requestJson(api, "GET", `/api/personas?q=${encodeURIComponent(seedNationalId)}&limit=5`);
-  const fetched =
-    verifyPersona.response.ok() &&
-    Array.isArray(verifyPersona.body) &&
-    verifyPersona.body.find((item) => item?.id === seedPersonaId);
+  const fetched = verifyPersona.response.ok() && Array.isArray(verifyPersona.body) && verifyPersona.body.find((item) => item?.id === seedPersonaId);
   const emailUpdated = fetched?.email === `updated.${unique}@cyberdoc.local`;
   pushResult("Documents existing-client enrichment", Boolean(emailUpdated), fetched ? `email=${fetched.email}` : `HTTP ${verifyPersona.response.status()}`);
 
@@ -313,31 +391,141 @@ async function runExistingClientFlow(api, template) {
 
 async function runDeliveryChecks(api, documentId) {
   if (!documentId) {
+    pushResult("Documents delivery preview", false, "No documentId to test");
     pushResult("Documents delivery download", false, "No documentId to test");
     pushResult("Documents delivery print-view", false, "No documentId to test");
+    pushResult("Documents delivery duplicate", false, "No documentId to test");
+    pushResult("Documents immutable patch", false, "No documentId to test");
+    pushResult("Documents print mutation", false, "No documentId to test");
     return;
   }
 
-  const download = await api.fetch(`/api/documents/${documentId}/download`);
-  const downloadType = download.headers()["content-type"] ?? "";
-  const downloadOk =
-    download.ok() &&
-    (downloadType.includes("application/pdf") ||
-      downloadType.includes("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+  const preview = await api.fetch(`/api/documents/${documentId}/preview`);
+  const previewType = preview.headers()["content-type"] ?? "";
+  const previewCsp = preview.headers()["content-security-policy"] ?? "";
+  const previewOk =
+    preview.ok() &&
+    previewType.includes("text/html") &&
+    previewCsp.includes("default-src 'none'") &&
+    previewCsp.includes("script-src 'none'") &&
+    previewCsp.includes("frame-ancestors 'self'");
   pushResult(
-    "Documents delivery download",
-    downloadOk,
-    `HTTP ${download.status()} content-type=${downloadType || "n/a"}`,
+    "Documents delivery preview",
+    previewOk,
+    `HTTP ${preview.status()} content-type=${previewType || "n/a"} csp=${previewCsp ? "present" : "missing"}`,
   );
 
+  const download = await api.fetch(`/api/documents/${documentId}/download`);
+  const downloadType = download.headers()["content-type"] ?? "";
+  const downloadOk = download.ok() && (downloadType.includes("application/pdf") || downloadType.includes("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+  pushResult("Documents delivery download", downloadOk, `HTTP ${download.status()} content-type=${downloadType || "n/a"}`);
+
   const printPage = await api.fetch(`/documents/${documentId}/print`);
-  const printHtml = await printPage.text();
-  const hasPrintFrame = /document-print-frame/i.test(printHtml);
+  const printSource = await fs.readFile(
+    path.join(process.cwd(), "app", "documents", "[documentId]", "print", "page.tsx"),
+    "utf8",
+  );
+  const hasPrintFrameContract =
+    printSource.includes('id="document-print-frame"') &&
+    printSource.includes('sandbox="allow-same-origin allow-modals"') &&
+    printSource.includes('src={`/api/documents/${documentId}/preview`}');
   pushResult(
     "Documents delivery print-view",
-    printPage.ok() && hasPrintFrame,
-    `HTTP ${printPage.status()} frame=${hasPrintFrame}`,
+    printPage.ok() && hasPrintFrameContract,
+    `HTTP ${printPage.status()} frameContract=${hasPrintFrameContract}`,
   );
+
+  const duplicate = await requestJson(api, "POST", `/api/documents/${documentId}/duplicate`);
+  const duplicateId = duplicate.body?.documentId;
+  const duplicateOk =
+    duplicate.response.ok() &&
+    typeof duplicateId === "string" &&
+    duplicateId.length > 0 &&
+    duplicateId !== documentId;
+  if (duplicateOk) testArtifacts.documentIds.add(duplicateId);
+  pushResult(
+    "Documents delivery duplicate",
+    duplicateOk,
+    `HTTP ${duplicate.response.status()} distinctIdentity=${duplicateOk}`,
+  );
+
+  const immutable = await requestJson(api, "PATCH", `/api/documents/${documentId}`, {});
+  const immutableOk =
+    immutable.response.status() === 405 &&
+    immutable.body?.code === "DOCUMENT_IMMUTABLE";
+  pushResult(
+    "Documents immutable patch",
+    immutableOk,
+    `HTTP ${immutable.response.status()} code=${immutable.body?.code ?? "n/a"}`,
+  );
+
+  const prints = await Promise.all([
+    requestJson(api, "POST", `/api/documents/${documentId}/print`, {
+      copies: 1,
+      printerName: "CyberDoc smoke A",
+    }),
+    requestJson(api, "POST", `/api/documents/${documentId}/print`, {
+      copies: 1,
+      printerName: "CyberDoc smoke B",
+    }),
+  ]);
+  const printOk = prints.every(
+    (print) =>
+      print.response.ok() &&
+      print.body?.documentId === documentId &&
+      typeof print.body?.printHistoryId === "string",
+  );
+  for (const print of prints) {
+    if (typeof print.body?.printHistoryId === "string") {
+      testArtifacts.printHistoryIds.add(print.body.printHistoryId);
+    }
+  }
+  pushResult(
+    "Documents concurrent print mutations",
+    printOk,
+    `HTTP ${prints.map((print) => print.response.status()).join(",")} histories=${prints.filter((print) => print.body?.printHistoryId).length}`,
+  );
+
+  const missingId = `missing-${Date.now().toString(36)}`;
+  const missingPreview = await api.fetch(`/api/documents/${missingId}/preview`);
+  const missingDuplicate = await requestJson(api, "POST", `/api/documents/${missingId}/duplicate`);
+  const missingPrint = await requestJson(api, "POST", `/api/documents/${missingId}/print`, {
+    copies: 1,
+  });
+  const missingOk =
+    missingPreview.status() === 404 &&
+    missingDuplicate.response.status() === 404 &&
+    missingPrint.response.status() === 404;
+  pushResult(
+    "Documents missing resource",
+    missingOk,
+    `preview=${missingPreview.status()} duplicate=${missingDuplicate.response.status()} print=${missingPrint.response.status()}`,
+  );
+
+  const invalidPrinter = await requestJson(api, "POST", `/api/documents/${documentId}/print`, {
+    copies: 1,
+    printerId: `missing-${Date.now().toString(36)}`,
+  });
+  pushResult(
+    "Documents inactive or missing printer rejected",
+    invalidPrinter.response.status() === 400 && invalidPrinter.body?.code === "INVALID_PRINTER",
+    `HTTP ${invalidPrinter.response.status()} code=${invalidPrinter.body?.code ?? "n/a"}`,
+  );
+}
+
+async function runInvalidPaginationChecks(api) {
+  const cases = [
+    ["documents page", "/api/documents?page=abc"],
+    ["personas limit", "/api/personas?limit=-1"],
+    ["persona history pageSize", "/api/personas/not-a-persona/documents?pageSize=zero"],
+    ["document creators limit", "/api/document-creators?limit=abc"],
+  ];
+
+  for (const [name, routePath] of cases) {
+    const result = await requestJson(api, "GET", routePath);
+    const rejected = result.response.status() === 400 && result.body?.message === "Invalid query parameter" && Array.isArray(result.body?.issues);
+    pushResult(`Invalid pagination ${name}`, rejected, `HTTP ${result.response.status()}`);
+  }
 }
 
 async function runPaymentUpdateCheck(api, documentId) {
@@ -346,31 +534,40 @@ async function runPaymentUpdateCheck(api, documentId) {
     return;
   }
 
-  const paidAt = new Date().toISOString();
-  const payment = await requestJson(
-    api,
-    "PATCH",
-    `/api/documents/${documentId}/payment`,
-    {
-      unitPrice: 25,
-      chargedTotal: 25,
-      amountPaid: 30,
-      paidAt,
-      currency: "MAD",
-      paymentStatus: "PAID",
-    },
-  );
+  const payment = await requestJson(api, "PATCH", `/api/documents/${documentId}/payment`, {
+    unitPrice: 25,
+    amountPaid: 100,
+  });
 
   const paymentOk =
     payment.response.ok() &&
     payment.body?.paymentStatus === "PAID" &&
-    payment.body?.amountPaid === "30" &&
-    payment.body?.changeGiven === "5";
+    payment.body?.chargedTotal === "75" &&
+    payment.body?.amountPaid === "100" &&
+    payment.body?.changeGiven === "25";
   pushResult(
     "Documents payment update",
     paymentOk,
-    `HTTP ${payment.response.status()} status=${payment.body?.paymentStatus ?? "n/a"} amountPaid=${payment.body?.amountPaid ?? "n/a"} change=${payment.body?.changeGiven ?? "n/a"}`,
+    `HTTP ${payment.response.status()} status=${payment.body?.paymentStatus ?? "n/a"} charged=${payment.body?.chargedTotal ?? "n/a"} amountPaid=${payment.body?.amountPaid ?? "n/a"} change=${payment.body?.changeGiven ?? "n/a"}`,
   );
+
+  for (const [name, payload] of [
+    ["negative amount", { amountPaid: -1 }],
+    ["client-derived status", { amountPaid: 30, paymentStatus: "PAID" }],
+    ["unsupported currency", { amountPaid: 30, currency: "EUR" }],
+  ]) {
+    const rejected = await requestJson(
+      api,
+      "PATCH",
+      `/api/documents/${documentId}/payment`,
+      payload,
+    );
+    pushResult(
+      `Documents payment rejects ${name}`,
+      rejected.response.status() === 400,
+      `HTTP ${rejected.response.status()}`,
+    );
+  }
 }
 
 async function runLanguageOverrideFlow(api, template) {
@@ -407,15 +604,9 @@ async function runLanguageOverrideFlow(api, template) {
   });
 
   const firstCode = firstTry.body?.code;
-  const requiresOverride =
-    firstTry.response.status() === 409 && firstCode === "LANGUAGE_OVERRIDE_REQUIRED";
-  const blockedByMismatch =
-    firstTry.response.status() === 422 && firstCode === "LANGUAGE_MISMATCH";
-  pushResult(
-    "Documents language guard trigger",
-    requiresOverride || blockedByMismatch,
-    `HTTP ${firstTry.response.status()} code=${firstCode ?? "n/a"}`,
-  );
+  const requiresOverride = firstTry.response.status() === 409 && firstCode === "LANGUAGE_OVERRIDE_REQUIRED";
+  const blockedByMismatch = firstTry.response.status() === 422 && firstCode === "LANGUAGE_MISMATCH";
+  pushResult("Documents language guard trigger", requiresOverride || blockedByMismatch, `HTTP ${firstTry.response.status()} code=${firstCode ?? "n/a"}`);
 
   if (!requiresOverride) {
     return;
@@ -431,11 +622,7 @@ async function runLanguageOverrideFlow(api, template) {
     amountPaid: 10,
     languageOverrideConfirmed: true,
   });
-  pushResult(
-    "Documents language override confirm",
-    secondTry.response.ok(),
-    `HTTP ${secondTry.response.status()}`,
-  );
+  pushResult("Documents language override confirm", secondTry.response.ok(), `HTTP ${secondTry.response.status()}`);
 }
 
 async function saveReport() {
@@ -447,6 +634,13 @@ async function saveReport() {
     passCount: results.filter((result) => result.ok).length,
     failCount: results.filter((result) => !result.ok).length,
     results,
+    artifacts: {
+      documentIds: [...testArtifacts.documentIds],
+      personaIds: [...testArtifacts.personaIds],
+      printHistoryIds: [...testArtifacts.printHistoryIds],
+      cleanup:
+        "The public API has no document/persona test-cleanup operation; run this suite against a disposable database and storage volume or reset them after the run.",
+    },
   };
   await fs.writeFile(path.join(outDir, "results.json"), JSON.stringify(summary, null, 2), "utf8");
   return summary;
@@ -460,6 +654,9 @@ async function run() {
 
     const template = await chooseTemplate(api);
     if (!template) return;
+
+    await runInvalidPaginationChecks(api);
+    await runGenerationGuardChecks(api, template);
 
     const newFlow = await runNewClientFlow(api, template);
     const existingFlow = await runExistingClientFlow(api, template);

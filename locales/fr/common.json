@@ -9,7 +9,8 @@
     "admin": {
       "dashboard": "Tableau de bord",
       "employees": "Employés",
-      "templateRequests": "Demandes de modèles"
+      "templateRequests": "Demandes de modèles",
+      "activity": "Journal d’activité"
     },
     "employee": {
       "home": "Accueil",
@@ -110,7 +111,58 @@
     "employeesAction": "Ouvrir les employés",
     "requestsTitle": "Demandes de modèles",
     "requestsDescription": "Revoir les demandes en attente envoyées par les employés.",
-    "requestsAction": "Ouvrir les demandes"
+    "requestsAction": "Ouvrir les demandes",
+    "activityTitle": "Journal d’activité",
+    "activityDescription": "Consulter les actions sensibles enregistrées par la plateforme.",
+    "activityAction": "Ouvrir le journal"
+  },
+  "activityAudit": {
+    "badge": "Traçabilité administrative",
+    "title": "Journal d’activité",
+    "subtitle": "Consultez les actions sensibles, leurs auteurs et les ressources concernées. Ce journal ne remplace pas une politique de conservation réglementaire.",
+    "listTitle": "Activités enregistrées",
+    "tableLabel": "Liste des activités enregistrées",
+    "loading": "Chargement du journal d’activité",
+    "results": "{{count}} activité(s) affichée(s) sur {{total}} — page {{page}} sur {{totalPages}}",
+    "columns": {
+      "type": "Activité",
+      "actor": "Auteur",
+      "resource": "Ressource",
+      "date": "Date"
+    },
+    "filters": {
+      "title": "Filtres",
+      "description": "Affinez la recherche. Les filtres appliqués restent dans l’adresse de la page.",
+      "q": "Recherche",
+      "qPlaceholder": "Type, ressource, identifiant ou auteur",
+      "activityType": "Type d’activité",
+      "activityTypePlaceholder": "Ex. CREATE_DOCUMENT",
+      "resourceType": "Type de ressource",
+      "resourceTypePlaceholder": "Ex. DOCUMENT",
+      "userId": "Identifiant auteur",
+      "userIdPlaceholder": "Identifiant exact",
+      "from": "À partir du",
+      "to": "Jusqu’au",
+      "pageSize": "Résultats par page",
+      "apply": "Appliquer les filtres",
+      "reset": "Réinitialiser",
+      "hint": "Les dates utilisent votre fuseau horaire."
+    },
+    "empty": {
+      "title": "Aucune activité trouvée",
+      "description": "Modifiez les filtres ou réinitialisez la recherche."
+    },
+    "error": {
+      "title": "Journal indisponible",
+      "description": "Impossible de charger le journal d’activité.",
+      "retry": "Réessayer"
+    },
+    "pagination": {
+      "label": "Pagination du journal d’activité",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "current": "Page {{page}} sur {{totalPages}}"
+    }
   },
   "employeeStatus": {
     "activate": "Activer le compte",
@@ -233,6 +285,7 @@
     },
     "bulk": {
       "selectAllVisible": "Sélectionner les résultats visibles",
+      "selectTemplate": "Sélectionner {{title}}",
       "selectedCount": "{{count}} sélectionné(s)",
       "publish": "Publier en masse",
       "unpublish": "Dépublier en masse",
@@ -370,6 +423,9 @@
     "blockTypeNumber": "Nombre",
     "blockTypeParagraph": "Paragraphe",
     "blockTypeSignature": "Signature",
+    "moveBlockUp": "Monter le bloc",
+    "moveBlockDown": "Descendre le bloc",
+    "removeBlock": "Supprimer le bloc",
     "blockLabelFr": "Ex: Nom complet",
     "blockLabelAr": "مثال: الاسم الكامل",
     "blockLabelFrLabel": "Libellé visible (FR)",

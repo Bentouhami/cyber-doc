@@ -1,6 +1,9 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
+import fs from "node:fs/promises";
+
+import { resolveSecureWritePath } from "@/services/storageSecurity";
 
 const STORAGE_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -32,26 +35,24 @@ export function buildDocumentStoragePath(fileName: string) {
 }
 
 export async function ensureStoragePath(relativePath: string) {
-  const normalizedPath = relativePath.replaceAll("\\", "/");
+  return resolveSecureWritePath(resolveStorageRoot(), relativePath);
+}
 
-  if (
-    !normalizedPath ||
-    normalizedPath.startsWith("/") ||
-    normalizedPath.includes("..")
-  ) {
-    throw new Error("Invalid storage path");
+export async function writeDocumentFileAtomically(
+  relativePath: string,
+  buffer: Uint8Array,
+) {
+  const finalPath = await ensureStoragePath(relativePath);
+  const stagingPath = await ensureStoragePath(
+    `${relativePath}.${randomUUID()}.part`,
+  );
+
+  try {
+    await fs.writeFile(stagingPath, buffer, { flag: "wx" });
+    await fs.rename(stagingPath, finalPath);
+    return finalPath;
+  } catch (error) {
+    await fs.unlink(stagingPath).catch(() => undefined);
+    throw error;
   }
-
-  const storageRoot = resolveStorageRoot();
-  const absolutePath = path.join(storageRoot, normalizedPath);
-  const relativeFromRoot = path.relative(storageRoot, absolutePath);
-  if (
-    relativeFromRoot.startsWith("..") ||
-    path.isAbsolute(relativeFromRoot)
-  ) {
-    throw new Error("Invalid storage path");
-  }
-
-  await fs.mkdir(path.dirname(absolutePath), { recursive: true });
-  return absolutePath;
 }

@@ -1,30 +1,29 @@
 import { betterAuth } from "better-auth";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { nextCookies } from "better-auth/next-js";
 import bcrypt from "bcryptjs";
 
+import { resolveAuthNetworkConfig } from "./auth-network-config";
 import prisma from "./prisma";
+import { PASSWORD_POLICY } from "./user-validation";
+import { isUserActive, userAccessStateSelect } from "./user-access-policy";
 
-const trustedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:5000",
-  process.env.NEXT_PUBLIC_APP_URL,
-  process.env.NEXTAUTH_URL,
-].filter(Boolean) as string[];
+const authNetworkConfig = resolveAuthNetworkConfig(process.env);
 
 export const auth = betterAuth({
-  baseURL:
-    process.env.BETTER_AUTH_URL ??
-    process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.NEXTAUTH_URL,
+  baseURL: authNetworkConfig.baseURL,
   database: prismaAdapter(prisma, {
     provider: "postgresql",
     transaction: true,
   }),
-  trustedOrigins,
+  trustedOrigins: authNetworkConfig.trustedOrigins,
   emailAndPassword: {
     enabled: true,
+    disableSignUp: true,
+    minPasswordLength: PASSWORD_POLICY.minLength,
+    maxPasswordLength: PASSWORD_POLICY.maxLength,
     password: {
       hash: async (password: string) => hashPassword(password),
       verify: async ({
@@ -59,6 +58,32 @@ export const auth = betterAuth({
         }
       },
     },
+  },
+  hooks: {
+    before: createAuthMiddleware(async (context) => {
+      if (context.path !== "/sign-in/email") {
+        return;
+      }
+
+      const email =
+        typeof context.body?.email === "string"
+          ? context.body.email.trim().toLowerCase()
+          : null;
+      if (!email) {
+        return;
+      }
+
+      const user = await prisma.user.findFirst({
+        where: { email: { equals: email, mode: "insensitive" } },
+        select: userAccessStateSelect,
+      });
+
+      if (user && !isUserActive(user)) {
+        throw new APIError("UNAUTHORIZED", {
+          message: "Invalid email or password",
+        });
+      }
+    }),
   },
   plugins: [nextCookies()],
 });

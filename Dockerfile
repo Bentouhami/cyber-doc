@@ -1,18 +1,20 @@
 # ---------- Base de build ----------
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@12.15.0 --activate
 
 # Installe dépendances système si nécessaire (fonts wkhtmltopdf etc. si tu génères des PDF côté Node)
 # RUN apk add --no-cache ...
 
-COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* .npmrc* ./
-# Choisis ton gestionnaire (ex: npm ci)
-RUN npm ci
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# The Prisma schema is copied only in later stages. Lifecycle scripts must not
+# run while the dependency layer contains manifests only.
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # ---------- Build ----------
-FROM node:20-alpine AS builder
+FROM deps AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Variables de build (si besoin)
@@ -20,17 +22,38 @@ ARG NEXT_PUBLIC_APP_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Génère le client Prisma (nécessaire au build si importé côté server)
-RUN npx prisma generate
+RUN pnpm exec prisma generate
 
 # Build Next.js en mode standalone
-RUN npm run build
+RUN pnpm run build
+
+# ---------- Database migrator ----------
+# Keep schema changes as an explicit, fail-fast deployment step. The lean
+# standalone application image intentionally does not contain the Prisma CLI.
+FROM deps AS migrator
+WORKDIR /app
+COPY prisma ./prisma
+COPY prisma.config.ts ./prisma.config.ts
+RUN pnpm exec prisma generate
+CMD ["pnpm", "exec", "prisma", "migrate", "deploy"]
 
 # ---------- Runner ----------
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+# PDF generation is a runtime feature. Keep Chromium and its font/runtime
+# libraries in the final image rather than relying on a CI-host browser cache.
+RUN apk add --no-cache \
+    ca-certificates \
+    chromium \
+    freetype \
+    harfbuzz \
+    nss \
+    font-freefont
 
 # Répertoire persistant pour les documents générés
 # (monté en volume via docker-compose)
@@ -44,7 +67,8 @@ COPY --from=builder /app/public ./public
 # Prisma schema si standalone le requiert au runtime (utile avec edge cases)
 COPY --from=builder /app/prisma ./prisma
 
-# Script d’entrée (migrate + start)
+# Minimal application entrypoint. Migrations are executed by the dedicated
+# migrator target before this container starts.
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

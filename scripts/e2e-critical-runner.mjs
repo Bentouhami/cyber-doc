@@ -1,70 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 
 const cwd = process.cwd();
 const outDir = path.join(cwd, "tmp", "e2e-critical");
 const baseURL = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
-const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
 const allowEpermSkip = process.env.SMOKE_ALLOW_EPERM_SKIP === "1";
 const allowDbUnavailableSkip = process.env.SMOKE_ALLOW_DB_UNAVAILABLE_SKIP === "1";
 const dbUnavailablePattern = /(P1001|Can't reach database server|DatabaseNotReachable)/i;
-
-const suites = [
-  {
-    name: "permissions-smoke",
-    command:
-      "$proc = Start-Process -FilePath npm.cmd -ArgumentList 'run','dev' -PassThru -WindowStyle Hidden; Start-Sleep -Seconds 8; node scripts/permissions-smoke-runner.mjs; $code = $LASTEXITCODE; if ($proc -and !$proc.HasExited) { Stop-Process -Id $proc.Id -Force }; exit $code",
-  },
-  {
-    name: "admin-smoke",
-    command:
-      "$proc = Start-Process -FilePath npm.cmd -ArgumentList 'run','dev' -PassThru -WindowStyle Hidden; Start-Sleep -Seconds 12; node scripts/admin-smoke-runner.mjs; $code = $LASTEXITCODE; if ($proc -and !$proc.HasExited) { Stop-Process -Id $proc.Id -Force }; exit $code",
-  },
-  {
-    name: "documents-smoke",
-    command:
-      "$proc = Start-Process -FilePath npm.cmd -ArgumentList 'run','dev' -PassThru -WindowStyle Hidden; Start-Sleep -Seconds 10; node scripts/documents-smoke-runner.mjs; $code = $LASTEXITCODE; if ($proc -and !$proc.HasExited) { Stop-Process -Id $proc.Id -Force }; exit $code",
-  },
-  {
-    name: "ux-route-check",
-    command:
-      "$proc = Start-Process -FilePath npm.cmd -ArgumentList 'run','dev' -PassThru -WindowStyle Hidden; Start-Sleep -Seconds 10; node scripts/ux-route-check-runner.mjs; $code = $LASTEXITCODE; if ($proc -and !$proc.HasExited) { Stop-Process -Id $proc.Id -Force }; exit $code",
-  },
-];
-
-function runPowerShellCommand(command) {
-  return new Promise((resolve) => {
-    let pwsh;
-    try {
-      pwsh = spawn("pwsh", ["-Command", command], {
-        cwd,
-        env: { ...process.env, SMOKE_BASE_URL: baseURL },
-        stdio: ["ignore", "pipe", "pipe"],
-        shell: process.platform === "win32",
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      resolve({ code: 1, output: message });
-      return;
-    }
-
-    let output = "";
-    pwsh.stdout.on("data", (chunk) => {
-      const text = chunk.toString();
-      output += text;
-      process.stdout.write(text);
-    });
-    pwsh.stderr.on("data", (chunk) => {
-      const text = chunk.toString();
-      output += text;
-      process.stderr.write(text);
-    });
-
-    pwsh.on("exit", (code) => resolve({ code: code ?? 1, output }));
-    pwsh.on("error", () => resolve({ code: 1, output }));
-  });
-}
 
 function runNodeScript(scriptPath, extraEnv = {}) {
   return new Promise((resolve) => {
@@ -130,86 +73,68 @@ async function run() {
 
   await fs.mkdir(outDir, { recursive: true });
 
-  if (process.platform === "win32") {
-    for (const suite of suites) {
-      const started = Date.now();
-      const result = await runPowerShellCommand(suite.command);
-      const code = result.code;
-      const durationMs = Date.now() - started;
-      const hasEperm = /spawn EPERM/i.test(result.output);
-      const hasDbUnavailable = dbUnavailablePattern.test(result.output);
-      const skipped = (allowEpermSkip && hasEperm) || (allowDbUnavailableSkip && hasDbUnavailable);
-      const ok = code === 0 || skipped;
-      report.suites.push({
-        name: suite.name,
-        ok,
-        skipped,
-        exitCode: code,
-        durationMs,
-        reason: skipped
-          ? hasDbUnavailable
-            ? "Database unavailable in CI (allowed skip)"
-            : "Playwright spawn EPERM (allowed skip)"
-          : undefined,
-      });
-      if (skipped) {
-        report.skipCount += 1;
-      } else if (ok) {
-        report.passCount += 1;
-      } else {
-        report.failCount += 1;
-      }
-    }
-  } else {
-    const devProc = spawn(npmCmd, ["run", "dev"], {
-      cwd,
-      env: process.env,
-      stdio: "inherit",
-    });
+  const nextBin = path.join(cwd, "node_modules", "next", "dist", "bin", "next");
+  const devProc = spawn(process.execPath, [nextBin, "dev"], {
+    cwd,
+    env: process.env,
+    stdio: "inherit",
+  });
 
-    try {
-      const ready = await waitForServer(baseURL, 90000);
-      if (!ready) {
+  try {
+    const ready = await waitForServer(baseURL, 90000);
+    if (!ready) {
+      report.suites.push({
+        name: "dev-server",
+        ok: false,
+        exitCode: 1,
+        durationMs: 90000,
+      });
+      report.failCount += 1;
+    } else {
+      for (const suite of [
+        { name: "permissions-smoke", script: "scripts/permissions-smoke-runner.mjs" },
+        { name: "admin-smoke", script: "scripts/admin-smoke-runner.mjs" },
+        { name: "documents-smoke", script: "scripts/documents-smoke-runner.mjs" },
+        { name: "ux-route-check", script: "scripts/ux-route-check-runner.mjs" },
+      ]) {
+        const started = Date.now();
+        const result = await runNodeScript(suite.script, { SMOKE_BASE_URL: baseURL });
+        const code = result.code;
+        const durationMs = Date.now() - started;
+        const hasEperm = /spawn EPERM/i.test(result.output);
+        const hasDbUnavailable = dbUnavailablePattern.test(result.output);
+        const skipped =
+          (allowEpermSkip && hasEperm) ||
+          (allowDbUnavailableSkip && hasDbUnavailable);
+        const ok = code === 0 || skipped;
         report.suites.push({
-          name: "dev-server",
-          ok: false,
-          exitCode: 1,
-          durationMs: 90000,
+          name: suite.name,
+          ok,
+          skipped,
+          exitCode: code,
+          durationMs,
+          reason: skipped
+            ? hasDbUnavailable
+              ? "Database unavailable in CI (allowed skip)"
+              : "Playwright spawn EPERM (allowed skip)"
+            : undefined,
         });
-        report.failCount += 1;
-      } else {
-        for (const suite of [
-          { name: "permissions-smoke", script: "scripts/permissions-smoke-runner.mjs" },
-          { name: "admin-smoke", script: "scripts/admin-smoke-runner.mjs" },
-          { name: "documents-smoke", script: "scripts/documents-smoke-runner.mjs" },
-          { name: "ux-route-check", script: "scripts/ux-route-check-runner.mjs" },
-        ]) {
-          const started = Date.now();
-          const result = await runNodeScript(suite.script, { SMOKE_BASE_URL: baseURL });
-          const code = result.code;
-          const durationMs = Date.now() - started;
-          const hasDbUnavailable = dbUnavailablePattern.test(result.output);
-          const skipped = allowDbUnavailableSkip && hasDbUnavailable;
-          const ok = code === 0 || skipped;
-          report.suites.push({
-            name: suite.name,
-            ok,
-            skipped,
-            exitCode: code,
-            durationMs,
-            reason: skipped ? "Database unavailable in CI (allowed skip)" : undefined,
-          });
-          if (skipped) {
-            report.skipCount += 1;
-          } else if (ok) {
-            report.passCount += 1;
-          } else {
-            report.failCount += 1;
-          }
+        if (skipped) {
+          report.skipCount += 1;
+        } else if (ok) {
+          report.passCount += 1;
+        } else {
+          report.failCount += 1;
         }
       }
-    } finally {
-      if (!devProc.killed) {
+    }
+  } finally {
+    if (!devProc.killed) {
+      if (process.platform === "win32" && devProc.pid) {
+        spawnSync("taskkill", ["/PID", String(devProc.pid), "/T", "/F"], {
+          stdio: "ignore",
+        });
+      } else {
         devProc.kill("SIGTERM");
       }
     }

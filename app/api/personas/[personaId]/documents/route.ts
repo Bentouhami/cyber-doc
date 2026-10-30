@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/admin-auth";
+import { internalServerError } from "@/lib/api-error";
 import { hasAnyRole } from "@/lib/permissions";
+import { parseIntegerQueryParam } from "@/lib/query-params";
 
 export async function GET(
   request: Request,
@@ -20,12 +22,35 @@ export async function GET(
 
   const { personaId } = await context.params;
   if (!personaId) {
-    return NextResponse.json({ message: "personaId is required" }, { status: 400 });
+    return NextResponse.json(
+      { message: "personaId is required" },
+      { status: 400 },
+    );
   }
 
   const url = new URL(request.url);
-  const page = Math.max(Number(url.searchParams.get("page") ?? 1), 1);
-  const pageSize = Math.min(Math.max(Number(url.searchParams.get("pageSize") ?? 20), 1), 100);
+  const pageResult = parseIntegerQueryParam(url.searchParams, "page", {
+    defaultValue: 1,
+    min: 1,
+    max: 1_000_000,
+  });
+  const pageSizeResult = parseIntegerQueryParam(url.searchParams, "pageSize", {
+    defaultValue: 20,
+    min: 1,
+    max: 100,
+  });
+  if (!pageResult.success || !pageSizeResult.success) {
+    const issues = [
+      ...(!pageResult.success ? pageResult.error.issues : []),
+      ...(!pageSizeResult.success ? pageSizeResult.error.issues : []),
+    ];
+    return NextResponse.json(
+      { message: "Invalid query parameter", issues },
+      { status: 400 },
+    );
+  }
+  const page = pageResult.value;
+  const pageSize = pageSizeResult.value;
 
   try {
     const persona = await prisma.persona.findUnique({
@@ -41,7 +66,10 @@ export async function GET(
     });
 
     if (!persona) {
-      return NextResponse.json({ message: "Persona not found" }, { status: 404 });
+      return NextResponse.json(
+        { message: "Persona not found" },
+        { status: 404 },
+      );
     }
 
     const where = { personaId };
@@ -108,7 +136,9 @@ export async function GET(
       totalPages: Math.ceil(total / pageSize),
     });
   } catch (error) {
-    console.error("Error fetching persona documents:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError(
+      { route: "/api/personas/[personaId]/documents", operation: "list_persona_documents" },
+      error,
+    );
   }
 }

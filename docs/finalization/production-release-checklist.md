@@ -1,14 +1,21 @@
 # Production Release Checklist
 
-Date: 2026-03-22
+Date: 2026-10-30
 
 ## Before merge/tag
 
-- [ ] `npm run release:freeze-audit` is clean (`isClean=true`).
-- [ ] `npm run release:secret-scan` reports no findings.
+- [ ] `pnpm run release:freeze-audit` is clean (`isClean=true`).
+- [ ] `pnpm run release:secret-scan` reports no findings.
 - [ ] Branch is up to date with `dev`.
-- [ ] `npm run release:preflight` passed.
-- [ ] `npm run release:smoke:critical` passed (or CI green).
+- [ ] `pnpm run release:github-protection` passes for `dev` and `main`.
+- [ ] `pnpm run release:preflight` passed.
+- [ ] `pnpm run release:smoke:critical` passed locally with zero skip.
+- [ ] Required CI jobs are green on the exact release commit: Gitleaks,
+  quality-gates, dependency-review, container-build and critical-smoke.
+- [ ] `CYBERDOC_IMAGE` and `CYBERDOC_MIGRATOR_IMAGE` are immutable references
+  built from that same commit and recorded in the release evidence.
+- [ ] Backup/restore and previous-image rollback evidence is current.
+- [ ] Privacy/retention decisions and named sign-offs are complete.
 - [ ] RC docs updated:
   - [ ] `rc-smoke-report.md`
   - [ ] `rc-open-issues.md`
@@ -29,12 +36,16 @@ git push origin v1.0.0
 
 ## Deploy
 
+Preferred container deployment follows `deploy-runbook.md`: run the matching
+one-shot migrator image, then the standalone application image. For a direct
+host deployment, use:
+
 ```bash
-npm ci
-npx prisma generate
-npx prisma migrate deploy
-npm run build
-npm run start
+pnpm install --frozen-lockfile
+pnpm exec prisma generate
+pnpm exec prisma migrate deploy
+pnpm run build
+pnpm run start
 ```
 
 ## Immediate post-deploy checks

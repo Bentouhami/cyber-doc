@@ -1,3 +1,8 @@
+import {
+  sanitizeTemplateCss,
+  sanitizeTemplateHtml,
+} from "@/services/templateContentSecurity";
+
 const BLOCKED_PATHS = new Set(["__proto__", "prototype", "constructor"]);
 
 export function buildNestedPayload(flat: Record<string, unknown>) {
@@ -36,6 +41,7 @@ function escapeHtml(value: string) {
 }
 
 export function renderHtmlTemplate(template: string, data: Record<string, unknown>) {
+  const safeTemplate = sanitizeTemplateHtml(template);
   const resolveValue = (key: string) =>
     key.split(".").reduce<unknown>((acc, part) => {
       if (acc && typeof acc === "object" && part in (acc as Record<string, unknown>)) {
@@ -72,7 +78,7 @@ export function renderHtmlTemplate(template: string, data: Record<string, unknow
     return isFemale ? "ة" : "";
   };
 
-  return template.replace(/{{\s*([\w.]+)(?:[:\s]+([\w.]+))?\s*}}/g, (_, token: string, arg?: string) => {
+  return safeTemplate.replace(/{{\s*([\w.]+)(?:[:\s]+([\w.]+))?\s*}}/g, (_, token: string, arg?: string) => {
     if (arg) {
       if (token === "genderSuffix") {
         return resolveGenderSuffix(resolveValue(arg));
@@ -131,10 +137,12 @@ function injectStyles(html: string, css?: string | null) {
 }
 
 export function ensureHtmlDocument(html: string, css?: string | null) {
-  const trimmed = html.trim();
-  const styleBlock = `${BASE_STYLES}${css ? `\n${css}` : ""}`;
+  const safeHtml = sanitizeTemplateHtml(html);
+  const safeCss = css ? sanitizeTemplateCss(css) : "";
+  const trimmed = safeHtml.trim();
+  const styleBlock = `${BASE_STYLES}${safeCss ? `\n${safeCss}` : ""}`;
   if (trimmed.includes("<html")) {
-    return injectStyles(html, styleBlock);
+    return injectStyles(safeHtml, styleBlock);
   }
   return `<!doctype html>
 <html lang="ar" dir="rtl">
@@ -144,7 +152,7 @@ export function ensureHtmlDocument(html: string, css?: string | null) {
     <style>${styleBlock}</style>
   </head>
   <body>
-    <div class="page">${html}</div>
+    <div class="page">${safeHtml}</div>
   </body>
 </html>`;
 }
@@ -159,22 +167,78 @@ export type PdfOptions = {
   };
 };
 
+const PDF_RENDER_TIMEOUT_MS = 15_000;
+const ALLOWED_RENDER_PROTOCOLS = new Set(["about:", "blob:", "data:"]);
+
+async function withTimeout<T>(operation: Promise<T>, timeoutMs: number, message: string) {
+  let timeout: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([operation, timeoutPromise]);
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  }
+}
+
 export async function generatePdfBufferFromHtml(html: string, options?: PdfOptions, css?: string | null) {
   const { chromium } = await import("playwright");
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
-  await page.setContent(ensureHtmlDocument(html, css), { waitUntil: "networkidle" });
-  await page.emulateMedia({ media: "screen" });
-  const buffer = await page.pdf({
-    format: options?.format ?? "A4",
-    printBackground: true,
-    margin: {
-      top: options?.margin?.top ?? "1cm",
-      right: options?.margin?.right ?? "1cm",
-      bottom: options?.margin?.bottom ?? "1cm",
-      left: options?.margin?.left ?? "1cm",
-    },
+  const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim() || undefined;
+  const browser = await chromium.launch({
+    timeout: PDF_RENDER_TIMEOUT_MS,
+    executablePath,
+    ...(executablePath
+      ? { args: ["--no-sandbox", "--disable-dev-shm-usage"] }
+      : {}),
   });
-  await browser.close();
-  return buffer;
+
+  try {
+    const page = await browser.newPage({ javaScriptEnabled: false });
+    page.setDefaultTimeout(PDF_RENDER_TIMEOUT_MS);
+    page.setDefaultNavigationTimeout(PDF_RENDER_TIMEOUT_MS);
+
+    await page.route("**/*", async (route) => {
+      let protocol: string;
+      try {
+        protocol = new URL(route.request().url()).protocol;
+      } catch {
+        await route.abort("blockedbyclient");
+        return;
+      }
+
+      if (ALLOWED_RENDER_PROTOCOLS.has(protocol)) {
+        await route.continue();
+        return;
+      }
+
+      await route.abort("blockedbyclient");
+    });
+
+    await page.setContent(ensureHtmlDocument(html, css), {
+      waitUntil: "load",
+      timeout: PDF_RENDER_TIMEOUT_MS,
+    });
+    await page.emulateMedia({ media: "screen" });
+
+    return await withTimeout(
+      page.pdf({
+        format: options?.format ?? "A4",
+        printBackground: true,
+        margin: {
+          top: options?.margin?.top ?? "1cm",
+          right: options?.margin?.right ?? "1cm",
+          bottom: options?.margin?.bottom ?? "1cm",
+          left: options?.margin?.left ?? "1cm",
+        },
+      }),
+      PDF_RENDER_TIMEOUT_MS,
+      `PDF rendering exceeded ${PDF_RENDER_TIMEOUT_MS}ms`,
+    );
+  } finally {
+    await browser.close();
+  }
 }

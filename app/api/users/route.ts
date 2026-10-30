@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { hashPassword as betterAuthHashPassword } from "better-auth/crypto";
 
 import { ensureAdminUser } from "@/lib/admin-auth";
+import { internalServerError, logApiError } from "@/lib/api-error";
 import prisma from "@/lib/prisma";
+import { createUserSchema, userValidationIssues } from "@/lib/user-validation";
 import { mapUserToEmployeeDTO } from "@/mappers/EmployeeMapper";
-import { parseRoleNames } from "./utils";
 
 export async function GET(req: Request) {
   const adminCheck = await ensureAdminUser(req.headers);
@@ -25,8 +27,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json(users.map(mapUserToEmployeeDTO));
   } catch (error) {
-    console.error("Error fetching users:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError({ route: "/api/users", operation: "list_users" }, error);
   }
 }
 
@@ -37,22 +38,41 @@ export async function POST(req: Request) {
   }
   const { currentUser } = adminCheck;
 
+  const body: unknown = await req.json().catch((error: unknown) => {
+    logApiError({ route: "/api/users", operation: "parse_request" }, error);
+    return undefined;
+  });
+  if (body === undefined) {
+    return NextResponse.json(
+      { message: "Unable to parse request body", code: "INVALID_JSON" },
+      { status: 400 },
+    );
+  }
+
+  const parsed = createUserSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      {
+        message: "Invalid user payload",
+        code: "INVALID_USER_PAYLOAD",
+        issues: userValidationIssues(parsed.error),
+      },
+      { status: 400 },
+    );
+  }
+  const { email, password, firstName, lastName, roleNames } = parsed.data;
+
   try {
-    const body = await req.json();
-    const { email, password, firstName, lastName, roleNames: rawRoleNames } = body;
-
-    const roleNames = parseRoleNames(rawRoleNames);
-
-    if (!email || !password || !firstName || !lastName || !roleNames) {
-      return new NextResponse("Missing required fields", { status: 400 });
-    }
-
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
+    const existingUser = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+      select: { id: true },
     });
 
     if (existingUser) {
-      return new NextResponse("User already exists", { status: 409 });
+      return NextResponse.json(
+        { message: "User already exists", code: "USER_ALREADY_EXISTS" },
+        { status: 409 },
+      );
     }
 
     const passwordHash = await hash(password, 10);
@@ -64,7 +84,10 @@ export async function POST(req: Request) {
     });
 
     if (roles.length !== roleNames.length) {
-      return new NextResponse("Invalid roles payload", { status: 400 });
+      return NextResponse.json(
+        { message: "Invalid roles payload", code: "INVALID_ROLES" },
+        { status: 400 },
+      );
     }
 
     const user = await prisma.$transaction(async (tx) => {
@@ -95,7 +118,7 @@ export async function POST(req: Request) {
         where: {
           providerId_accountId: {
             providerId: "credential",
-            accountId: email,
+            accountId: createdUser.id,
           },
         },
         update: {
@@ -104,7 +127,7 @@ export async function POST(req: Request) {
         },
         create: {
           providerId: "credential",
-          accountId: email,
+          accountId: createdUser.id,
           userId: createdUser.id,
           password: credentialPassword,
         },
@@ -128,7 +151,12 @@ export async function POST(req: Request) {
 
     return NextResponse.json(mapUserToEmployeeDTO(user), { status: 201 });
   } catch (error) {
-    console.error("Error creating user:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json(
+        { message: "User already exists", code: "USER_ALREADY_EXISTS" },
+        { status: 409 },
+      );
+    }
+    return internalServerError({ route: "/api/users", operation: "create_user" }, error);
   }
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import {
   Accordion,
@@ -129,6 +130,7 @@ type TemplateDetailProps = {
 }
 
 export function TemplateDetail({ template }: TemplateDetailProps) {
+  const router = useRouter()
   const { t, dir } = useLocale()
   const { toast } = useToast()
   const [isSaving, setIsSaving] = useState(false)
@@ -304,13 +306,6 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
     loadAssets()
   }, [])
 
-  useEffect(() => {
-    if (!assetOptions.length) return
-    if (!assetId) {
-      setAssetId("none")
-    }
-  }, [assetOptions, assetId])
-
   const handleConfirmPublish = async () => {
     setIsPublishing(true)
     try {
@@ -422,7 +417,7 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
                   throw new Error(data.message || "Delete failed")
                 }
                 toast({ title: t("templates.deleteSuccess") })
-                window.location.href = "/admin/templates"
+                router.push("/admin/templates")
               } catch (error) {
                 toast({
                   title: t("templates.deleteError") ,

@@ -4,7 +4,14 @@ import { z } from "zod";
 
 import prisma from "@/lib/prisma";
 import { ensureAdminUser, getAuthenticatedUser } from "@/lib/admin-auth";
+import { internalServerError, logApiError } from "@/lib/api-error";
 import { hasAnyRole } from "@/lib/permissions";
+import {
+  sanitizeTemplateContent,
+  sanitizeTemplateCss,
+  sanitizeTemplateHtml,
+  TEMPLATE_CONTENT_LIMITS,
+} from "@/services/templateContentSecurity";
 
 function toNullableJsonInput(
   value: Prisma.JsonValue | null | undefined,
@@ -21,7 +28,7 @@ const fieldSchema = z.object({
   fieldType: z.string().min(1),
   isRequired: z.boolean().optional(),
   defaultValue: z.string().optional(),
-  validationRules: z.record(z.any()).optional(),
+  validationRules: z.record(z.string(), z.json()).optional(),
   placeholder: z.string().optional(),
   placeholderAr: z.string().optional(),
   helpText: z.string().optional(),
@@ -32,7 +39,7 @@ const fieldSchema = z.object({
   section: z.string().optional(),
   sectionAr: z.string().optional(),
   displayOrder: z.number().int().optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.json()).optional(),
 });
 
 const participantRoleSchema = z.object({
@@ -54,10 +61,10 @@ const templateUpdateSchema = z.object({
   language: z.string().optional(),
   version: z.number().int().optional(),
   isActive: z.boolean().optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.json()).optional(),
   assetId: z.string().nullable().optional(),
-  contentHtml: z.string().nullable().optional(),
-  contentCss: z.string().nullable().optional(),
+  contentHtml: z.string().max(TEMPLATE_CONTENT_LIMITS.html).nullable().optional(),
+  contentCss: z.string().max(TEMPLATE_CONTENT_LIMITS.css).nullable().optional(),
   basePrice: z.number().nullable().optional(),
   pdfOptions: z
     .object({
@@ -137,6 +144,14 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       return new NextResponse("Template not found", { status: 404 });
     }
 
+    const metadata =
+      template.metadata && typeof template.metadata === "object" && !Array.isArray(template.metadata)
+        ? { ...(template.metadata as Record<string, unknown>) }
+        : null;
+    if (metadata && typeof metadata.htmlCss === "string") {
+      metadata.htmlCss = sanitizeTemplateCss(metadata.htmlCss);
+    }
+
     return NextResponse.json({
       id: template.id,
       slug: template.slug,
@@ -146,8 +161,8 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       locale: template.locale,
       version: template.version,
       isActive: template.isActive,
-      contentHtml: template.content,
-      metadata: template.metadata ?? null,
+      contentHtml: template.content ? sanitizeTemplateHtml(template.content) : template.content,
+      metadata,
       documentType: {
         name: template.documentType.name,
         nameAr: template.documentType.nameAr,
@@ -197,8 +212,10 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       updatedAt: template.updatedAt.toISOString(),
     });
   } catch (error) {
-    console.error("Error fetching template:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError(
+      { route: "/api/templates/[slug]", operation: "get_template" },
+      error,
+    );
   }
 }
 
@@ -223,7 +240,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     }
     data = parsed.data;
   } catch (error) {
-    console.error("Invalid JSON payload:", error);
+    logApiError({ route: "/api/templates/[slug]", operation: "parse_request" }, error);
     return NextResponse.json({ message: "Unable to parse request body" }, { status: 400 });
   }
 
@@ -245,8 +262,14 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       return new NextResponse("Template not found", { status: 404 });
     }
 
+    const sanitizedContent = sanitizeTemplateContent(data.contentHtml, data.contentCss);
+
     const nextContent =
-      data.contentHtml === undefined ? template.content : data.contentHtml;
+      sanitizedContent.contentHtml === undefined
+        ? template.content
+          ? sanitizeTemplateHtml(template.content)
+          : template.content
+        : sanitizedContent.contentHtml;
     const shouldValidate =
       data.isActive === true || (template.isActive && data.contentHtml !== undefined);
 
@@ -299,8 +322,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       if (data.basePrice !== undefined) {
         mergedMetadata.basePrice = data.basePrice;
       }
-      if (data.contentCss !== undefined) {
-        mergedMetadata.htmlCss = data.contentCss;
+      if (sanitizedContent.contentCss !== undefined) {
+        mergedMetadata.htmlCss = sanitizedContent.contentCss;
       }
       if (data.pdfOptions !== undefined) {
         mergedMetadata.pdfOptions = data.pdfOptions;
@@ -376,7 +399,10 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
           isActive: data.isActive ?? undefined,
           metadata: metadataValue,
           assetId: data.assetId === undefined ? undefined : data.assetId,
-          content: data.contentHtml === undefined ? undefined : data.contentHtml,
+          content:
+            sanitizedContent.contentHtml === undefined
+              ? undefined
+              : sanitizedContent.contentHtml,
           documentTypeId,
           categoryId,
         },
@@ -502,8 +528,10 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
     return NextResponse.json({ id: updated.id, slug: updated.slug });
   } catch (error) {
-    console.error("Error updating template:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError(
+      { route: "/api/templates/[slug]", operation: "update_template" },
+      error,
+    );
   }
 }
 
@@ -541,7 +569,9 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
     return NextResponse.json({ message: "Template deleted" });
   } catch (error) {
-    console.error("Error deleting template:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError(
+      { route: "/api/templates/[slug]", operation: "delete_template" },
+      error,
+    );
   }
 }

@@ -26,6 +26,7 @@ export default function DocumentPrintPage() {
         id="document-print-frame"
         title="document-print"
         src={`/api/documents/${documentId}/preview`}
+        sandbox="allow-same-origin allow-modals"
         onLoad={handleIframeLoad}
         className="h-full w-full"
       />

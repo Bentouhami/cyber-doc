@@ -12,7 +12,10 @@ import { signOut } from "@/lib/auth-client";
 import { translateRoleName } from "@/utils/roles";
 
 const LanguageSwitcher = dynamic(
-  () => import("@/components/language-switcher").then((mod) => mod.LanguageSwitcher),
+  () =>
+    import("@/components/language-switcher").then(
+      (mod) => mod.LanguageSwitcher,
+    ),
   { ssr: false },
 );
 
@@ -38,9 +41,12 @@ export function AdminHeader() {
       className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70"
       dir={dir}
     >
-      <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-2 px-4 sm:gap-6 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4">
-          <Link href="/admin" className="flex items-center gap-2 font-semibold tracking-tight">
+          <Link
+            href="/admin"
+            className="flex items-center gap-2 font-semibold tracking-tight"
+          >
             <ShieldCheck className="h-5 w-5" />
             <span>{t("navigation.brand")}</span>
           </Link>
@@ -48,21 +54,28 @@ export function AdminHeader() {
             {t("roles.labels.admin")}
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 sm:gap-3">
           <LanguageSwitcher />
           <ThemeToggle />
           {user ? (
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-sm font-semibold leading-tight">{t("user.greeting", { name: user.displayName })}</p>
+            <div className="flex items-center gap-1 sm:gap-3">
+              <div className="hidden text-right sm:block">
+                <p className="text-sm font-semibold leading-tight">
+                  {t("user.greeting", { name: user.displayName })}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {user.roles.length
-                    ? user.roles.map((role) => translateRoleName(role.name, t)).join(" • ")
+                    ? user.roles
+                        .map((role) => translateRoleName(role.name, t))
+                        .join(" • ")
                     : t("employees.noRole")}
                 </p>
               </div>
-              <Avatar className="border">
-                <AvatarImage src={user.image ?? undefined} alt={user.displayName} />
+              <Avatar className="hidden border sm:flex">
+                <AvatarImage
+                  src={user.image ?? undefined}
+                  alt={user.displayName}
+                />
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <Button

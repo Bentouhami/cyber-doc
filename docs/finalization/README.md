@@ -2,6 +2,22 @@
 
 This folder contains the end-to-end project health audit and finalization plan.
 
+## Current release authority
+
+Use these files for the current `release/v1.0.0-candidate` decision:
+
+- `../../tasks/todo.md` — live production-readiness work and acceptance criteria;
+- `rc-smoke-report.md` — latest verified technical evidence;
+- `rc-open-issues.md` — current blocking conditions and risks;
+- `rc-go-no-go.md` — authoritative release decision;
+- `deploy-runbook.md` and `backup-restore-checklist.md` — operations procedure;
+- `release-notes-v1.0.0-rc.md` — current runtime and product summary.
+
+Files and evidence dated March 2026 are historical records. Their old npm
+commands, dependency versions, result counts and GO statements describe the
+state at that time and must not be reused as current instructions. CyberDoc now
+uses pnpm exclusively; see the root `README.md` and `AGENTS.md`.
+
 ## Files
 
 - `2026-03-18-project-context-and-health-audit.md`
@@ -32,9 +48,10 @@ This folder contains the end-to-end project health audit and finalization plan.
 3. Execute the finalization checklist phase by phase until release-ready.
 4. Use `project-master-plan.md` as the live execution tracker (owner/status/due).
 
-## Latest steering docs
+## Product context and historical steering docs
 
-For the latest feature-level inventory and release execution plan, use:
+Use these documents for product history and the earlier baseline. Resolve any
+status conflict in favor of the current release authority listed above:
 
 - `../project-state/mission-and-product-scope.md`
 - `../project-state/feature-inventory.md`

@@ -9,7 +9,8 @@
     "admin": {
       "dashboard": "لوحة التحكم",
       "employees": "الموظفون",
-      "templateRequests": "طلبات النماذج"
+      "templateRequests": "طلبات النماذج",
+      "activity": "سجل الأنشطة"
     },
     "employee": {
       "home": "الرئيسية",
@@ -110,7 +111,58 @@
     "employeesAction": "فتح الموظفين",
     "requestsTitle": "طلبات النماذج",
     "requestsDescription": "مراجعة الطلبات المعلقة المرسلة من الموظفين.",
-    "requestsAction": "فتح الطلبات"
+    "requestsAction": "فتح الطلبات",
+    "activityTitle": "سجل الأنشطة",
+    "activityDescription": "مراجعة الإجراءات الحساسة المسجلة في المنصة.",
+    "activityAction": "فتح السجل"
+  },
+  "activityAudit": {
+    "badge": "التتبع الإداري",
+    "title": "سجل الأنشطة",
+    "subtitle": "راجع الإجراءات الحساسة ومن قام بها والموارد المعنية. لا يحل هذا السجل محل سياسة احتفاظ تنظيمية.",
+    "listTitle": "الأنشطة المسجلة",
+    "tableLabel": "قائمة الأنشطة المسجلة",
+    "loading": "جارٍ تحميل سجل الأنشطة",
+    "results": "يتم عرض {{count}} نشاط من أصل {{total}} — الصفحة {{page}} من {{totalPages}}",
+    "columns": {
+      "type": "النشاط",
+      "actor": "المنفذ",
+      "resource": "المورد",
+      "date": "التاريخ"
+    },
+    "filters": {
+      "title": "عوامل التصفية",
+      "description": "حدد البحث بدقة. تبقى عوامل التصفية المطبقة في عنوان الصفحة.",
+      "q": "البحث",
+      "qPlaceholder": "النوع أو المورد أو المعرف أو المنفذ",
+      "activityType": "نوع النشاط",
+      "activityTypePlaceholder": "مثال: CREATE_DOCUMENT",
+      "resourceType": "نوع المورد",
+      "resourceTypePlaceholder": "مثال: DOCUMENT",
+      "userId": "معرف المنفذ",
+      "userIdPlaceholder": "المعرف الدقيق",
+      "from": "ابتداءً من",
+      "to": "حتى",
+      "pageSize": "النتائج في الصفحة",
+      "apply": "تطبيق عوامل التصفية",
+      "reset": "إعادة الضبط",
+      "hint": "تستخدم التواريخ منطقتك الزمنية."
+    },
+    "empty": {
+      "title": "لم يتم العثور على أنشطة",
+      "description": "عدّل عوامل التصفية أو أعد ضبط البحث."
+    },
+    "error": {
+      "title": "السجل غير متاح",
+      "description": "تعذر تحميل سجل الأنشطة.",
+      "retry": "إعادة المحاولة"
+    },
+    "pagination": {
+      "label": "ترقيم صفحات سجل الأنشطة",
+      "previous": "السابق",
+      "next": "التالي",
+      "current": "الصفحة {{page}} من {{totalPages}}"
+    }
   },
   "employeeStatus": {
     "activate": "تفعيل الحساب",
@@ -233,6 +285,7 @@
     },
     "bulk": {
       "selectAllVisible": "تحديد كل النتائج الظاهرة",
+      "selectTemplate": "تحديد {{title}}",
       "selectedCount": "{{count}} محدد",
       "publish": "نشر جماعي",
       "unpublish": "إلغاء نشر جماعي",
@@ -370,6 +423,9 @@
     "blockTypeNumber": "رقم",
     "blockTypeParagraph": "فقرة",
     "blockTypeSignature": "توقيع",
+    "moveBlockUp": "رفع الكتلة",
+    "moveBlockDown": "خفض الكتلة",
+    "removeBlock": "حذف الكتلة",
     "blockLabelFr": "Ex: Nom complet",
     "blockLabelAr": "مثال: الاسم الكامل",
     "blockLabelFrLabel": "Libellé visible (FR)",

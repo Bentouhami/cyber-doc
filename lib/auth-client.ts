@@ -1,5 +1,5 @@
 import { createAuthClient } from "better-auth/react";
 
-export const { signIn, signUp, signOut, useSession } = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL,
-});
+// The auth API is served by this application. Using the browser's current origin
+// keeps session cookies valid across local aliases and preview hostnames.
+export const { signIn, signUp, signOut, useSession } = createAuthClient();

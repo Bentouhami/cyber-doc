@@ -1,0 +1,39 @@
+version: 2
+
+updates:
+  # GitHub names the JavaScript ecosystem "npm"; it also updates pnpm lockfiles.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Brussels
+    open-pull-requests-limit: 5
+    groups:
+      next-react:
+        patterns:
+          - next
+          - react
+          - react-dom
+          - eslint-config-next
+          - "@next/*"
+          - "@types/react*"
+      prisma:
+        patterns:
+          - prisma
+          - "@prisma/*"
+      authentication:
+        patterns:
+          - better-auth
+          - "@auth/*"
+    versioning-strategy: increase
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:30"
+      timezone: Europe/Brussels
+    open-pull-requests-limit: 3

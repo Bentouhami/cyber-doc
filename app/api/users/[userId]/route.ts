@@ -4,9 +4,10 @@ import { hash } from "bcryptjs";
 import { hashPassword as betterAuthHashPassword } from "better-auth/crypto";
 
 import { ensureAdminUser } from "@/lib/admin-auth";
+import { internalServerError, logApiError } from "@/lib/api-error";
 import prisma from "@/lib/prisma";
+import { updateUserSchema, userValidationIssues } from "@/lib/user-validation";
 import { mapUserToEmployeeDTO } from "@/mappers/EmployeeMapper";
-import { parseRoleNames } from "../utils";
 
 type RouteContext = {
   params: Promise<{ userId: string }>;
@@ -33,8 +34,10 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
 
     return NextResponse.json(mapUserToEmployeeDTO(user));
   } catch (error) {
-    console.error(`Error retrieving user ${userId}:`, error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError(
+      { route: "/api/users/[userId]", operation: "get_user" },
+      error,
+    );
   }
 }
 
@@ -46,32 +49,31 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   }
   const { currentUser } = adminCheck;
 
+  const body: unknown = await req.json().catch((error: unknown) => {
+    logApiError({ route: "/api/users/[userId]", operation: "parse_request" }, error);
+    return undefined;
+  });
+  if (body === undefined) {
+    return NextResponse.json(
+      { message: "Unable to parse request body", code: "INVALID_JSON" },
+      { status: 400 },
+    );
+  }
+
+  const parsed = updateUserSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      {
+        message: "Invalid user payload",
+        code: "INVALID_USER_PAYLOAD",
+        issues: userValidationIssues(parsed.error),
+      },
+      { status: 400 },
+    );
+  }
+  const { firstName, lastName, email, password, roleNames, isActive } = parsed.data;
+
   try {
-    const body = await req.json();
-    const {
-      firstName,
-      lastName,
-      email,
-      password,
-      roleNames: rawRoleNames,
-      isActive,
-    } = body as Record<string, unknown>;
-
-    if (
-      typeof firstName === "undefined" &&
-      typeof lastName === "undefined" &&
-      typeof email === "undefined" &&
-      typeof password === "undefined" &&
-      typeof rawRoleNames === "undefined" &&
-      typeof isActive === "undefined"
-    ) {
-      return new NextResponse("No updates provided", { status: 400 });
-    }
-
-    if (typeof isActive !== "undefined" && typeof isActive !== "boolean") {
-      return new NextResponse("Invalid isActive value", { status: 400 });
-    }
-
     if (currentUser.id === userId && isActive === false) {
       return new NextResponse("You cannot deactivate your own account", { status: 403 });
     }
@@ -84,22 +86,21 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       return new NextResponse("User not found", { status: 404 });
     }
 
-    if (typeof email === "string" && email !== existingUser.email) {
-      const emailInUse = await prisma.user.findUnique({
-        where: { email },
+    if (email && email.toLowerCase() !== existingUser.email.toLowerCase()) {
+      const emailInUse = await prisma.user.findFirst({
+        where: {
+          email: { equals: email, mode: "insensitive" },
+          id: { not: userId },
+        },
         select: { id: true },
       });
 
       if (emailInUse) {
-        return new NextResponse("Email already in use", { status: 409 });
+        return NextResponse.json(
+          { message: "Email already in use", code: "EMAIL_ALREADY_IN_USE" },
+          { status: 409 },
+        );
       }
-    }
-
-    const roleNames =
-      typeof rawRoleNames === "undefined" ? undefined : parseRoleNames(rawRoleNames);
-
-    if (typeof rawRoleNames !== "undefined" && !roleNames) {
-      return new NextResponse("Invalid roles payload", { status: 400 });
     }
 
     if (
@@ -110,21 +111,15 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       return new NextResponse("You cannot remove your own admin role", { status: 403 });
     }
 
-    const updatedFirstName =
-      typeof firstName === "string" ? firstName : existingUser.firstName;
-    const updatedLastName =
-      typeof lastName === "string" ? lastName : existingUser.lastName;
-    const updatedEmail =
-      typeof email === "string" ? email : existingUser.email;
+    const updatedFirstName = firstName ?? existingUser.firstName;
+    const updatedLastName = lastName ?? existingUser.lastName;
+    const updatedEmail = email ?? existingUser.email;
 
     const passwordHash =
-      typeof password === "string" && password.length > 0
-        ? await hash(password, 10)
-        : undefined;
+      password ? await hash(password, 10) : undefined;
     const credentialPassword =
-      typeof password === "string" && password.length > 0
-        ? await betterAuthHashPassword(password)
-        : undefined;
+      password ? await betterAuthHashPassword(password) : undefined;
+    const shouldRevokeSessions = isActive === false || Boolean(credentialPassword);
 
     const roles = roleNames
       ? await prisma.role.findMany({
@@ -134,7 +129,10 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       : [];
 
     if (roleNames && roles.length !== roleNames.length) {
-      return new NextResponse("Invalid roles payload", { status: 400 });
+      return NextResponse.json(
+        { message: "Invalid roles payload", code: "INVALID_ROLES" },
+        { status: 400 },
+      );
     }
 
     const user = await prisma.$transaction(async (tx) => {
@@ -181,16 +179,8 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         });
       }
 
-      if (typeof email === "string" && email !== existingUser.email) {
-        await tx.account.updateMany({
-          where: {
-            providerId: "credential",
-            userId,
-          },
-          data: {
-            accountId: updatedEmail,
-          },
-        });
+      if (shouldRevokeSessions) {
+        await tx.session.deleteMany({ where: { userId } });
       }
 
       await tx.activityLog.create({
@@ -211,8 +201,16 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
     return NextResponse.json(mapUserToEmployeeDTO(user));
   } catch (error) {
-    console.error(`Error updating user ${userId}:`, error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json(
+        { message: "Email already in use", code: "EMAIL_ALREADY_IN_USE" },
+        { status: 409 },
+      );
+    }
+    return internalServerError(
+      { route: "/api/users/[userId]", operation: "update_user" },
+      error,
+    );
   }
 }
 
@@ -229,28 +227,33 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
   }
 
   try {
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        deletedAt: new Date(),
-        deactivatedAt: new Date(),
-      },
-      include: {
-        roles: { include: { role: true } },
-      },
-    });
+    const user = await prisma.$transaction(async (tx) => {
+      const deletedUser = await tx.user.update({
+        where: { id: userId },
+        data: {
+          deletedAt: new Date(),
+          deactivatedAt: new Date(),
+        },
+        include: {
+          roles: { include: { role: true } },
+        },
+      });
 
-    await prisma.activityLog.create({
-      data: {
-        user: {
-          connect: { id: currentUser.id },
+      await tx.session.deleteMany({ where: { userId } });
+      await tx.activityLog.create({
+        data: {
+          user: {
+            connect: { id: currentUser.id },
+          },
+          resourceType: "User",
+          resourceId: deletedUser.id,
+          activityType: {
+            connect: { name: "UPDATE_EMPLOYEE" },
+          },
         },
-        resourceType: "User",
-        resourceId: user.id,
-        activityType: {
-          connect: { name: "UPDATE_EMPLOYEE" },
-        },
-      },
+      });
+
+      return deletedUser;
     });
 
     return NextResponse.json(mapUserToEmployeeDTO(user));
@@ -262,7 +265,9 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
       return new NextResponse("User not found", { status: 404 });
     }
 
-    console.error(`Error deleting user ${userId}:`, error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError(
+      { route: "/api/users/[userId]", operation: "delete_user" },
+      error,
+    );
   }
 }

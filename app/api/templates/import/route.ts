@@ -3,7 +3,9 @@ import { z } from "zod";
 
 import prisma from "@/lib/prisma";
 import { ensureAdminUser } from "@/lib/admin-auth";
+import { internalServerError, logApiError } from "@/lib/api-error";
 import { findTemplateDuplicateCandidates } from "@/services/templateDuplicateService";
+import { TEMPLATE_CONTENT_LIMITS } from "@/services/templateContentSecurity";
 import { importTemplateWithAsset } from "@/services/templateImportService";
 
 const assetSchema = z.object({
@@ -14,7 +16,7 @@ const assetSchema = z.object({
   storageDriver: z.string().optional(),
   checksum: z.string().optional(),
   version: z.number().int().optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.json()).optional(),
 });
 
 const participantRoleSchema = z.object({
@@ -35,7 +37,7 @@ const fieldSchema = z.object({
   fieldType: z.string().min(1),
   isRequired: z.boolean().optional(),
   defaultValue: z.string().optional(),
-  validationRules: z.record(z.any()).optional(),
+  validationRules: z.record(z.string(), z.json()).optional(),
   placeholder: z.string().optional(),
   placeholderAr: z.string().optional(),
   helpText: z.string().optional(),
@@ -46,7 +48,7 @@ const fieldSchema = z.object({
   section: z.string().optional(),
   sectionAr: z.string().optional(),
   displayOrder: z.number().int().optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.json()).optional(),
 });
 
 const groupAssignmentSchema = z.object({
@@ -64,9 +66,9 @@ const payloadSchema = z.object({
   language: z.string().optional(),
   version: z.number().int().optional(),
   isActive: z.boolean().optional(),
-  metadata: z.record(z.any()).optional(),
-  contentHtml: z.string().nullable().optional(),
-  contentCss: z.string().nullable().optional(),
+  metadata: z.record(z.string(), z.json()).optional(),
+  contentHtml: z.string().max(TEMPLATE_CONTENT_LIMITS.html).nullable().optional(),
+  contentCss: z.string().max(TEMPLATE_CONTENT_LIMITS.css).nullable().optional(),
   pdfOptions: z
     .object({
       format: z.string().optional(),
@@ -124,7 +126,10 @@ export async function POST(request: Request) {
     }
     data = parsed.data;
   } catch (error) {
-    console.error("Invalid JSON payload:", error);
+    logApiError(
+      { route: "/api/templates/import", operation: "parse_request" },
+      error,
+    );
     return NextResponse.json({ message: "Unable to parse request body" }, { status: 400 });
   }
 
@@ -214,8 +219,10 @@ export async function POST(request: Request) {
       slug: template.slug,
     });
   } catch (error) {
-    console.error("Template import failed:", error);
-    const message = error instanceof Error ? error.message : "Template import failed";
-    return NextResponse.json({ message }, { status: 500 });
+    return internalServerError(
+      { route: "/api/templates/import", operation: "import_template" },
+      error,
+      "Template import failed",
+    );
   }
 }

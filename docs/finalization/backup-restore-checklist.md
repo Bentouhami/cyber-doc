@@ -1,9 +1,10 @@
 # Backup & Restore Checklist
 
-Date: 2026-03-22
+Date: 2026-10-30
 
 ## Backup Checklist (pre-release / pre-migration)
 
+- [ ] Record immutable `CYBERDOC_IMAGE` and `CYBERDOC_MIGRATOR_IMAGE` references.
 - [ ] Confirm `DATABASE_URL` points to correct environment.
 - [ ] Create backup directory (`tmp/backups` or secure external location).
 - [ ] Run `pg_dump` custom format.
@@ -33,12 +34,13 @@ PowerShell command:
 ```powershell
 $backupFile = "tmp/backups/<backup-file>.dump"
 pg_restore --clean --if-exists --no-owner --dbname "$env:DATABASE_URL" $backupFile
-npx prisma migrate status
-npm run release:smoke:critical
+pnpm exec prisma migrate status
+pnpm run release:smoke:critical
 ```
 
 ## Retention
 
-- Keep minimum 7 daily backups.
-- Keep one backup for each production release tag.
-- Store at least one copy outside app host.
+- [ ] Apply the backup retention and legal-hold policy approved in
+  `docs/engineering/PRIVACY_OPERATIONS.md`; no duration is assumed by this runbook.
+- [ ] Store the required off-host copy in the approved encrypted backup system.
+- [ ] Test expiry without deleting a recovery point still required by policy.

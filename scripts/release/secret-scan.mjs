@@ -69,6 +69,8 @@ function isPlaceholderSnippet(snippet) {
     s.includes("...") ||
     s.includes("<") ||
     s.includes("localhost") ||
+    s.includes("127.0.0.1") ||
+    s.includes("[::1]") ||
     s.includes("user:password")
   );
 }
@@ -111,18 +113,21 @@ async function run() {
       for (const match of content.matchAll(pattern.re)) {
         const idx = match.index ?? 0;
         const { line, col } = toLineCol(content, idx);
+        const snippet = String(match[0]).slice(0, 120);
         findings.push({
           file: file.replaceAll("\\", "/"),
           line,
           col,
           type: pattern.name,
-          snippet: String(match[0]).slice(0, 120),
+          placeholder: isPlaceholderSnippet(snippet),
         });
       }
     }
   }
 
-  const filteredFindings = findings.filter((finding) => !isPlaceholderSnippet(finding.snippet));
+  const filteredFindings = findings
+    .filter((finding) => !finding.placeholder)
+    .map(({ placeholder: _placeholder, ...finding }) => finding);
 
   const summary = {
     generatedAt: new Date().toISOString(),

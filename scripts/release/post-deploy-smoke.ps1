@@ -12,6 +12,6 @@ if ($AllowEpermSkip) {
 }
 
 Write-Host "[release] Post-deploy critical smoke on $BaseUrl" -ForegroundColor Cyan
-npm run release:smoke:critical
+pnpm run release:smoke:critical
 
 Write-Host "[release] Post-deploy smoke completed." -ForegroundColor Green

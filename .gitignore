@@ -10,6 +10,7 @@
 # production
 /build
 /tmp
+/storage/documents/
 docs/new-to-test/
 
 # debug
@@ -20,9 +21,11 @@ yarn-error.log*
 
 # env files
 .env*
+!.env.example
 
 # vercel
 .vercel
+.neon
 
 # typescript
 *.tsbuildinfo

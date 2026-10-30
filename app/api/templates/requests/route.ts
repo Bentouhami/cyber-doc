@@ -5,19 +5,23 @@ import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/admin-auth";
 import { hasAnyRole } from "@/lib/permissions";
 import { importTemplateWithAsset } from "@/services/templateImportService";
+import {
+  escapeHtmlText,
+  TEMPLATE_TEXT_LIMITS,
+} from "@/services/templateContentSecurity";
 
 export const runtime = "nodejs";
 
 const requestSchema = z.object({
-  title: z.string().min(3),
-  titleAr: z.string().optional(),
+  title: z.string().trim().min(3).max(TEMPLATE_TEXT_LIMITS.title),
+  titleAr: z.string().trim().max(TEMPLATE_TEXT_LIMITS.title).optional(),
   description: z.string().optional(),
   documentType: z.object({
-    name: z.string().min(2),
+    name: z.string().trim().min(2).max(TEMPLATE_TEXT_LIMITS.taxonomyName),
     nameAr: z.string().optional(),
   }),
   category: z.object({
-    name: z.string().min(2),
+    name: z.string().trim().min(2).max(TEMPLATE_TEXT_LIMITS.taxonomyName),
     nameAr: z.string().optional(),
   }),
 });
@@ -61,6 +65,7 @@ export async function POST(request: Request) {
   }
 
   const payload = parsed.data;
+  const safeDisplayTitle = escapeHtmlText(payload.titleAr || payload.title);
   const slug = await ensureUniqueSlug(payload.title);
 
   const template = await importTemplateWithAsset(prisma, {
@@ -87,7 +92,7 @@ export async function POST(request: Request) {
     },
     contentHtml: `
 <div class="page">
-  <h1>${payload.titleAr || payload.title}</h1>
+  <h1>${safeDisplayTitle}</h1>
   <p>نموذج أولي تم إنشاؤه من طرف الموظف ويحتاج مراجعة الإدارة قبل التفعيل.</p>
   <p>الاسم الكامل: {{client.fullName}}</p>
   <p>رقم البطاقة الوطنية: {{client.nationalId}}</p>

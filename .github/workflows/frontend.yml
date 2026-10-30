@@ -1,81 +1,192 @@
-name: Frontend CI
+name: CyberDoc quality gate
+
 on:
   pull_request:
-    branches: [dev]
-    paths:
-      - "app/**"
-      - "components/**"
-      - "lib/**"
-      - "hooks/**"
-      - "prisma/**"
-      - "scripts/**"
-      - "locales/**"
-      - "package.json"
-      - "package-lock.json"
-      - "next.config.ts"
-      - ".github/workflows/frontend.yml"
+    branches: [main, dev, "release/**"]
+  push:
+    branches: [main, dev, "release/**"]
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  QUALITY_BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD^' }}
+  QUALITY_ALLOW_CONSTRAINT_CHANGE: ${{ github.event_name != 'pull_request' && '1' || contains(github.event.pull_request.labels.*.name, 'quality-contract-change-approved') && '1' || '0' }}
 
 jobs:
-  quality-gates:
+  secret-scan:
+    name: Gitleaks secret scan
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: "22.13.0"
-          cache: "npm"
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Scan commits for secrets
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+
+  quality-gates:
+    name: Static, security and build gates
+    runs-on: ubuntu-latest
+    needs: secret-scan
+    timeout-minutes: 15
+    env:
+      GITLEAKS_ALREADY_RUN: "1"
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+        with:
+          version: 12.15.0
+          runtime: node@22.13.0
+          cache: true
+          require-lockfile: true
+          install: false
+
+      - name: Install dependencies without lifecycle scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Generate Prisma client
-        run: npx prisma generate
+        run: pnpm run postinstall
 
-      - name: Lint
-        run: npm run lint
+      - name: Run static, security and production-build gates
+        run: pnpm run quality:verify
 
-      - name: Type-check
-        run: npm run type-check
-
-      - name: i18n audit
-        run: npm run i18n:audit
-
-      - name: Build
-        run: npm run build
-
-  critical-smoke:
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    needs: quality-gates
+    permissions:
+      contents: read
 
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
-          node-version: "22.13.0"
-          cache: "npm"
+          fail-on-severity: high
 
-      - name: Install dependencies
-        run: npm ci
+  container-build:
+    name: Production container targets
+    runs-on: ubuntu-latest
+    needs: quality-gates
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate Compose structure without resolving deployment secrets
+        run: docker compose config --no-interpolate --quiet
+
+      - name: Build migration image
+        run: docker build --target migrator --tag cyberdoc-migrator:ci .
+
+      - name: Build standalone application image
+        run: docker build --target runner --tag cyberdoc-app:ci .
+
+      - name: Verify Chromium launches inside the production image
+        run: >-
+          docker run --rm --entrypoint node cyberdoc-app:ci -e
+          "import('playwright').then(async ({ chromium }) => {
+          const browser = await chromium.launch({
+          executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+          args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+          const page = await browser.newPage();
+          await page.setContent('<h1>CyberDoc container PDF smoke</h1>');
+          const pdf = await page.pdf();
+          await browser.close();
+          if (pdf.length < 1000) process.exit(1);
+          })"
+
+  critical-smoke:
+    name: Database and critical E2E gates
+    runs-on: ubuntu-latest
+    needs: quality-gates
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: cyber_doc_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cyber_doc_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      DATABASE_URL: ${{ format('postgresql://postgres:{0}@127.0.0.1:5432/cyber_doc_ci', secrets.CI_DB_PASSWORD) }}
+      BETTER_AUTH_SECRET: ${{ secrets.CI_BETTER_AUTH_SECRET }}
+      BETTER_AUTH_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+        with:
+          version: 12.15.0
+          runtime: node@22.13.0
+          cache: true
+          require-lockfile: true
+          install: false
+
+      - name: Validate required CI secrets
+        run: |
+          test -n "$CI_DB_PASSWORD" || (echo "CI_DB_PASSWORD is required" && exit 1)
+          test -n "$BETTER_AUTH_SECRET" || (echo "CI_BETTER_AUTH_SECRET is required" && exit 1)
+        env:
+          CI_DB_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
+
+      - name: Install dependencies without lifecycle scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Generate Prisma client
+        run: pnpm run postinstall
+
+      - name: Apply migrations
+        run: pnpm exec prisma migrate deploy
+
+      - name: Seed isolated test database
+        run: pnpm run db:seed
+
+      - name: Verify migration state
+        run: pnpm exec prisma migrate status
 
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run critical E2E smoke suite
-        env:
-          SMOKE_ALLOW_DB_UNAVAILABLE_SKIP: "1"
-        run: npm run test:e2e:critical
+      - name: Run critical E2E suite without skips
+        run: pnpm run test:e2e:critical
 
-      - name: Upload smoke artifacts
+      - name: Upload smoke reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: critical-smoke-artifacts
+          name: critical-smoke-reports
           path: |
             tmp/permissions-smoke/results.json
             tmp/admin-smoke/results.json
             tmp/documents-smoke/results.json
             tmp/ux-check/results.json
             tmp/e2e-critical/results.json
+          if-no-files-found: warn

@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -67,6 +67,7 @@ const SAMPLE_PAYLOAD = {
 }
 
 export function TemplateImportForm() {
+  const router = useRouter()
   const { t, dir } = useLocale()
   const { toast } = useToast()
   const searchParams = useSearchParams()
@@ -124,7 +125,7 @@ export function TemplateImportForm() {
 
       toast({ title: t("templates.importSuccess") })
       if (data.slug) {
-        window.location.href = `/admin/templates/${data.slug}`
+        router.push(`/admin/templates/${data.slug}`)
       }
     } catch (error) {
       toast({
@@ -187,7 +188,7 @@ export function TemplateImportForm() {
 
       toast({ title: t("templates.gap.importSuccess") })
       if (data.slug) {
-        window.location.href = `/admin/templates/${data.slug}`
+        router.push(`/admin/templates/${data.slug}`)
       }
     } catch (error) {
       toast({

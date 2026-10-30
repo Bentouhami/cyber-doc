@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 Write-Host "[release] Running preflight gates..." -ForegroundColor Cyan
-npm run release:preflight
+pnpm run release:preflight
 
 if ($AllowEpermSkip) {
   $env:SMOKE_ALLOW_EPERM_SKIP = "1"
@@ -14,6 +14,6 @@ if ($AllowEpermSkip) {
 $env:SMOKE_BASE_URL = $SmokeBaseUrl
 
 Write-Host "[release] Running critical smoke..." -ForegroundColor Cyan
-npm run release:smoke:critical
+pnpm run release:smoke:critical
 
 Write-Host "[release] Release preparation completed." -ForegroundColor Green

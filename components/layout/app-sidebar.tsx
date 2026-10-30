@@ -3,7 +3,17 @@
 import Link from "next/link";
 import type { ComponentType } from "react";
 import { usePathname } from "next/navigation";
-import { FileClock, FilePlus2, FileText, LayoutDashboard, Layers, Sparkles, UploadCloud, Users } from "lucide-react";
+import {
+  FileClock,
+  FilePlus2,
+  FileText,
+  History,
+  LayoutDashboard,
+  Layers,
+  Sparkles,
+  UploadCloud,
+  Users,
+} from "lucide-react";
 
 import { useLocale } from "@/hooks/use-locale";
 import { cn } from "@/lib/utils";
@@ -23,21 +33,57 @@ export function AppSidebar({ variant }: AppSidebarProps) {
   const { t } = useLocale();
 
   const adminItems: NavItem[] = [
-    { href: "/admin", label: t("navigation.admin.dashboard"), icon: LayoutDashboard },
+    {
+      href: "/admin",
+      label: t("navigation.admin.dashboard"),
+      icon: LayoutDashboard,
+    },
     { href: "/admin/templates", label: t("templates.title"), icon: Layers },
-    { href: "/admin/templates/requests", label: t("navigation.admin.templateRequests"), icon: FileClock },
-    { href: "/admin/templates/new", label: t("templates.createTitle"), icon: FilePlus2 },
-    { href: "/admin/templates/import", label: t("templates.importTitle"), icon: UploadCloud },
-    { href: "/admin/employees", label: t("navigation.admin.employees"), icon: Users },
+    {
+      href: "/admin/templates/requests",
+      label: t("navigation.admin.templateRequests"),
+      icon: FileClock,
+    },
+    {
+      href: "/admin/templates/new",
+      label: t("templates.createTitle"),
+      icon: FilePlus2,
+    },
+    {
+      href: "/admin/templates/import",
+      label: t("templates.importTitle"),
+      icon: UploadCloud,
+    },
+    {
+      href: "/admin/employees",
+      label: t("navigation.admin.employees"),
+      icon: Users,
+    },
+    {
+      href: "/admin/activity",
+      label: t("navigation.admin.activity"),
+      icon: History,
+    },
   ];
 
   const employeeItems: NavItem[] = [
-    { href: "/documents", label: t("navigation.employee.documents"), icon: FileText },
-    { href: "/documents/create", label: t("documents.newDocument"), icon: FilePlus2 },
+    {
+      href: "/documents",
+      label: t("navigation.employee.documents"),
+      icon: FileText,
+    },
+    {
+      href: "/documents/create",
+      label: t("documents.newDocument"),
+      icon: FilePlus2,
+    },
   ];
 
   const items = variant === "admin" ? adminItems : employeeItems;
-  const sectionTitle = variant === "admin" ? t("roles.labels.admin") : t("navigation.employee.documents");
+  const sectionTitle =
+    variant === "admin"
+      ? t("roles.labels.admin")
+      : t("navigation.employee.documents");
 
   return (
     <aside className="hidden w-72 shrink-0 border-r border-border/70 bg-background/70 p-4 backdrop-blur xl:block">
@@ -54,7 +100,10 @@ export function AppSidebar({ variant }: AppSidebarProps) {
           {items.map((item) => {
             const Icon = item.icon;
             const isActive =
-              pathname === item.href || (item.href !== "/admin" && item.href !== "/documents" && pathname.startsWith(item.href));
+              pathname === item.href ||
+              (item.href !== "/admin" &&
+                item.href !== "/documents" &&
+                pathname.startsWith(item.href));
 
             return (
               <Link
@@ -67,7 +116,14 @@ export function AppSidebar({ variant }: AppSidebarProps) {
                     : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
                 )}
               >
-                <Icon className={cn("h-4 w-4", isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
+                <Icon
+                  className={cn(
+                    "h-4 w-4",
+                    isActive
+                      ? "text-primary-foreground"
+                      : "text-muted-foreground group-hover:text-foreground",
+                  )}
+                />
                 <span className="line-clamp-1 font-medium">{item.label}</span>
               </Link>
             );

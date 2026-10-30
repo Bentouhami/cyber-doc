@@ -9,12 +9,42 @@ export async function getAdminTemplateListData(options?: GetTemplateListOptions)
   const prismaAny = prisma as any;
 
   const templates = (await prismaAny.documentTemplate.findMany({
-    include: {
-      documentType: true,
-      category: true,
-      asset: true,
-      participantRoles: true,
-      fields: true,
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      titleAr: true,
+      description: true,
+      locale: true,
+      version: true,
+      isActive: true,
+      content: true,
+      metadata: true,
+      createdAt: true,
+      updatedAt: true,
+      documentType: {
+        select: { name: true, nameAr: true },
+      },
+      category: {
+        select: { name: true, nameAr: true },
+      },
+      asset: {
+        select: { fileName: true, version: true },
+      },
+      participantRoles: {
+        select: {
+          roleKey: true,
+          roleLabel: true,
+          roleLabelAr: true,
+          description: true,
+          isRequired: true,
+          minParticipants: true,
+          maxParticipants: true,
+        },
+      },
+      _count: {
+        select: { fields: true },
+      },
     },
     orderBy: {
       updatedAt: "desc",
@@ -119,7 +149,7 @@ export async function getAdminTemplateListData(options?: GetTemplateListOptions)
       minParticipants: role.minParticipants,
       maxParticipants: role.maxParticipants,
     })),
-    fieldCount: template.fields.length,
+    fieldCount: template._count.fields,
   }));
 
   if (options?.pendingOnly) {

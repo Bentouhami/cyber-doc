@@ -4,6 +4,12 @@ import { z } from "zod";
 
 import prisma from "@/lib/prisma";
 import { ensureAdminUser, getAuthenticatedUser } from "@/lib/admin-auth";
+import { internalServerError, logApiError } from "@/lib/api-error";
+import { hasAnyRole } from "@/lib/permissions";
+import {
+  sanitizeTemplateContent,
+  TEMPLATE_CONTENT_LIMITS,
+} from "@/services/templateContentSecurity";
 import { findTemplateDuplicateCandidates } from "@/services/templateDuplicateService";
 
 const templateCreateSchema = z.object({
@@ -15,9 +21,9 @@ const templateCreateSchema = z.object({
   language: z.string().optional(),
   version: z.number().int().optional(),
   isActive: z.boolean().optional(),
-  metadata: z.record(z.any()).optional(),
-  contentHtml: z.string().nullable().optional(),
-  contentCss: z.string().nullable().optional(),
+  metadata: z.record(z.string(), z.json()).optional(),
+  contentHtml: z.string().max(TEMPLATE_CONTENT_LIMITS.html).nullable().optional(),
+  contentCss: z.string().max(TEMPLATE_CONTENT_LIMITS.css).nullable().optional(),
   basePrice: z.number().nullable().optional(),
   pdfOptions: z
     .object({
@@ -49,7 +55,7 @@ const templateCreateSchema = z.object({
         fieldType: z.string().min(1),
         isRequired: z.boolean().optional(),
         defaultValue: z.string().optional(),
-        validationRules: z.record(z.any()).optional(),
+        validationRules: z.record(z.string(), z.json()).optional(),
         placeholder: z.string().optional(),
         placeholderAr: z.string().optional(),
         helpText: z.string().optional(),
@@ -60,7 +66,7 @@ const templateCreateSchema = z.object({
         section: z.string().optional(),
         sectionAr: z.string().optional(),
         displayOrder: z.number().int().optional(),
-        metadata: z.record(z.any()).optional(),
+        metadata: z.record(z.string(), z.json()).optional(),
       }),
     )
     .optional(),
@@ -121,6 +127,9 @@ export async function GET(request: Request) {
   const authResult = await getAuthenticatedUser(request.headers);
   if ("error" in authResult) {
     return authResult.error;
+  }
+  if (!hasAnyRole(authResult.currentUser, ["employee", "admin"])) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
   const url = new URL(request.url);
@@ -205,8 +214,10 @@ export async function GET(request: Request) {
       })),
     );
   } catch (error) {
-    console.error("Error fetching templates:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError(
+      { route: "/api/templates", operation: "list_templates" },
+      error,
+    );
   }
 }
 
@@ -229,7 +240,7 @@ export async function POST(request: Request) {
     }
     data = parsed.data;
   } catch (error) {
-    console.error("Invalid JSON payload:", error);
+    logApiError({ route: "/api/templates", operation: "parse_request" }, error);
     return NextResponse.json({ message: "Unable to parse request body" }, { status: 400 });
   }
 
@@ -258,10 +269,14 @@ export async function POST(request: Request) {
       ? await ensureUniqueSlug(requestedSlug)
       : await ensureUniqueSlug(fallbackSlugBase);
 
+    const sanitizedContent = sanitizeTemplateContent(data.contentHtml, data.contentCss);
+
     const mergedMetadata = {
       ...(data.metadata ?? {}),
       ...(data.basePrice !== undefined ? { basePrice: data.basePrice } : {}),
-      ...(data.contentCss !== undefined ? { htmlCss: data.contentCss } : {}),
+      ...(sanitizedContent.contentCss !== undefined
+        ? { htmlCss: sanitizedContent.contentCss }
+        : {}),
       ...(data.pdfOptions !== undefined ? { pdfOptions: data.pdfOptions } : {}),
     };
     const nextMetadata = Object.keys(mergedMetadata).length
@@ -320,7 +335,7 @@ export async function POST(request: Request) {
           isActive: data.isActive ?? true,
           metadata: nextMetadata,
           assetId: data.assetId ?? null,
-          content: data.contentHtml ?? null,
+          content: sanitizedContent.contentHtml ?? null,
         },
       });
 
@@ -390,7 +405,9 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Error creating template:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError(
+      { route: "/api/templates", operation: "create_template" },
+      error,
+    );
   }
 }

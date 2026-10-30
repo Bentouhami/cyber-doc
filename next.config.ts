@@ -1,5 +1,7 @@
 import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 
+import { PREVIEW_SECURITY_HEADERS } from "./lib/preview-security-headers";
+
 export default function nextConfig(phase: string) {
   const isDev = phase === PHASE_DEVELOPMENT_SERVER;
   const securityHeaders = [
@@ -19,21 +21,6 @@ export default function nextConfig(phase: string) {
       key: "Permissions-Policy",
       value: "camera=(), microphone=(), geolocation=(), payment=()",
     },
-    {
-      key: "Content-Security-Policy",
-      value: [
-        "default-src 'self'",
-        "base-uri 'self'",
-        "form-action 'self'",
-        "frame-ancestors 'none'",
-        "object-src 'none'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
-        "style-src 'self' 'unsafe-inline' https:",
-        "img-src 'self' data: blob: https:",
-        "font-src 'self' data: https:",
-        "connect-src 'self' https: ws: wss:",
-      ].join("; "),
-    },
   ];
 
   if (!isDev) {
@@ -44,6 +31,9 @@ export default function nextConfig(phase: string) {
   }
 
   return {
+    // The production container copies Next.js' minimal standalone runtime.
+    output: "standalone",
+    allowedDevOrigins: ["127.0.0.1"],
     experimental: {
       turbopackFileSystemCacheForDev: true,
       ...(isDev
@@ -51,10 +41,11 @@ export default function nextConfig(phase: string) {
         : {
             // Stabilize CI/local production builds on Windows where process spawning can fail.
             webpackBuildWorker: false,
-            turbopackPluginRuntimeStrategy: "workerThreads" as const,
-            workerThreads: true,
             cpus: 1,
           }),
+    },
+    outputFileTracingIncludes: {
+      "/api/templates/*/asset": ["./templates_docs/**/*"],
     },
     outputFileTracingExcludes: {
       "/api/documents/generate": ["./next.config.ts"],
@@ -65,6 +56,15 @@ export default function nextConfig(phase: string) {
         {
           source: "/:path*",
           headers: securityHeaders,
+        },
+        {
+          // The final matching rule wins in Next.js 16. Keep document previews
+          // stricter than the application-wide policy that supports app scripts.
+          source: "/api/documents/:documentId/preview",
+          headers: Object.entries(PREVIEW_SECURITY_HEADERS).map(([key, value]) => ({
+            key,
+            value,
+          })),
         },
       ];
     },

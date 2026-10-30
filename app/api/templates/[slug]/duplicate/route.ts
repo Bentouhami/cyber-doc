@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 
 import { ensureAdminUser } from "@/lib/admin-auth";
+import { internalServerError } from "@/lib/api-error";
 import prisma from "@/lib/prisma";
+import {
+  sanitizeTemplateCss,
+  sanitizeTemplateHtml,
+} from "@/services/templateContentSecurity";
 
 type RouteContext = {
   params: Promise<{ slug: string }>;
@@ -97,6 +102,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     const nextMetadata = {
       ...metadata,
+      ...(typeof metadata.htmlCss === "string"
+        ? { htmlCss: sanitizeTemplateCss(metadata.htmlCss) }
+        : {}),
       reviewStatus: "DRAFT",
       sourceTemplateId: template.id,
       duplicatedByUserId: currentUser.id,
@@ -120,7 +128,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           version: 1,
           isActive: false,
           metadata: nextMetadata,
-          content: template.content,
+          content: template.content ? sanitizeTemplateHtml(template.content) : template.content,
           assetId: template.assetId,
         },
       });
@@ -196,7 +204,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Error duplicating template:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError(
+      { route: "/api/templates/[slug]/duplicate", operation: "duplicate_template" },
+      error,
+    );
   }
 }

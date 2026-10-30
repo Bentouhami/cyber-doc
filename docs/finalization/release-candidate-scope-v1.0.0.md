@@ -17,6 +17,7 @@ Freeze a safe, production-ready commit set while excluding local/test/private ar
 - `locales/**`
 - `mappers/**`
 - `services/**`
+- `templates_docs/**` (assets Word hérités référencés par les données seedées)
 - `scripts/**`
 - `types/**`
 - `package.json`
@@ -29,20 +30,21 @@ Freeze a safe, production-ready commit set while excluding local/test/private ar
 
 - `tmp/**` (generated reports)
 - `storage/**` (generated customer documents / local assets)
-- `templates_docs/**` (raw source Word files / possible PII)
 - `docs/new-to-test/**` (sandbox test assets)
 - `.codex/skills/ui-ux-pro-max/**` (local skill bundle copy)
 
 ## Why this split
 
 - Keeps only application/runtime code + release docs/checklists.
-- Excludes local generated artifacts and source legal docs that are not required for production runtime.
+- Excludes local generated artifacts. The reviewed, tracked legacy Word assets are
+  included because seeded `TemplateAsset` rows require them at runtime; product/legal
+  approval of their contents remains mandatory before release.
 - Reduces risk of pushing sensitive or non-essential content.
 
 ## Execution sequence
 
 1. Run pre-check:
-   - `npm run release:secret-scan`
+   - `pnpm run release:secret-scan`
 2. Apply scope (stage keep paths only):
    - use `scripts/release/prepare-freeze-scope.ps1 -Apply`
 3. Inspect staged diff:
@@ -50,7 +52,7 @@ Freeze a safe, production-ready commit set while excluding local/test/private ar
 4. Stash deferred leftovers safely:
    - `git stash push -u -m "defer non-release artifacts before v1.0.0 freeze"`
 5. Verify freeze:
-   - `npm run release:freeze-audit`
+   - `pnpm run release:freeze-audit`
 6. Continue release gates:
-   - `npm run release:preflight`
-   - `npm run test:e2e:critical`
+   - `pnpm run release:preflight`
+   - `pnpm run test:e2e:critical`

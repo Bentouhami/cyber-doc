@@ -1,137 +1,171 @@
-"use client"
+"use client";
 
-import { useEffect, useMemo, useState } from "react"
-import { Download, Printer, Wallet } from "lucide-react"
+import { useEffect, useMemo, useState } from "react";
+import { Download, Printer, Wallet } from "lucide-react";
 
-import { useLocale } from "@/hooks/use-locale"
-import { useUserProfile } from "@/components/providers/user-profile-provider"
-import { useToast } from "@/hooks/use-toast"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
+import { useLocale } from "@/hooks/use-locale";
+import { useUserProfile } from "@/components/providers/user-profile-provider";
+import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 
 export type DocumentDetailData = {
-  id: string
-  templateTitle: string
-  templateSlug: string
-  templateHasHtml: boolean
-  templateCategory?: string | null
-  statusName: string
-  statusColor?: string | null
-  createdAt: string
-  createdByName: string
-  fileName?: string | null
-  filePath?: string | null
-  chargedTotal?: string | null
-  unitPrice?: string | null
-  amountPaid?: string | null
-  changeGiven?: string | null
-  currency: string
-  totalCopies: number
-  paymentStatus?: string | null
-  paidAt?: string | null
+  id: string;
+  templateTitle: string;
+  templateSlug: string;
+  templateHasHtml: boolean;
+  templateCategory?: string | null;
+  statusName: string;
+  statusColor?: string | null;
+  createdAt: string;
+  createdByName: string;
+  fileName?: string | null;
+  filePath?: string | null;
+  chargedTotal?: string | null;
+  unitPrice?: string | null;
+  amountPaid?: string | null;
+  changeGiven?: string | null;
+  currency: string;
+  totalCopies: number;
+  paymentStatus?: string | null;
+  paidAt?: string | null;
   fieldValues: {
-    id: string
-    label: string
-    labelAr?: string | null
-    value: string
-  }[]
+    id: string;
+    label: string;
+    labelAr?: string | null;
+    value: string;
+  }[];
   participants: {
-    id: string
-    roleKey: string
-    roleLabel?: string | null
-    roleLabelAr?: string | null
-    fullName?: string | null
-    fullNameAr?: string | null
-    nationalId?: string | null
-  }[]
-}
+    id: string;
+    roleKey: string;
+    roleLabel?: string | null;
+    roleLabelAr?: string | null;
+    fullName?: string | null;
+    fullNameAr?: string | null;
+    nationalId?: string | null;
+  }[];
+};
 
 type DocumentDetailProps = {
-  document: DocumentDetailData
-}
+  document: DocumentDetailData;
+};
 
 export function DocumentDetail({ document }: DocumentDetailProps) {
-  const { t, dir } = useLocale()
-  const { user } = useUserProfile()
-  const { toast } = useToast()
+  const { t, dir } = useLocale();
+  const { user } = useUserProfile();
+  const { toast } = useToast();
 
   const isCashier = useMemo(
-    () => user?.roles?.some((role) => role.name === "employee" || role.name === "admin"),
+    () =>
+      user?.roles?.some(
+        (role) => role.name === "employee" || role.name === "admin",
+      ),
     [user?.roles],
-  )
+  );
 
-  const [paymentStatus, setPaymentStatus] = useState(document.paymentStatus ?? "UNPAID")
-  const [unitPrice, setUnitPrice] = useState(document.unitPrice ?? document.chargedTotal ?? "")
-  const [amountPaid, setAmountPaid] = useState(document.amountPaid ?? "")
-  const [changeGiven, setChangeGiven] = useState(document.changeGiven ?? "")
-  const [copies, setCopies] = useState(String(Math.max(1, document.totalCopies)))
-  const [isPaying, setIsPaying] = useState(false)
-  const [isPrinting, setIsPrinting] = useState(false)
-  const canRenderPdf = document.templateHasHtml
-  const uiLocale = dir === "rtl" ? "ar-MA" : "fr-FR"
+  const [paymentStatus, setPaymentStatus] = useState(
+    document.paymentStatus ?? "UNPAID",
+  );
+  const [unitPrice, setUnitPrice] = useState(
+    document.unitPrice ?? document.chargedTotal ?? "",
+  );
+  const [amountPaid, setAmountPaid] = useState(document.amountPaid ?? "");
+  const [changeGiven, setChangeGiven] = useState(document.changeGiven ?? "");
+  const [chargedTotal, setChargedTotal] = useState(
+    document.chargedTotal ?? "",
+  );
+  const [copies, setCopies] = useState(
+    String(Math.max(1, document.totalCopies)),
+  );
+  const [isPaying, setIsPaying] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const canRenderPdf = document.templateHasHtml;
+  const uiLocale = dir === "rtl" ? "ar-MA" : "fr-FR";
 
-  useEffect(() => {
-    const charged = document.chargedTotal ? Number(document.chargedTotal) : 0
-    const paid = amountPaid ? Number(amountPaid) : 0
-    if (!charged && !paid) {
-      setPaymentStatus("UNPAID")
-      return
-    }
-    const nextStatus = paid >= charged ? "PAID" : paid > 0 ? "PARTIAL" : "UNPAID"
-    setPaymentStatus(nextStatus)
-  }, [amountPaid, document.chargedTotal])
+  const updateAmountPaid = (value: string) => {
+    setAmountPaid(value);
+    const charged = chargedTotal ? Number(chargedTotal) : 0;
+    const paid = value ? Number(value) : 0;
+    setPaymentStatus(
+      paid >= charged && charged > 0 ? "PAID" : paid > 0 ? "PARTIAL" : "UNPAID",
+    );
+  };
 
   const statusStyle = document.statusColor
-    ? { backgroundColor: `${document.statusColor}20`, color: document.statusColor }
-    : undefined
+    ? { borderColor: document.statusColor }
+    : undefined;
 
   const handlePayment = async () => {
-    setIsPaying(true)
+    setIsPaying(true);
     try {
       const response = await fetch(`/api/documents/${document.id}/payment`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          unitPrice: unitPrice ? Number(unitPrice) : undefined,
-          amountPaid: amountPaid ? Number(amountPaid) : undefined,
-          paymentStatus,
-          paidAt: paymentStatus === "PAID" ? new Date().toISOString() : undefined,
-          currency: document.currency,
+          unitPrice: unitPrice === "" ? undefined : Number(unitPrice),
+          amountPaid: amountPaid === "" ? undefined : Number(amountPaid),
         }),
-      })
+      });
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.message || "Payment update failed")
+        const data = await response.json();
+        throw new Error(data.message || "Payment update failed");
       }
 
-      const data = await response.json()
+      const data = await response.json();
       if (data && typeof data === "object") {
-        if ("amountPaid" in data && data.amountPaid) {
-          setAmountPaid(String(data.amountPaid))
+        if (
+          "chargedTotal" in data &&
+          data.chargedTotal !== null &&
+          data.chargedTotal !== undefined
+        ) {
+          setChargedTotal(String(data.chargedTotal));
         }
-        if ("changeGiven" in data && data.changeGiven) {
-          setChangeGiven(String(data.changeGiven))
+        if (
+          "amountPaid" in data &&
+          data.amountPaid !== null &&
+          data.amountPaid !== undefined
+        ) {
+          setAmountPaid(String(data.amountPaid));
+        }
+        if (
+          "changeGiven" in data &&
+          data.changeGiven !== null &&
+          data.changeGiven !== undefined
+        ) {
+          setChangeGiven(String(data.changeGiven));
+        }
+        if (
+          "paymentStatus" in data &&
+          typeof data.paymentStatus === "string"
+        ) {
+          setPaymentStatus(data.paymentStatus);
         }
       }
-      toast({ title: t("documents.detail.paymentSaved") })
+      toast({ title: t("documents.detail.paymentSaved") });
     } catch (error) {
       toast({
         title: t("documents.detail.paymentError"),
-        description: error instanceof Error ? error.message : "Payment update failed",
+        description:
+          error instanceof Error ? error.message : "Payment update failed",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsPaying(false)
+      setIsPaying(false);
     }
-  }
+  };
 
   const handlePrint = async () => {
-    setIsPrinting(true)
+    setIsPrinting(true);
     try {
       const response = await fetch(`/api/documents/${document.id}/print`, {
         method: "POST",
@@ -139,24 +173,24 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
         body: JSON.stringify({
           copies: copies ? Number(copies) : 1,
         }),
-      })
+      });
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.message || "Print failed")
+        const data = await response.json();
+        throw new Error(data.message || "Print failed");
       }
 
-      toast({ title: t("documents.detail.printQueued") })
+      toast({ title: t("documents.detail.printQueued") });
     } catch (error) {
       toast({
         title: t("documents.detail.printError"),
         description: error instanceof Error ? error.message : "Print failed",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsPrinting(false)
+      setIsPrinting(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-6" dir={dir}>
@@ -164,10 +198,17 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
         <CardHeader className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <CardTitle className="text-2xl">{document.templateTitle}</CardTitle>
-              <CardDescription>{document.templateCategory ?? t("documents.detail.uncategorized")}</CardDescription>
+              <CardTitle className="text-2xl">
+                {document.templateTitle}
+              </CardTitle>
+              <CardDescription>
+                {document.templateCategory ??
+                  t("documents.detail.uncategorized")}
+              </CardDescription>
             </div>
-            <Badge style={statusStyle}>{document.statusName}</Badge>
+            <Badge variant="outline" style={statusStyle}>
+              {document.statusName}
+            </Badge>
           </div>
           <div className="text-sm text-muted-foreground">
             {t("documents.detail.createdAt")}:{" "}
@@ -182,19 +223,32 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
             {t("documents.detail.createdBy")}: {document.createdByName}
           </Badge>
           <Badge variant="outline">
-            {t("documents.detail.amount")}: {document.chargedTotal ?? "—"} {document.currency}
+            {t("documents.detail.amount")}: {document.chargedTotal ?? "—"}{" "}
+            {document.currency}
           </Badge>
           <Badge variant="outline">
             {t("documents.detail.copies")}: {document.totalCopies}
           </Badge>
-          <Button asChild variant="outline" disabled={!document.filePath || !canRenderPdf}>
+          <Button
+            asChild
+            variant="outline"
+            disabled={!document.filePath || !canRenderPdf}
+          >
             <a href={`/api/documents/${document.id}/download`}>
               <Download className="mr-2 h-4 w-4" />
               {t("documents.detail.download")}
             </a>
           </Button>
-          <Button asChild variant="outline" disabled={!document.filePath || !canRenderPdf}>
-            <a href={`/documents/${document.id}/print`} target="_blank" rel="noreferrer">
+          <Button
+            asChild
+            variant="outline"
+            disabled={!document.filePath || !canRenderPdf}
+          >
+            <a
+              href={`/documents/${document.id}/print`}
+              target="_blank"
+              rel="noreferrer"
+            >
               <Printer className="mr-2 h-4 w-4" />
               {t("documents.detail.printView")}
             </a>
@@ -212,6 +266,7 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
               <iframe
                 title="document-preview"
                 src={`/api/documents/${document.id}/preview`}
+                sandbox=""
                 className="h-[680px] w-full"
               />
             </div>
@@ -237,12 +292,18 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
           {document.fieldValues.length ? (
             document.fieldValues.map((field) => (
               <div key={field.id} className="rounded-lg border p-3">
-                <div className="text-sm font-medium">{field.labelAr || field.label}</div>
-                <div className="text-sm text-muted-foreground">{field.value || "—"}</div>
+                <div className="text-sm font-medium">
+                  {field.labelAr || field.label}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {field.value || "—"}
+                </div>
               </div>
             ))
           ) : (
-            <p className="text-sm text-muted-foreground">{t("documents.detail.noFields")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("documents.detail.noFields")}
+            </p>
           )}
         </CardContent>
       </Card>
@@ -256,18 +317,24 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
             document.participants.map((participant) => (
               <div key={participant.id} className="rounded-lg border p-3">
                 <div className="text-sm font-medium">
-                  {participant.roleLabelAr || participant.roleLabel || participant.roleKey}
+                  {participant.roleLabelAr ||
+                    participant.roleLabel ||
+                    participant.roleKey}
                 </div>
                 <div className="text-sm text-muted-foreground">
                   {participant.fullNameAr || participant.fullName || "—"}
                 </div>
                 {participant.nationalId ? (
-                  <div className="text-xs text-muted-foreground">{participant.nationalId}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {participant.nationalId}
+                  </div>
                 ) : null}
               </div>
             ))
           ) : (
-            <p className="text-sm text-muted-foreground">{t("documents.detail.noParticipants")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("documents.detail.noParticipants")}
+            </p>
           )}
         </CardContent>
       </Card>
@@ -280,27 +347,39 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
                 <Wallet className="h-4 w-4" />
                 {t("documents.detail.paymentTitle")}
               </CardTitle>
-              <CardDescription>{t("documents.detail.paymentDescription")}</CardDescription>
+              <CardDescription>
+                {t("documents.detail.paymentDescription")}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
                 <div className="flex items-center justify-between">
                   <span>{t("documents.detail.amount")}</span>
-                  <span>{document.chargedTotal ?? "—"} {document.currency}</span>
+                  <span>
+                    {chargedTotal || "—"} {document.currency}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>{t("documents.detail.amountPaid")}</span>
-                  <span>{amountPaid || "—"} {document.currency}</span>
+                  <span>
+                    {amountPaid || "—"} {document.currency}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>{t("documents.detail.changeGiven")}</span>
-                  <span>{changeGiven || "—"} {document.currency}</span>
+                  <span>
+                    {changeGiven || "—"} {document.currency}
+                  </span>
                 </div>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <Input
                   type="number"
                   inputMode="decimal"
+                  min={0}
+                  max={99_999_999.99}
+                  step="0.01"
+                  aria-label={t("documents.detail.unitPrice")}
                   value={unitPrice}
                   onChange={(event) => setUnitPrice(event.target.value)}
                   placeholder={t("documents.detail.unitPrice")}
@@ -308,23 +387,31 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
                 <Input
                   type="number"
                   inputMode="decimal"
+                  min={0}
+                  max={99_999_999.99}
+                  step="0.01"
+                  aria-label={t("documents.detail.amountPaid")}
                   value={amountPaid}
-                  onChange={(event) => setAmountPaid(event.target.value)}
+                  onChange={(event) => updateAmountPaid(event.target.value)}
                   placeholder={t("documents.detail.amountPaid")}
                 />
               </div>
-              <Select value={paymentStatus} onValueChange={setPaymentStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("documents.detail.paymentStatus")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="UNPAID">{t("documents.detail.paymentStatusUnpaid")}</SelectItem>
-                  <SelectItem value="PARTIAL">{t("documents.detail.paymentStatusPartial")}</SelectItem>
-                  <SelectItem value="PAID">{t("documents.detail.paymentStatusPaid")}</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                <span>{t("documents.detail.paymentStatus")}</span>
+                <Badge variant="secondary">
+                  {t(
+                    paymentStatus === "PAID"
+                      ? "documents.detail.paymentStatusPaid"
+                      : paymentStatus === "PARTIAL"
+                        ? "documents.detail.paymentStatusPartial"
+                        : "documents.detail.paymentStatusUnpaid",
+                  )}
+                </Badge>
+              </div>
               <Button onClick={handlePayment} disabled={isPaying}>
-                {isPaying ? t("documents.detail.paymentSaving") : t("documents.detail.paymentAction")}
+                {isPaying
+                  ? t("documents.detail.paymentSaving")
+                  : t("documents.detail.paymentAction")}
               </Button>
             </CardContent>
           </Card>
@@ -335,7 +422,9 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
                 <Printer className="h-4 w-4" />
                 {t("documents.detail.printTitle")}
               </CardTitle>
-              <CardDescription>{t("documents.detail.printDescription")}</CardDescription>
+              <CardDescription>
+                {t("documents.detail.printDescription")}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <Input
@@ -346,7 +435,9 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
                 placeholder={t("documents.detail.copies")}
               />
               <Button onClick={handlePrint} disabled={isPrinting}>
-                {isPrinting ? t("documents.detail.printing") : t("documents.detail.printAction")}
+                {isPrinting
+                  ? t("documents.detail.printing")
+                  : t("documents.detail.printAction")}
               </Button>
             </CardContent>
           </Card>
@@ -361,5 +452,5 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
 
       <Separator />
     </div>
-  )
+  );
 }

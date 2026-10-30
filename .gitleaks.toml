@@ -1,0 +1,4 @@
+title = "CyberDoc Gitleaks configuration"
+
+[extend]
+useDefault = true
