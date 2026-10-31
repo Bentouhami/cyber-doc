@@ -9,7 +9,17 @@ export const metadata: Metadata = {
 }
 
 type PageProps = {
-  searchParams?: { documentId?: string | string[] } | Promise<{ documentId?: string | string[] }>
+  searchParams?:
+    | {
+        documentId?: string | string[]
+        personaId?: string | string[]
+        entryMode?: string | string[]
+      }
+    | Promise<{
+        documentId?: string | string[]
+        personaId?: string | string[]
+        entryMode?: string | string[]
+      }>
 }
 
 export default async function DocumentCreatePage({ searchParams }: PageProps) {
@@ -18,11 +28,37 @@ export default async function DocumentCreatePage({ searchParams }: PageProps) {
   const documentId = Array.isArray(resolvedSearchParams?.documentId)
     ? resolvedSearchParams?.documentId[0]
     : resolvedSearchParams?.documentId
+  const personaId = Array.isArray(resolvedSearchParams?.personaId)
+    ? resolvedSearchParams?.personaId[0]
+    : resolvedSearchParams?.personaId
+  const entryModeParam = Array.isArray(resolvedSearchParams?.entryMode)
+    ? resolvedSearchParams?.entryMode[0]
+    : resolvedSearchParams?.entryMode
+  const entryMode =
+    entryModeParam === "existing" || entryModeParam === "new"
+      ? entryModeParam
+      : undefined
   let initialTemplateId: string | undefined
   let initialValues: Record<string, string> | undefined
   let initialParticipants:
-    | Record<string, { fullName?: string; nationalId?: string; phone?: string }>
+    | Record<
+        string,
+        {
+          fullName?: string
+          nationalId?: string
+          phone?: string
+          email?: string
+          birthDate?: string
+          birthPlace?: string
+          addressLine1?: string
+          city?: string
+          gender?: string
+          occupation?: string
+          employer?: string
+        }
+      >
     | undefined
+  let initialParticipantIds: Record<string, string> | undefined
   let initialPayment: { copies?: number; amountPaid?: number } | undefined
 
   if (documentId) {
@@ -56,16 +92,72 @@ export default async function DocumentCreatePage({ searchParams }: PageProps) {
         }
       }
       initialParticipants = {}
+      initialParticipantIds = {}
       for (const participant of document.participants as any[]) {
         initialParticipants[participant.roleKey] = {
           fullName: participant.persona?.fullName ?? "",
           nationalId: participant.persona?.nationalId ?? "",
           phone: participant.persona?.phone ?? "",
+          email: participant.persona?.email ?? "",
+          birthDate: participant.persona?.birthDate
+            ? new Date(participant.persona.birthDate).toISOString().slice(0, 10)
+            : "",
+          birthPlace: participant.persona?.birthPlace ?? "",
+          addressLine1: participant.persona?.addressLine1 ?? "",
+          city: participant.persona?.city ?? "",
+          gender: participant.persona?.gender ?? "",
+          occupation: participant.persona?.occupation ?? "",
+          employer: participant.persona?.employer ?? "",
+        }
+        if (participant.persona?.id) {
+          initialParticipantIds[participant.roleKey] = participant.persona.id
         }
       }
       initialPayment = {
         copies: document.totalCopies ?? 1,
         amountPaid: document.amountPaid ? Number(document.amountPaid) : undefined,
+      }
+    }
+  }
+
+  if (!documentId && personaId) {
+    const persona = await prismaAny.persona.findUnique({
+      where: { id: personaId },
+      select: {
+        fullName: true,
+        nationalId: true,
+        phone: true,
+        email: true,
+        birthDate: true,
+        birthPlace: true,
+        addressLine1: true,
+        city: true,
+        gender: true,
+        occupation: true,
+        employer: true,
+      },
+    })
+
+    if (persona) {
+      initialParticipants = {
+        client: {
+          fullName: persona.fullName ?? "",
+          nationalId: persona.nationalId ?? "",
+          phone: persona.phone ?? "",
+          email: persona.email ?? "",
+          birthDate: persona.birthDate
+            ? new Date(persona.birthDate).toISOString().slice(0, 10)
+            : "",
+          birthPlace: persona.birthPlace ?? "",
+          addressLine1: persona.addressLine1 ?? "",
+          city: persona.city ?? "",
+          gender: persona.gender ?? "",
+          occupation: persona.occupation ?? "",
+          employer: persona.employer ?? "",
+        },
+      }
+      initialParticipantIds = {
+        client: personaId,
       }
     }
   }
@@ -111,6 +203,7 @@ export default async function DocumentCreatePage({ searchParams }: PageProps) {
       roleKey: role.roleKey,
       roleLabel: role.roleLabel,
       roleLabelAr: role.roleLabelAr,
+      isRequired: role.isRequired,
     })),
     fields: template.fields
       .sort((a: any, b: any) => a.displayOrder - b.displayOrder)
@@ -145,15 +238,33 @@ export default async function DocumentCreatePage({ searchParams }: PageProps) {
   }))
 
   return (
-    <div className="container mx-auto py-10">
-      <TemplateWorkbench
-        templates={generationTemplates}
-        initialTemplateId={initialTemplateId}
-        initialValues={initialValues}
-        initialParticipants={initialParticipants}
-        initialPayment={initialPayment}
-        initialDocumentId={documentId}
-      />
-    </div>
+    <section className="bg-background">
+      <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        <header className="rounded-2xl border bg-card p-6 shadow-sm">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              CyberDoc
+            </p>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              {documentId ? "Nouvelle version du document" : "Génération de document"}
+            </h1>
+            <p className="max-w-3xl text-sm text-muted-foreground">
+              Sélectionnez un modèle juridique, complétez les informations requises, puis générez une version prête pour prévisualisation, impression et téléchargement.
+            </p>
+          </div>
+        </header>
+
+        <TemplateWorkbench
+          templates={generationTemplates}
+          initialTemplateId={initialTemplateId}
+          initialValues={initialValues}
+          initialParticipants={initialParticipants}
+          initialParticipantIds={initialParticipantIds}
+          initialPayment={initialPayment}
+          initialDocumentId={documentId}
+          entryMode={entryMode}
+        />
+      </div>
+    </section>
   )
 }

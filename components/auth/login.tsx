@@ -17,9 +17,10 @@ import { signIn } from "@/lib/auth-client"
 
 const loginSchema = z.object({
   email: z
-    .string({ required_error: "L'adresse e-mail est obligatoire." })
+    .string()
+    .min(1, "L'adresse e-mail est obligatoire.")
     .email("Veuillez saisir une adresse e-mail valide."),
-  password: z.string({ required_error: "Le mot de passe est obligatoire." }).min(1, "Le mot de passe est obligatoire."),
+  password: z.string().min(1, "Le mot de passe est obligatoire."),
   rememberMe: z.boolean().optional(),
 })
 

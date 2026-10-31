@@ -1,42 +1,58 @@
-version: "3.9"
-
 services:
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+    image: ${CYBERDOC_MIGRATOR_IMAGE:?CYBERDOC_MIGRATOR_IMAGE is required}
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   web:
     build:
       context: .
       dockerfile: Dockerfile
-    image: cyberdoc-next:latest
+      target: runner
+      args:
+        NEXT_PUBLIC_APP_URL: ${BETTER_AUTH_URL:?BETTER_AUTH_URL is required}
+    image: ${CYBERDOC_IMAGE:?CYBERDOC_IMAGE is required}
     container_name: cyberdoc-web
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
-      APP_BASE_URL: ${APP_BASE_URL}
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
-      BETTER_AUTH_ENABLE_EMAIL: ${BETTER_AUTH_ENABLE_EMAIL}
-      DATABASE_URL: ${DATABASE_URL}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?BETTER_AUTH_URL is required}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       DOCS_STORAGE_DIR: /app/storage
     ports:
       - "3000:3000"
     volumes:
-      # Stockage persistant des documents générés
-      - ./storage:/app/storage
+      - documents_data:/app/storage
     depends_on:
-      - db
+      migrate:
+        condition: service_completed_successfully
 
   db:
     image: postgres:16-alpine
     container_name: cyberdoc-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: pass
-      POSTGRES_DB: cyberdoc
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
     volumes:
       - db_data:/var/lib/postgresql/data
 
 volumes:
   db_data:
+  documents_data:

@@ -27,6 +27,7 @@ export function mapUserToEmployeeDTO(user: UserWithRoles): EmployeeDTO {
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
     activatedAt: user.activatedAt ? user.activatedAt.toISOString() : null,
+    deactivatedAt: user.deactivatedAt ? user.deactivatedAt.toISOString() : null,
     deletedAt: user.deletedAt ? user.deletedAt.toISOString() : null,
   };
 }

@@ -69,6 +69,93 @@ export default async function TemplateDetailPage({ params }: PageProps) {
   }
 
   const record = template as any
+  const templateMetadata =
+    record.metadata && typeof record.metadata === "object"
+      ? (record.metadata as Record<string, unknown>)
+      : {}
+  const requestedByUserId =
+    typeof templateMetadata.requestedByUserId === "string"
+      ? templateMetadata.requestedByUserId
+      : null
+  const reviewedByUserId =
+    typeof templateMetadata.reviewedByUserId === "string"
+      ? templateMetadata.reviewedByUserId
+      : null
+  const archivedByUserId =
+    typeof templateMetadata.archivedByUserId === "string"
+      ? templateMetadata.archivedByUserId
+      : null
+  const duplicatedByUserId =
+    typeof templateMetadata.duplicatedByUserId === "string"
+      ? templateMetadata.duplicatedByUserId
+      : null
+
+  const actorIds = Array.from(
+    new Set(
+      [requestedByUserId, reviewedByUserId, archivedByUserId, duplicatedByUserId].filter(
+        (value): value is string => Boolean(value),
+      ),
+    ),
+  )
+
+  const actors = actorIds.length
+    ? (await prismaAny.user.findMany({
+        where: { id: { in: actorIds } },
+        select: { id: true, firstName: true, lastName: true, name: true, email: true },
+      })) as Array<{
+        id: string
+        firstName: string | null
+        lastName: string | null
+        name: string | null
+        email: string
+      }>
+    : []
+
+  const actorById = new Map(
+    actors.map((user) => {
+      const displayName =
+        `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.name || user.email
+      return [user.id, displayName]
+    }),
+  )
+
+  const requestedByName = requestedByUserId ? actorById.get(requestedByUserId) ?? null : null
+
+  const activityTimeline: TemplateDetailData["activityTimeline"] = []
+  if (typeof templateMetadata.requestedAt === "string") {
+    activityTimeline.push({
+      type: "requested",
+      at: templateMetadata.requestedAt,
+      actorName: requestedByName,
+    })
+  }
+  if (typeof templateMetadata.reviewedAt === "string") {
+    const reviewStatus =
+      typeof templateMetadata.reviewStatus === "string" ? templateMetadata.reviewStatus : null
+    const reviewComment =
+      typeof templateMetadata.reviewComment === "string" ? templateMetadata.reviewComment : null
+    activityTimeline.push({
+      type: "reviewed",
+      at: templateMetadata.reviewedAt,
+      actorName: reviewedByUserId ? actorById.get(reviewedByUserId) ?? null : null,
+      note: [reviewStatus, reviewComment].filter(Boolean).join(" - ") || null,
+    })
+  }
+  if (typeof templateMetadata.duplicatedAt === "string") {
+    activityTimeline.push({
+      type: "duplicated",
+      at: templateMetadata.duplicatedAt,
+      actorName: duplicatedByUserId ? actorById.get(duplicatedByUserId) ?? null : null,
+    })
+  }
+  if (typeof templateMetadata.archivedAt === "string") {
+    activityTimeline.push({
+      type: "archived",
+      at: templateMetadata.archivedAt,
+      actorName: archivedByUserId ? actorById.get(archivedByUserId) ?? null : null,
+    })
+  }
+  activityTimeline.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
 
   const detail: TemplateDetailData = {
     id: record.id,
@@ -99,6 +186,12 @@ export default async function TemplateDetailPage({ params }: PageProps) {
         }
       : null,
     metadata: record.metadata as Record<string, unknown> | null,
+    requestedByName,
+    requestedAt:
+      typeof templateMetadata.requestedAt === "string"
+        ? templateMetadata.requestedAt
+        : null,
+    activityTimeline,
     participantRoles: (record.participantRoles as any[])
       .sort((a: any, b: any) => a.displayOrder - b.displayOrder)
       .map((role: any) => ({

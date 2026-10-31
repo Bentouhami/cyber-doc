@@ -9,6 +9,9 @@
 
 # production
 /build
+/tmp
+/storage/documents/
+docs/new-to-test/
 
 # debug
 npm-debug.log*
@@ -18,9 +21,11 @@ yarn-error.log*
 
 # env files
 .env*
+!.env.example
 
 # vercel
 .vercel
+.neon
 
 # typescript
 *.tsbuildinfo

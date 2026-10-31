@@ -84,8 +84,11 @@ export function useUser(options: UseUserOptions = {}) {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchProfile(controller.signal);
-    return () => controller.abort();
+    const timer = window.setTimeout(() => void fetchProfile(controller.signal), 0);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [fetchProfile]);
 
   const refresh = useCallback(async () => {

@@ -1,0 +1,78 @@
+{
+  "generatedAt": "2026-03-19T02:18:43.120Z",
+  "baseURL": "http://127.0.0.1:3100",
+  "passCount": 6,
+  "failCount": 8,
+  "results": [
+    {
+      "name": "Admin login + redirect",
+      "ok": false,
+      "details": "Redirected to /"
+    },
+    {
+      "name": "Admin templates list renders",
+      "ok": true,
+      "details": "/admin/templates loaded (HTTP 200)"
+    },
+    {
+      "name": "Admin template create page renders",
+      "ok": true,
+      "details": "/admin/templates/new loaded (HTTP 200)"
+    },
+    {
+      "name": "Admin template import page renders",
+      "ok": true,
+      "details": "/admin/templates/import loaded (HTTP 200)"
+    },
+    {
+      "name": "Admin employees page renders",
+      "ok": true,
+      "details": "/admin/employees loaded (HTTP 200)"
+    },
+    {
+      "name": "Admin template detail page renders",
+      "ok": false,
+      "details": "No template links found"
+    },
+    {
+      "name": "API /api/users/me (authenticated)",
+      "ok": false,
+      "details": "HTTP 401"
+    },
+    {
+      "name": "API /api/templates (authenticated)",
+      "ok": false,
+      "details": "HTTP 401"
+    },
+    {
+      "name": "Logout control visible",
+      "ok": false,
+      "details": "Logout button not found"
+    },
+    {
+      "name": "Employee login + redirect",
+      "ok": false,
+      "details": "Redirected to /"
+    },
+    {
+      "name": "Documents list renders",
+      "ok": true,
+      "details": "/documents loaded (HTTP 200)"
+    },
+    {
+      "name": "Document create page renders",
+      "ok": true,
+      "details": "/documents/create loaded (HTTP 200)"
+    },
+    {
+      "name": "API /api/documents (authenticated)",
+      "ok": false,
+      "details": "HTTP 401"
+    },
+    {
+      "name": "Logout control visible",
+      "ok": false,
+      "details": "Logout button not found"
+    }
+  ]
+}

@@ -4,9 +4,16 @@ import { z } from "zod";
 
 import prisma from "@/lib/prisma";
 import { ensureAdminUser, getAuthenticatedUser } from "@/lib/admin-auth";
+import { internalServerError, logApiError } from "@/lib/api-error";
+import { hasAnyRole } from "@/lib/permissions";
+import {
+  sanitizeTemplateContent,
+  TEMPLATE_CONTENT_LIMITS,
+} from "@/services/templateContentSecurity";
+import { findTemplateDuplicateCandidates } from "@/services/templateDuplicateService";
 
 const templateCreateSchema = z.object({
-  slug: z.string().min(1),
+  slug: z.string().min(1).optional(),
   title: z.string().min(1),
   titleAr: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
@@ -14,9 +21,9 @@ const templateCreateSchema = z.object({
   language: z.string().optional(),
   version: z.number().int().optional(),
   isActive: z.boolean().optional(),
-  metadata: z.record(z.any()).optional(),
-  contentHtml: z.string().nullable().optional(),
-  contentCss: z.string().nullable().optional(),
+  metadata: z.record(z.string(), z.json()).optional(),
+  contentHtml: z.string().max(TEMPLATE_CONTENT_LIMITS.html).nullable().optional(),
+  contentCss: z.string().max(TEMPLATE_CONTENT_LIMITS.css).nullable().optional(),
   basePrice: z.number().nullable().optional(),
   pdfOptions: z
     .object({
@@ -39,13 +46,90 @@ const templateCreateSchema = z.object({
     name: z.string().min(1),
     nameAr: z.string().optional(),
   }),
+  fields: z
+    .array(
+      z.object({
+        fieldName: z.string().min(1),
+        fieldLabel: z.string().min(1),
+        fieldLabelAr: z.string().optional(),
+        fieldType: z.string().min(1),
+        isRequired: z.boolean().optional(),
+        defaultValue: z.string().optional(),
+        validationRules: z.record(z.string(), z.json()).optional(),
+        placeholder: z.string().optional(),
+        placeholderAr: z.string().optional(),
+        helpText: z.string().optional(),
+        helpTextAr: z.string().optional(),
+        dataSource: z.string().optional(),
+        participantRoleKey: z.string().optional(),
+        allowMultiple: z.boolean().optional(),
+        section: z.string().optional(),
+        sectionAr: z.string().optional(),
+        displayOrder: z.number().int().optional(),
+        metadata: z.record(z.string(), z.json()).optional(),
+      }),
+    )
+    .optional(),
   assetId: z.string().optional(),
+  forceDuplicateOverride: z.boolean().optional(),
 });
+
+function slugifyBase(input: string) {
+  return input
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+async function ensureUniqueSlug(base: string) {
+  const normalized = slugifyBase(base) || "template";
+  const seed = `${normalized}-${Date.now().toString(36)}`;
+  let slug = seed;
+  let counter = 1;
+
+  while (await prisma.documentTemplate.findUnique({ where: { slug }, select: { id: true } })) {
+    slug = `${seed}-${counter}`;
+    counter += 1;
+  }
+  return slug;
+}
+
+async function ensureUniqueTitleForScope(
+  tx: Prisma.TransactionClient,
+  baseTitle: string,
+  documentTypeId: number,
+  categoryId: number,
+) {
+  let title = baseTitle;
+  let counter = 1;
+
+  while (
+    await tx.documentTemplate.findFirst({
+      where: {
+        title,
+        documentTypeId,
+        categoryId,
+      },
+      select: { id: true },
+    })
+  ) {
+    counter += 1;
+    title = `${baseTitle} (${counter})`;
+  }
+
+  return title;
+}
 
 export async function GET(request: Request) {
   const authResult = await getAuthenticatedUser(request.headers);
   if ("error" in authResult) {
     return authResult.error;
+  }
+  if (!hasAnyRole(authResult.currentUser, ["employee", "admin"])) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
   const url = new URL(request.url);
@@ -130,8 +214,10 @@ export async function GET(request: Request) {
       })),
     );
   } catch (error) {
-    console.error("Error fetching templates:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError(
+      { route: "/api/templates", operation: "list_templates" },
+      error,
+    );
   }
 }
 
@@ -154,15 +240,43 @@ export async function POST(request: Request) {
     }
     data = parsed.data;
   } catch (error) {
-    console.error("Invalid JSON payload:", error);
+    logApiError({ route: "/api/templates", operation: "parse_request" }, error);
     return NextResponse.json({ message: "Unable to parse request body" }, { status: 400 });
   }
 
   try {
+    const duplicateCandidates = await findTemplateDuplicateCandidates(prisma, {
+      title: data.title,
+      locale: data.locale,
+      documentTypeName: data.documentType.name,
+      categoryName: data.category.name,
+    });
+
+    if (duplicateCandidates.length > 0 && !data.forceDuplicateOverride) {
+      return NextResponse.json(
+        {
+          code: "DUPLICATE_CANDIDATE",
+          message: "Potential duplicate templates detected",
+          candidates: duplicateCandidates,
+        },
+        { status: 409 },
+      );
+    }
+
+    const requestedSlug = data.slug?.trim();
+    const fallbackSlugBase = `${data.documentType.name}-${data.category.name}-${data.title}`;
+    const finalSlug = requestedSlug?.length
+      ? await ensureUniqueSlug(requestedSlug)
+      : await ensureUniqueSlug(fallbackSlugBase);
+
+    const sanitizedContent = sanitizeTemplateContent(data.contentHtml, data.contentCss);
+
     const mergedMetadata = {
       ...(data.metadata ?? {}),
       ...(data.basePrice !== undefined ? { basePrice: data.basePrice } : {}),
-      ...(data.contentCss !== undefined ? { htmlCss: data.contentCss } : {}),
+      ...(sanitizedContent.contentCss !== undefined
+        ? { htmlCss: sanitizedContent.contentCss }
+        : {}),
       ...(data.pdfOptions !== undefined ? { pdfOptions: data.pdfOptions } : {}),
     };
     const nextMetadata = Object.keys(mergedMetadata).length
@@ -198,10 +312,19 @@ export async function POST(request: Request) {
         },
       });
 
-      return tx.documentTemplate.create({
+      const finalTitle = data.forceDuplicateOverride
+        ? await ensureUniqueTitleForScope(
+            tx,
+            data.title,
+            documentType.id,
+            category.id,
+          )
+        : data.title;
+
+      const createdTemplate = await tx.documentTemplate.create({
         data: {
-          slug: data.slug,
-          title: data.title,
+          slug: finalSlug,
+          title: finalTitle,
           titleAr: data.titleAr ?? null,
           description: data.description ?? null,
           documentTypeId: documentType.id,
@@ -212,9 +335,51 @@ export async function POST(request: Request) {
           isActive: data.isActive ?? true,
           metadata: nextMetadata,
           assetId: data.assetId ?? null,
-          content: data.contentHtml ?? null,
+          content: sanitizedContent.contentHtml ?? null,
         },
       });
+
+      if (data.fields?.length) {
+        for (const field of data.fields) {
+          const fieldType = await tx.fieldType.upsert({
+            where: { name: field.fieldType },
+            update: { nameAr: null },
+            create: { name: field.fieldType },
+          });
+
+          await tx.templateField.create({
+            data: {
+              templateId: createdTemplate.id,
+              fieldName: field.fieldName,
+              fieldLabel: field.fieldLabel,
+              fieldLabelAr: field.fieldLabelAr ?? null,
+              fieldTypeId: fieldType.id,
+              isRequired: field.isRequired ?? false,
+              defaultValue: field.defaultValue ?? null,
+              validationRules:
+                field.validationRules === undefined
+                  ? undefined
+                  : (field.validationRules as Prisma.InputJsonValue),
+              placeholder: field.placeholder ?? null,
+              placeholderAr: field.placeholderAr ?? null,
+              helpText: field.helpText ?? null,
+              helpTextAr: field.helpTextAr ?? null,
+              dataSource: field.dataSource ?? null,
+              participantRoleKey: field.participantRoleKey ?? null,
+              allowMultiple: field.allowMultiple ?? false,
+              section: field.section ?? null,
+              sectionAr: field.sectionAr ?? null,
+              displayOrder: field.displayOrder ?? 0,
+              metadata:
+                field.metadata === undefined
+                  ? undefined
+                  : (field.metadata as Prisma.InputJsonValue),
+            },
+          });
+        }
+      }
+
+      return createdTemplate;
     });
 
     const createTemplateActivity = await prisma.activityType.findFirst({
@@ -240,7 +405,9 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Error creating template:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError(
+      { route: "/api/templates", operation: "create_template" },
+      error,
+    );
   }
 }
