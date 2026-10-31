@@ -142,3 +142,23 @@ fallback build, 17/17 contract handlers, all seven performance budgets and all
 four critical browser suites passed with zero skips. Docker is not installed in
 the local PowerShell environment, so the corrected image remains a GitHub Linux
 runner proof requirement and is not claimed as locally verified.
+
+## Third post-push CI findings
+
+The run against `56a1e3cddf98c6add02b572591f300a7b4992138` proved the
+Vercel preview, dependency review, Gitleaks and static gate. It also proved that
+both production image targets build. Two remaining runtime checks found:
+
+- the standalone trace contained Playwright code but omitted its dynamically
+  loaded `browsers.json` from the pnpm virtual-store path, so importing
+  Playwright in the runner image failed before Chromium launched;
+- one mobile activity audit could still observe loading because its first wait
+  completed before hydration mounted the `aria-busy` element.
+
+Next's output tracing now includes both the public symlink and pnpm virtual-store
+locations for `browsers.json`. A clean local standalone build contains both
+files and successfully imports `playwright` from inside `.next/standalone`.
+The activity check now waits for the screen mount before waiting for its busy
+state to clear. Sequential local lint, type-check and all four browser suites
+pass. Generated `tmp/**` output is excluded from ESLint so a diagnostic process
+cannot cause the linter to inspect or contend with live Next build artifacts.

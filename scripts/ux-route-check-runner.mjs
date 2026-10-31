@@ -385,13 +385,17 @@ async function run() {
           // Give App Router hydration a bounded window. Individual DOM checks
           // retry once if hydration replaces their execution context.
           await page.waitForTimeout(250);
-          // Accessibility assertions target the settled interface. On a fresh
-          // CI database the activity request can outlive hydration, leaving
-          // action buttons temporarily disabled and opacity-reduced.
-          await page
-            .locator('[aria-busy="true"]')
-            .waitFor({ state: "detached", timeout: 5000 })
-            .catch(() => undefined);
+          if (route.startsWith("/admin/activity")) {
+            // Wait for hydration to mount the screen before observing its busy
+            // state; otherwise a fast "detached" check can complete before the
+            // client inserts the loading card on a slower CI runner.
+            await page
+              .getByTestId("activity-log-page")
+              .waitFor({ state: "visible", timeout: 10000 });
+            await page
+              .locator('[data-testid="activity-log-page"] [aria-busy="true"]')
+              .waitFor({ state: "detached", timeout: 10000 });
+          }
           const status = response?.status() ?? 0;
           const pageText =
             (await withNavigationRetry(page, () => page.textContent("body"))) ??
