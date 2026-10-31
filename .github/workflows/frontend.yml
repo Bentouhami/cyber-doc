@@ -96,7 +96,12 @@ jobs:
         run: docker build --target migrator --tag cyberdoc-migrator:ci .
 
       - name: Build standalone application image
-        run: docker build --target runner --tag cyberdoc-app:ci .
+        run: >-
+          docker build
+          --build-arg NEXT_PUBLIC_APP_URL=https://ci.cyberdoc.invalid
+          --target runner
+          --tag cyberdoc-app:ci
+          .
 
       - name: Verify Chromium launches inside the production image
         run: >-

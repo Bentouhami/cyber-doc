@@ -23,6 +23,8 @@ and make missing production configuration fail closed.
   - Auth base URL fallback chain is defined in `lib/auth.ts`.
   - At least one is mandatory when `NODE_ENV=production`; the first configured
     value is canonical. Public production hosts must use HTTPS.
+  - For Vercel previews only, the platform-provided `VERCEL_URL` is accepted
+    when `VERCEL=1`; an explicit canonical URL always takes precedence.
 
 ## Recommended
 
@@ -30,6 +32,9 @@ and make missing production configuration fail closed.
 
   - Optional public origin used by server-side auth trusted-origin resolution.
   - The browser auth client is same-origin and does not need a compiled base URL.
+  - The production Compose build derives this non-secret build argument from
+    `BETTER_AUTH_URL`; direct `docker build --target runner` callers must pass
+    the canonical HTTPS origin with `--build-arg NEXT_PUBLIC_APP_URL=...`.
 
 - `BETTER_AUTH_TRUSTED_ORIGINS`
   - Optional comma-separated list of additional exact HTTP(S) origins.

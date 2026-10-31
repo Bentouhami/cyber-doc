@@ -33,6 +33,9 @@ export default function nextConfig(phase: string) {
   return {
     // The production container copies Next.js' minimal standalone runtime.
     output: "standalone",
+    // Critical browser tests run beside a developer server without sharing its
+    // cache or lock. Production and normal development keep Next's default.
+    distDir: process.env.CYBERDOC_NEXT_DIST_DIR?.trim() || ".next",
     allowedDevOrigins: ["127.0.0.1"],
     experimental: {
       turbopackFileSystemCacheForDev: true,

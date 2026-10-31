@@ -111,3 +111,34 @@ produced two actionable configuration failures:
 
 The release remains NO-GO until the rerun proves all five required checks on the
 new immutable head. No merge, tag or deployment has been performed.
+
+## Second post-push CI findings
+
+The next run against `040928f28ccd8062519018a7311cb3f151356d6a` proved
+Gitleaks, dependency review and the full static/build gate, then exposed three
+environment-parity defects in the newly exercised targets:
+
+1. Vercel preview and the standalone Docker builder did not receive a canonical
+   auth origin. Vercel previews now derive an HTTPS origin only from the
+   platform-provided `VERCEL_URL` when `VERCEL=1`; explicit configured origins
+   retain precedence. The Compose and CI image builds pass the public origin as
+   a non-secret build argument.
+2. A fresh seeded database contains templates but no transactional document.
+   The admin preview smoke had silently depended on documents left by an older
+   local run. The critical orchestrator now runs the document fixture-producing
+   suite before admin preview and responsive detail checks.
+3. The accessibility audit could inspect the activity screen during its
+   `aria-busy` loading state and report the intentionally disabled buttons'
+   transient opacity as a contrast failure. It now waits a bounded interval for
+   the settled interface before running axe.
+
+The investigation also found that an already-running local Next server could
+cause the smoke runner's child server to fail while the tests continued against
+the stale process. The runner now reserves its own loopback port and uses an
+isolated Next build directory under `tmp`, which is removed after the run.
+
+Local verification after these corrections: 68/68 unit tests, Vercel-only URL
+fallback build, 17/17 contract handlers, all seven performance budgets and all
+four critical browser suites passed with zero skips. Docker is not installed in
+the local PowerShell environment, so the corrected image remains a GitHub Linux
+runner proof requirement and is not claimed as locally verified.

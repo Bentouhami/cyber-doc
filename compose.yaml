@@ -17,6 +17,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runner
+      args:
+        NEXT_PUBLIC_APP_URL: ${BETTER_AUTH_URL:?BETTER_AUTH_URL is required}
     image: ${CYBERDOC_IMAGE:?CYBERDOC_IMAGE is required}
     container_name: cyberdoc-web
     restart: unless-stopped

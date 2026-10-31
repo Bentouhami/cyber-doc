@@ -385,6 +385,13 @@ async function run() {
           // Give App Router hydration a bounded window. Individual DOM checks
           // retry once if hydration replaces their execution context.
           await page.waitForTimeout(250);
+          // Accessibility assertions target the settled interface. On a fresh
+          // CI database the activity request can outlive hydration, leaving
+          // action buttons temporarily disabled and opacity-reduced.
+          await page
+            .locator('[aria-busy="true"]')
+            .waitFor({ state: "detached", timeout: 5000 })
+            .catch(() => undefined);
           const status = response?.status() ?? 0;
           const pageText =
             (await withNavigationRetry(page, () => page.textContent("body"))) ??

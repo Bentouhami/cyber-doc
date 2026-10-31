@@ -7,6 +7,8 @@ type AuthEnvironment = Partial<Pick<
   | "NEXT_PUBLIC_APP_URL"
   | "NEXTAUTH_URL"
   | "BETTER_AUTH_TRUSTED_ORIGINS"
+  | "VERCEL"
+  | "VERCEL_URL"
 >>;
 
 function isLoopback(hostname: string) {
@@ -38,12 +40,19 @@ function parseExactOrigin(value: string, production: boolean) {
   return url.origin;
 }
 
+function resolveVercelDeploymentUrl(env: AuthEnvironment, production: boolean) {
+  const hostname = env.VERCEL_URL?.trim();
+  if (env.VERCEL !== "1" || !hostname) return undefined;
+  return parseExactOrigin(`https://${hostname}`, production);
+}
+
 export function resolveAuthNetworkConfig(env: AuthEnvironment) {
   const production = env.NODE_ENV === "production";
   const baseURL =
     env.BETTER_AUTH_URL?.trim() ||
     env.NEXT_PUBLIC_APP_URL?.trim() ||
     env.NEXTAUTH_URL?.trim() ||
+    resolveVercelDeploymentUrl(env, production) ||
     undefined;
 
   if (production && !baseURL) {

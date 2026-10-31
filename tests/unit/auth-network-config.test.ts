@@ -45,6 +45,39 @@ describe("auth network configuration", () => {
     );
   });
 
+  it("uses the current Vercel deployment URL only in a verified Vercel environment", () => {
+    const preview = resolveAuthNetworkConfig({
+      NODE_ENV: "production",
+      VERCEL: "1",
+      VERCEL_URL: "cyber-doc-git-release.example.vercel.app",
+    });
+
+    assert.equal(preview.baseURL, "https://cyber-doc-git-release.example.vercel.app");
+    assert.deepEqual(preview.trustedOrigins, [
+      "https://cyber-doc-git-release.example.vercel.app",
+    ]);
+    assert.throws(
+      () =>
+        resolveAuthNetworkConfig({
+          NODE_ENV: "production",
+          VERCEL_URL: "unverified.example.vercel.app",
+        }),
+      /canonical authentication URL/i,
+    );
+  });
+
+  it("rejects a malformed Vercel deployment hostname", () => {
+    assert.throws(
+      () =>
+        resolveAuthNetworkConfig({
+          NODE_ENV: "production",
+          VERCEL: "1",
+          VERCEL_URL: "preview.example.vercel.app/path",
+        }),
+      /must not include a path/i,
+    );
+  });
+
   it("rejects insecure non-loopback production URLs and origins with paths", () => {
     assert.throws(
       () =>
