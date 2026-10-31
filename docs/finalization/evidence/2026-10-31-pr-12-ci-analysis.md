@@ -5,20 +5,16 @@ PR: `https://github.com/Bentouhami/cyber-doc/pull/12`
 ## Authoritative state
 
 - PR #12 is open from `release/v1.0.0-candidate` into `dev`.
-- Its remote head is historical SHA
-  `369de8086fe9fd910571e3c9c3e1d560ecab34e1`, which is also the local base
-  commit beneath the uncommitted reviewed work.
+- Its remote head is now release commit
+  `20edaaa48c66615041a26d62fefe14b0ce6d0f19`.
 - GitHub reports the PR mergeable at the Git level but blocked by policy and
   requiring review.
 - Historical `quality-gates`: PASS.
 - Historical `critical-smoke`: FAIL after 4m11s.
 - GitGuardian and the Vercel preview status passed.
-- The PR has no labels, and the repository does not contain the required
-  `quality-contract-change-approved` label. The current reviewed-constraint
-  change gate therefore cannot pass until an authorized maintainer creates and
-  applies it after reviewing the constraints diff.
-- The PR body is stale: it documents npm commands, a restricted fallback smoke
-  mode and completed protection setup that no longer describe the release.
+- The reviewed `quality-contract-change-approved` label is present and applied.
+- The PR body now documents pnpm, the strict validation evidence and the
+  remaining NO-GO conditions.
 - There are no requested reviewers, completed reviews or milestone.
 
 After a fresh fetch, `origin/dev` is an ancestor of the release head with zero
@@ -74,8 +70,8 @@ The current workflow replaces that design with:
   upload-artifact v7.
 
 These corrections pass locally, including 66/66 unit tests and four critical
-browser suites with zero skip. They are not yet proven on GitHub because the
-working tree has not been committed or pushed.
+browser suites with zero skip. They were pushed under the owner's explicit GO;
+the post-push CI findings and corrections are recorded below.
 
 After the PR analysis, the current workflow was also validated with actionlint
 1.7.12. The Windows binary was downloaded from the official release, its
@@ -91,10 +87,27 @@ their pinned official `action.yml` definitions; pnpm setup uses the exact
    `CI_BETTER_AUTH_SECRET` with new CI-only random values.
 2. [x] The reviewed `quality-contract-change-approved` label is created and
    applied by an authorized maintainer.
-3. [ ] The release work is committed and pushed under the owner's explicit GO.
+3. [x] The release work is committed and pushed under the owner's explicit GO.
 4. [ ] The new five checks run against that exact immutable SHA.
 5. [x] Protected-branch contexts are reconciled to the five exact job names and
    verified through read-back.
 
-No PR, label, secret, check, protection rule, commit or branch was modified by
-this analysis.
+## First post-push CI findings
+
+The first run against `20edaaa48c66615041a26d62fefe14b0ce6d0f19`
+produced two actionable configuration failures:
+
+1. GitHub rejected the dependency-review action because the repository's
+   dependency graph and vulnerability alerts were disabled. Vulnerability
+   alerts were enabled by the owner-authorized release process so GitHub can
+   initialize the dependency graph; the check must still pass on rerun.
+2. The static job passed floor enforcement, feature documentation, both secret
+   scans, lint, TypeScript, 66/66 unit tests, dependency audit, contracts and
+   i18n, then failed during Next.js page-data collection because the hardened
+   production auth configuration correctly rejected a missing canonical URL.
+   The workflow now supplies the non-routable HTTPS origin
+   `https://ci.cyberdoc.invalid` to production-build validation. The same
+   environment passed the Next.js 16.4.3 build locally.
+
+The release remains NO-GO until the rerun proves all five required checks on the
+new immutable head. No merge, tag or deployment has been performed.
