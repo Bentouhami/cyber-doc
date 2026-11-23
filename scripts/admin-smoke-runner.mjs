@@ -287,6 +287,27 @@ async function runShortcutCrud(adminRequest) {
   pushResult("External shortcuts CRUD - archive", archive.status() === 200, `HTTP ${archive.status()}`);
 }
 
+async function runShortcutViewToggle(page) {
+  const cardsButton = page.getByRole("button", { name: "Vue en cartes" });
+  const listButton = page.getByRole("button", { name: "Vue en liste" });
+  await cardsButton.waitFor({ state: "visible" });
+
+  pushResult(
+    "External shortcuts view - cards selected by default",
+    (await cardsButton.getAttribute("aria-pressed")) === "true" &&
+      (await listButton.getAttribute("aria-pressed")) === "false",
+    "Expected the cards toggle to expose its selected state",
+  );
+
+  await listButton.click();
+  pushResult(
+    "External shortcuts view - list toggle",
+    (await cardsButton.getAttribute("aria-pressed")) === "false" &&
+      (await listButton.getAttribute("aria-pressed")) === "true",
+    "Expected the list toggle to expose its selected state",
+  );
+}
+
 async function runTemplateRequestEscaping(adminRequest) {
   const unique = Date.now().toString(36);
   const injection = '<img src=x onerror="alert(1)">';
@@ -831,6 +852,7 @@ async function run() {
       "Admin activity audit renders",
     );
     await ensureRouteOk(page, "/documents/shortcuts", "External shortcuts page renders");
+    await runShortcutViewToggle(page);
 
     await runEmployeesCrud(page.request);
     await runShortcutCrud(page.request);

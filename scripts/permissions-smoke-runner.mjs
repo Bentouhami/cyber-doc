@@ -252,6 +252,7 @@ async function runEmployeeChecks() {
       ["Employee document creators", "GET", "/api/document-creators", 200],
       ["Employee document statuses", "GET", "/api/document-statuses", 200],
       ["Employee personas list", "GET", "/api/personas", 200],
+      ["Employee shortcuts list", "GET", "/api/shortcuts", 200],
     ];
 
     for (const [name, method, route, expected] of allowedChecks) {
@@ -280,6 +281,11 @@ async function runEmployeeChecks() {
         403,
       ],
       ["Employee activity logs denied", "GET", "/api/activity-logs", 403],
+      ["Employee shortcut create denied", "POST", "/api/shortcuts", 403, {
+        title: "Denied",
+        titleAr: "مرفوض",
+        url: "https://example.com/",
+      }],
     ];
 
     for (const [name, method, route, expected, payload] of deniedChecks) {

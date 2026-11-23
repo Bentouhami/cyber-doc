@@ -139,10 +139,10 @@ export function ExternalShortcuts() {
           <p className="text-muted-foreground">{t("shortcuts.subtitle")}</p>
         </div>
         <div className="flex gap-2" role="group" aria-label={t("shortcuts.viewMode")}>
-          <Button variant={view === "cards" ? "default" : "outline"} size="icon" onClick={() => setView("cards")} aria-label={t("shortcuts.cardsView")}>
+          <Button variant={view === "cards" ? "default" : "outline"} size="icon" onClick={() => setView("cards")} aria-label={t("shortcuts.cardsView")} aria-pressed={view === "cards"}>
             <Grid2X2 className="h-4 w-4" />
           </Button>
-          <Button variant={view === "list" ? "default" : "outline"} size="icon" onClick={() => setView("list")} aria-label={t("shortcuts.listView")}>
+          <Button variant={view === "list" ? "default" : "outline"} size="icon" onClick={() => setView("list")} aria-label={t("shortcuts.listView")} aria-pressed={view === "list"}>
             <List className="h-4 w-4" />
           </Button>
         </div>
