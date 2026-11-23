@@ -28,6 +28,7 @@ const SAMPLE_PAYLOAD = {
   description: "Short description",
   locale: "ar-MA",
   language: "ar",
+  metadata: { basePrice: 25 },
   documentType: {
     name: "ATTESTATION",
     nameAr: "شهادة",
@@ -120,7 +121,7 @@ export function TemplateImportForm() {
       }
 
       if (!response.ok) {
-        throw new Error(data.message || tt("templates.importFailedGeneric", "Échec de l'import"))
+        throw new Error(tt("common.requestFailed", "La demande n’a pas pu être traitée."))
       }
 
       toast({ title: t("templates.importSuccess") })
@@ -183,7 +184,7 @@ export function TemplateImportForm() {
       }
 
       if (!response.ok) {
-        throw new Error(data.message || tt("templates.importFailedGeneric", "Échec de l'import"))
+        throw new Error(tt("common.requestFailed", "La demande n’a pas pu être traitée."))
       }
 
       toast({ title: t("templates.gap.importSuccess") })

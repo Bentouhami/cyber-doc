@@ -19,7 +19,7 @@ function LoginFormWithSearchParams() {
 }
 
 export default function HomePage() {
-  const { dir } = useLocale()
+  const { dir, t } = useLocale()
   const router = useRouter()
   const { data: session, isPending } = useSession()
   const { user: profile, status: profileStatus } = useUserProfile()
@@ -33,7 +33,9 @@ export default function HomePage() {
       return
     }
 
-    const isAdmin = profile?.roles?.some((role) => role.name === "admin")
+    const isAdmin = profile?.roles?.some((role) =>
+      ["owner", "responsible", "admin"].includes(role.name),
+    )
     const target = isAdmin ? "/admin/templates" : "/documents"
     router.replace(target)
   }, [isPending, profile, profileStatus, router, session?.user?.email])
@@ -46,10 +48,10 @@ export default function HomePage() {
         <section className="relative flex items-center justify-center bg-primary px-6 py-12 text-primary-foreground lg:px-12">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.05),transparent_50%)]" />
 
-          <div className="relative z-10 w-full max-w-xl space-y-8 text-right">
+          <div className="relative z-10 w-full max-w-xl space-y-8 text-start">
             {/* Logo/Brand */}
-            <div className="flex items-center justify-end gap-3">
-              <h2 className="text-2xl font-bold tracking-tight">سايبر دوك</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-bold tracking-tight">{t("navigation.brand")}</h2>
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-foreground/10 backdrop-blur-sm">
                 <Shield className="h-6 w-6" />
               </div>
@@ -58,10 +60,10 @@ export default function HomePage() {
             {/* Main heading */}
             <div className="space-y-4">
               <h1 className="text-balance text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
-                إدارة العقود القانونية بثقة وسهولة
+                {t("auth.hero.title")}
               </h1>
               <p className="text-pretty text-lg leading-relaxed text-primary-foreground/80 sm:text-xl">
-                منصة متكاملة لإنشاء وإدارة ومتابعة جميع عقودك القانونية في مكان واحد آمن
+                {t("auth.hero.description")}
               </p>
             </div>
 
@@ -72,9 +74,9 @@ export default function HomePage() {
                   <FileText className="h-5 w-5" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="font-semibold">إنشاء مستندات احترافية</h3>
+                  <h3 className="font-semibold">{t("auth.hero.documentsTitle")}</h3>
                   <p className="text-sm text-primary-foreground/70">
-                    قوالب قانونية متوافقة مع المعايير المحلية والدولية
+                    {t("auth.hero.documentsDescription")}
                   </p>
                 </div>
               </div>
@@ -84,8 +86,8 @@ export default function HomePage() {
                   <Lock className="h-5 w-5" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="font-semibold">أمان وخصوصية عالية</h3>
-                  <p className="text-sm text-primary-foreground/70">تشفير متقدم وحماية كاملة لبياناتك الحساسة</p>
+                  <h3 className="font-semibold">{t("auth.hero.securityTitle")}</h3>
+                  <p className="text-sm text-primary-foreground/70">{t("auth.hero.securityDescription")}</p>
                 </div>
               </div>
             </div>

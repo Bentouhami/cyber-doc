@@ -1,6 +1,82 @@
 # CyberDoc production-readiness checklist
 
+## Product completion programme — 2026-11-23
+
+- [ ] **TPL-003 — Homologate the historical document catalogue**
+  - Acceptance: all 13 DOCX sources are catalogued exactly once; no historical PII
+    is published; every active template has approved clauses, tokens and owner price.
+  - Progress: 13/13 sources are mapped with anonymised HTML and generated DOCX assets;
+    only the sanitized directory is packaged. Ten remain inactive pending legal review
+    and owner pricing. Retention or purge of the raw source files remains a privacy decision.
+  - Verify: `pnpm run check:template-sources`, seed on staging PostgreSQL and manual
+    owner/legal approval of each activated template.
+  - Automated data gate: `check:data` now fails on active unpriced templates,
+    missing render sources, invalid placeholder contracts and unsafe packaged assets.
+
+- [ ] **PROD-001 — Owner and delegated-responsible hierarchy**
+  - Acceptance: the migrated owner is unique in normal application operation;
+    only the owner designates responsible users; responsible users CRUD employees
+    but cannot mutate the owner or another responsible.
+  - Progress: role migration, server policy, bilingual UI and adverse unit tests
+    are implemented; the full migration chain and representative role conversion
+    fixtures pass on a disposable PostgreSQL-compatible database. Permission smoke
+    passes 52/52 on PostgreSQL 17 in PR #13 CI.
+    `check:data` also enforces exactly one assigned and active owner.
+- [ ] **I18N-002 — Arabic-first bilingual interface**
+  - Acceptance: Arabic is used on first visit, while an explicit Arabic/French
+    preference remains persisted.
+  - Verify: `pnpm run i18n:audit` and critical FR/AR browser checks.
+  - Progress: translation audit passes with 555 keys, no missing locale and no
+    raw API message exposed by UI components; dialog accessibility text and the
+    RTL sidebar edge are localized. The server locale policy now proves Arabic on
+    first render and preserves explicit FR/AR preferences. The Webpack production
+    build passes all 29 pages on the patched Next.js 16.4.6 runtime; the complete
+    FR/AR UX/accessibility matrix passes 32/32 on PostgreSQL 17 in CI.
+- [ ] **AUTH-002 — Username or email login**
+  - Acceptance: employees authenticate with either unique username or email and
+    the same password without disclosing which identifier exists.
+  - Progress: schema migration, employee CRUD, Better Auth username plugin,
+    bilingual login and smoke scenario are implemented; admin smoke passes 47/47
+    and critical Playwright E2E passes 4/4 on PostgreSQL 17 in CI.
+- [ ] **AUTH-003 — Production login throttling**
+  - Acceptance: sign-in counters survive restarts/replicas, forwarded client IPs
+    come only through named trusted proxies, and approved thresholds return `429`
+    without revealing account existence.
+  - Progress: Better Auth's default 3 attempts/10 seconds limiter is active only in
+    production, but currently uses process memory and `x-forwarded-for`/shared
+    fallback behavior. The existing `rate_limits` PostgreSQL model can provide the
+    shared store; threshold and proxy CIDRs require explicit security/operations approval.
+- [ ] **DOC-002 — Safe document replacement and version history**
+  - Acceptance: copy, new-version and replace-current flows never destroy an
+    earlier document; every relationship and actor is auditable.
+  - Progress: immutable version chain, current-version guard, actor audit,
+    bilingual history UI, migration and smoke scenarios are implemented; document
+    smoke passes 46/46 and critical E2E passes on PostgreSQL 17 in CI.
+- [x] **ADM-002 — Managed external shortcuts**
+  - Acceptance: owner/responsible CRUD shared shortcuts; employees use accessible
+    card/list views.
+  - Evidence: data model, guarded CRUD API, bilingual page and adversarial URL tests
+    are implemented. PostgreSQL 17 CI records administration 47/47 and permissions
+    52/52, including owner CRUD, employee read/mutation denial and accessible
+    cards/list toggle states.
+- [ ] **PAY-002 — Central service and print pricing**
+  - Acceptance: owner/responsible manage prices; document totals and customer
+    change are derived server-side from the active price and print quantity.
+  - Progress: template prices are validated and managed in the guarded back-office;
+    employee price overrides are rejected and cash/change/copies remain server-derived.
+    The migration is replay-tested and deactivates an unpriced active template;
+    the seed preserves owner-managed prices and cannot reactivate an unpriced template.
+
 ## Phase 1 — Evidence and blocking risks
+
+- [x] **CLEAN-001 — Remove superseded mock contract prototypes**
+  - Acceptance: no orphan in-memory template/archive/generator UI or unvalidated
+    mock legal clause remains in production source.
+  - Evidence: repository-wide reference search finds no caller for
+    `components/contract-template-manager.tsx`, `contract-generator.tsx` or
+    `contract-archive.tsx`; the real Prisma/API-backed pages replace all three.
+  - Evidence: the Cyber Owner approved deletion on 2026-11-23; the three tracked
+    prototypes were removed after a repository-wide caller search found no import.
 
 - [x] **PR-001 — Reconcile product capability evidence**
 
@@ -88,7 +164,7 @@
   - Acceptance: each proven gap has a regression test and canonical doc update.
   - Verify: focused tests, contracts, i18n and E2E.
   - Dependencies: PR-001, QA-001.
-  - Progress: the contract auditor passes 4/4 self-tests and inspects 17/17
+  - Progress: the contract auditor passes 4/4 self-tests and inspects 21/21
     request handlers; invalid pagination returns structured `400` responses;
     the browser suites prove guest/employee/admin denials, lifecycle revocation,
     duplicate/language guards, preview/CSP, download, duplication, immutability,
@@ -101,7 +177,9 @@
 ## Checkpoint B
 
 - [ ] Every v1 catalogue capability is complete with automated evidence.
-- [x] Build, schema status, contracts, i18n and critical E2E pass.
+- [ ] Build, schema status, contracts, i18n and critical E2E pass.
+  - Progress: build, schema validation, contracts and i18n pass on the current
+    change with Next.js 16.4.6; critical E2E passes 4/4 on CI PostgreSQL 17.
 - [x] No behavior change lacks a `docs/features` update.
 
 ## Phase 3 — Measured performance and operations
@@ -132,11 +210,32 @@
   - Verify: release checklist and CI/container evidence.
   - Dependencies: Checkpoint B.
   - Progress: container topology, immutable image contract and rollback runbook
-    are implemented. Docker is unavailable locally; CI execution, CI-only secret
-    provisioning, backup/restore proof and replacement of obsolete GitHub
-    required-check contexts remain open. ADR 0007 identifies the persistent
+    are implemented. Docker is unavailable locally, but PR #13 builds both
+    production targets and passes PostgreSQL/critical-E2E CI. Backup/restore proof
+    remains open. ADR 0007 identifies the persistent
     container topology as the supported v1 production target; the historical
     Vercel deployment is preview-only and is not release evidence.
+    The standalone readiness endpoint now proves database and document-storage
+    availability; its 200/503 behavior is locally verified and wired to Docker health.
+    The recovery procedure now treats PostgreSQL and `documents_data` as one
+    quiesced, hashed recovery point and requires a disposable restore before any
+    destructive rollback. CI exercises that paired archive and restores it into a
+    new PostgreSQL 17 database and empty directory before rerunning migration and
+    data invariants. The witnessed target-environment exercise remains pending.
+    The monitored rollout contract now defines external readiness probes, safe
+    structured-error queries, relative 5xx/p95 thresholds, first-hour gates and
+    48-hour evidence. Provider dashboards and alert delivery still require the target environment.
+    PR #13 is mergeable and all five required gates are green on the release
+    revision. Required CI secret names exist.
+    `main` and `dev` enforce the five current checks. Zero approving reviews is the
+    explicit Cyber Owner policy for this single-maintainer repository.
+    Neon recovery was rehearsed without touching production: a branch cloned from
+    the current primary state passed all 16 migrations and data invariants, while a
+    clean candidate restored from the pre-migration snapshot was migrated, seeded
+    and verified with zero personas/documents. The exercise also exposed and closed
+    a release-gate defect that allowed mutating smokes to inherit a production URL.
+    A witnessed container-volume restore and an approved production branch cutover
+    remain pending; see `evidence/2026-11-23-neon-recovery-and-smoke-isolation.md`.
 
 - [ ] **PRIV-001 — Define PII retention and subject-request operations**
   - Acceptance: data classes, purposes, retention owners and deletion/export paths are documented.
@@ -152,5 +251,8 @@
 
 - [x] `pnpm install --frozen-lockfile --ignore-scripts` succeeds under the documented policy.
 - [x] `pnpm run quality:prepush` passes without skipped suites.
+  - Evidence: 115/115 unit tests and the production build pass; PostgreSQL 17 CI
+    records permissions 52/52, documents 46/46, admin 47/47, UX 32/32 and critical
+    E2E 4/4, all without failure or skip.
 - [x] Independent correctness, architecture, security and performance code review is approved.
 - [x] Release evidence, known limitations and rollback instructions are current.

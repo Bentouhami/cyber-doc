@@ -6,6 +6,10 @@ import { hashPassword as betterAuthHashPassword } from "better-auth/crypto";
 import { ensureAdminUser } from "@/lib/admin-auth";
 import { internalServerError, logApiError } from "@/lib/api-error";
 import prisma from "@/lib/prisma";
+import {
+  canDeleteManagedUser,
+  canUpdateManagedUser,
+} from "@/lib/management-role-policy";
 import { updateUserSchema, userValidationIssues } from "@/lib/user-validation";
 import { mapUserToEmployeeDTO } from "@/mappers/EmployeeMapper";
 
@@ -71,7 +75,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       { status: 400 },
     );
   }
-  const { firstName, lastName, email, password, roleNames, isActive } = parsed.data;
+  const { firstName, lastName, email, username, password, roleNames, isActive } = parsed.data;
 
   try {
     if (currentUser.id === userId && isActive === false) {
@@ -80,10 +84,28 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
     const existingUser = await prisma.user.findUnique({
       where: { id: userId },
+      include: { roles: { include: { role: true } } },
     });
 
     if (!existingUser) {
       return new NextResponse("User not found", { status: 404 });
+    }
+
+    const actorRoleNames = currentUser.roles.map((role) => role.role.name);
+    const targetRoleNames = existingUser.roles.map((role) => role.role.name);
+    if (
+      !canUpdateManagedUser({
+        actorId: currentUser.id,
+        actorRoleNames,
+        targetId: existingUser.id,
+        targetRoleNames,
+        assignedRoleNames: roleNames,
+      })
+    ) {
+      return NextResponse.json(
+        { message: "You cannot update this account", code: "USER_UPDATE_FORBIDDEN" },
+        { status: 403 },
+      );
     }
 
     if (email && email.toLowerCase() !== existingUser.email.toLowerCase()) {
@@ -103,12 +125,18 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       }
     }
 
-    if (
-      currentUser.id === userId &&
-      roleNames &&
-      !roleNames.includes("admin")
-    ) {
-      return new NextResponse("You cannot remove your own admin role", { status: 403 });
+    if (username && username !== existingUser.username) {
+      const usernameInUse = await prisma.user.findUnique({
+        where: { username },
+        select: { id: true },
+      });
+
+      if (usernameInUse) {
+        return NextResponse.json(
+          { message: "Username already in use", code: "USERNAME_ALREADY_IN_USE" },
+          { status: 409 },
+        );
+      }
     }
 
     const updatedFirstName = firstName ?? existingUser.firstName;
@@ -142,6 +170,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
           firstName: updatedFirstName,
           lastName: updatedLastName,
           email: updatedEmail,
+          username: username ?? existingUser.username,
           name: `${updatedFirstName ?? ""} ${updatedLastName ?? ""}`.trim(),
           ...(passwordHash ? { passwordHash } : {}),
           ...(typeof isActive === "boolean"
@@ -203,7 +232,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json(
-        { message: "Email already in use", code: "EMAIL_ALREADY_IN_USE" },
+        { message: "Email or username already in use", code: "IDENTITY_ALREADY_IN_USE" },
         { status: 409 },
       );
     }
@@ -227,6 +256,27 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
   }
 
   try {
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { roles: { include: { role: true } } },
+    });
+
+    if (!existingUser) {
+      return new NextResponse("User not found", { status: 404 });
+    }
+
+    if (
+      !canDeleteManagedUser(
+        currentUser.roles.map((role) => role.role.name),
+        existingUser.roles.map((role) => role.role.name),
+      )
+    ) {
+      return NextResponse.json(
+        { message: "You cannot delete this account", code: "USER_DELETE_FORBIDDEN" },
+        { status: 403 },
+      );
+    }
+
     const user = await prisma.$transaction(async (tx) => {
       const deletedUser = await tx.user.update({
         where: { id: userId },

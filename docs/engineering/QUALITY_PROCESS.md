@@ -53,8 +53,10 @@ Create these Actions secrets with random CI-only values:
 If the repository is transferred from a personal GitHub account to an
 organization, also create `GITLEAKS_LICENSE` as required by Gitleaks Action.
 
-Protect `main`, `dev`, and release branches. Require pull requests, one approval,
-CODEOWNER review for owned files, resolved conversations, and these status checks:
+Protect `main` and `dev`. Require pull requests, resolved conversations and the
+status checks below. Approving reviews remain at zero while the Cyber Owner is the
+sole maintainer; if another maintainer joins, review this exception before granting
+write access:
 
 - `Static, security and build gates`
 - `Gitleaks secret scan`
@@ -104,6 +106,10 @@ After changing workflow job names or repository rules, run
 - Authentication library upgrades can change stored-data semantics. Better Auth 1.7 credential accounts require `Account.accountId` to match the owning user ID.
 - Any semantic data-model change requires both code changes and a forward migration for existing rows.
 - Seed data must be idempotent and must use the same invariants as production CRUD routes.
+- Seed updates must not rewrite an existing user's profile, credentials, lifecycle
+  state or sessions; CI executes the seed twice before checking data invariants.
+- The PostgreSQL critical-smoke job must run `check:data` after seeding and before
+  browser tests; owner, pricing, template-contract and packaged-asset failures block release.
 - Compilation cannot validate authentication. Test guest, employee, and admin flows against a real database.
 
 ### Next.js and runtime behavior

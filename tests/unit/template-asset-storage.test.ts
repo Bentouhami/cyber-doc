@@ -18,6 +18,17 @@ test("routes uploaded template assets to persistent storage", () => {
   assert.equal(isPersistentTemplateAssetPath("templates_docs/seed.docx"), false);
 });
 
+test("resolves only sanitized packaged template assets", async () => {
+  const resolved = await resolveTemplateAssetFile(
+    "templates_docs/sanitized/attestation-residence.docx",
+  );
+  assert.equal(path.basename(resolved), "attestation-residence.docx");
+  assert.equal(path.basename(path.dirname(resolved)), "sanitized");
+  await assert.rejects(
+    resolveTemplateAssetFile("templates_docs/attestation-residence.docx"),
+  );
+});
+
 test("writes and resolves uploaded assets below the persistent storage root", async (t) => {
   const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "cyberdoc-assets-"));
   const previousStorageRoot = process.env.DOCS_STORAGE_DIR;

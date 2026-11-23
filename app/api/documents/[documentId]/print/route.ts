@@ -4,7 +4,11 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/admin-auth";
 import { internalServerError, logApiError } from "@/lib/api-error";
-import { calculatePaymentState } from "@/lib/payment-policy";
+import {
+  calculatePaymentState,
+  canAddDocumentCopies,
+  documentCopiesSchema,
+} from "@/lib/payment-policy";
 import { lockDocumentForUpdate } from "@/lib/document-transaction-lock";
 import { hasAnyRole } from "@/lib/permissions";
 import { incrementDailyStats } from "@/services/dailyStatsService";
@@ -12,7 +16,7 @@ import { incrementDailyStats } from "@/services/dailyStatsService";
 const printSchema = z.object({
   printerId: z.string().optional(),
   printerName: z.string().optional(),
-  copies: z.number().int().min(1).optional(),
+  copies: documentCopiesSchema.optional(),
 });
 
 type RouteContext = {
@@ -64,6 +68,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       });
 
       if (!document) return { kind: "not-found" } as const;
+      if (!canAddDocumentCopies(document.totalCopies, copies)) {
+        return { kind: "invalid-copies" } as const;
+      }
 
       const printedStatus = await tx.documentStatus.findFirst({
         where: { name: "PRINTED" },
@@ -128,12 +135,19 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         throw new Error(`Unable to reprice printed document: ${payment.code}`);
       }
 
-      await tx.document.update({
+      const updatedDocument = await tx.document.update({
         where: { id: document.id },
         data: {
           statusId: printedStatus?.id ?? document.statusId,
           totalCopies: nextTotalCopies,
           ...(payment?.success ? payment.value : {}),
+        },
+        select: {
+          totalCopies: true,
+          chargedTotal: true,
+          amountPaid: true,
+          changeGiven: true,
+          paymentStatus: true,
         },
       });
 
@@ -157,6 +171,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         kind: "printed",
         documentId: document.id,
         historyId: history.id,
+        payment: updatedDocument,
       } as const;
     });
 
@@ -169,11 +184,22 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         { status: 400 },
       );
     }
+    if (result.kind === "invalid-copies") {
+      return NextResponse.json(
+        { message: "Document copy count exceeds the supported limit", code: "INVALID_COPIES" },
+        { status: 400 },
+      );
+    }
 
     return NextResponse.json({
       message: "Document printed",
       documentId: result.documentId,
       printHistoryId: result.historyId,
+      totalCopies: result.payment.totalCopies,
+      chargedTotal: result.payment.chargedTotal?.toString() ?? null,
+      amountPaid: result.payment.amountPaid?.toString() ?? null,
+      changeGiven: result.payment.changeGiven?.toString() ?? null,
+      paymentStatus: result.payment.paymentStatus,
     });
   } catch (error) {
     return internalServerError(

@@ -1,30 +1,28 @@
-import { Metadata } from "next"
+import type { Metadata } from "next"
 
 import prisma from "@/lib/prisma"
 import { TemplateWorkbench } from "@/components/templates/template-workbench"
 import type { GenerationTemplate } from "@/components/templates/template-form"
+import { DocumentCreateHeader } from "@/components/documents/document-create-header"
+import { getServerLocale } from "@/lib/server-locale"
 
-export const metadata: Metadata = {
-  title: "Génération de documents",
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: (await getServerLocale()) === "ar" ? "إنشاء وثيقة" : "Génération de documents",
+  }
 }
 
 type PageProps = {
-  searchParams?:
-    | {
-        documentId?: string | string[]
-        personaId?: string | string[]
-        entryMode?: string | string[]
-      }
-    | Promise<{
-        documentId?: string | string[]
-        personaId?: string | string[]
-        entryMode?: string | string[]
-      }>
+  searchParams?: Promise<{
+    documentId?: string | string[]
+    personaId?: string | string[]
+    entryMode?: string | string[]
+  }>
 }
 
 export default async function DocumentCreatePage({ searchParams }: PageProps) {
   const prismaAny = prisma as any
-  const resolvedSearchParams = searchParams ? await Promise.resolve(searchParams) : undefined
+  const resolvedSearchParams = await searchParams
   const documentId = Array.isArray(resolvedSearchParams?.documentId)
     ? resolvedSearchParams?.documentId[0]
     : resolvedSearchParams?.documentId
@@ -114,8 +112,7 @@ export default async function DocumentCreatePage({ searchParams }: PageProps) {
         }
       }
       initialPayment = {
-        copies: document.totalCopies ?? 1,
-        amountPaid: document.amountPaid ? Number(document.amountPaid) : undefined,
+        copies: 1,
       }
     }
   }
@@ -240,19 +237,7 @@ export default async function DocumentCreatePage({ searchParams }: PageProps) {
   return (
     <section className="bg-background">
       <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <header className="rounded-2xl border bg-card p-6 shadow-sm">
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              CyberDoc
-            </p>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              {documentId ? "Nouvelle version du document" : "Génération de document"}
-            </h1>
-            <p className="max-w-3xl text-sm text-muted-foreground">
-              Sélectionnez un modèle juridique, complétez les informations requises, puis générez une version prête pour prévisualisation, impression et téléchargement.
-            </p>
-          </div>
-        </header>
+        <DocumentCreateHeader isVersion={Boolean(documentId)} />
 
         <TemplateWorkbench
           templates={generationTemplates}

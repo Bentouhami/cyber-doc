@@ -25,6 +25,7 @@ $includePaths = @(
   "compose.yaml",
   "docker",
   "docs/README.md",
+  "docs/analysis",
   "docs/decisions",
   "docs/engineering",
   "docs/features",

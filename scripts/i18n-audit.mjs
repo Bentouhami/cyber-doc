@@ -43,10 +43,14 @@ function extractKeysFromSource(source) {
 
 const files = ROOTS.flatMap((root) => walk(root));
 const usedKeys = new Set();
+const serverMessageLeaks = [];
 
 for (const file of files) {
   const source = fs.readFileSync(file, "utf8");
   for (const key of extractKeysFromSource(source)) usedKeys.add(key);
+  if (file.endsWith(".tsx") && /\b(?:data|payload|body|responseData|result)\.message\b/.test(source)) {
+    serverMessageLeaks.push(file);
+  }
 }
 
 const frRaw = JSON.parse(fs.readFileSync("locales/fr/common.json", "utf8"));
@@ -69,6 +73,7 @@ console.log(`- missing in fr: ${missingInFr.length}`);
 console.log(`- missing in ar: ${missingInAr.length}`);
 console.log(`- fr-only keys: ${frOnly.length}`);
 console.log(`- ar-only keys: ${arOnly.length}`);
+console.log(`- raw server messages in UI: ${serverMessageLeaks.length}`);
 
 if (missingInFr.length) {
   console.log("\nMissing in fr:");
@@ -90,6 +95,11 @@ if (arOnly.length) {
   for (const key of arOnly) console.log(`- ${key}`);
 }
 
-if (missingInFr.length || missingInAr.length) {
+if (serverMessageLeaks.length) {
+  console.log("\nRaw server messages exposed by UI:");
+  for (const file of serverMessageLeaks) console.log(`- ${file}`);
+}
+
+if (missingInFr.length || missingInAr.length || serverMessageLeaks.length) {
   process.exitCode = 1;
 }

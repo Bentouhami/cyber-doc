@@ -20,10 +20,17 @@ Owner: ___
 
 ## 3) Monitoring (24-48h)
 
-- Availability:
-- Error trends:
-- Generation/download/print health:
+- Monitoring owner and dashboard/log-query links:
+- Staging/previous-release baseline window:
+- `/api/health` availability and restart count:
+- HTTP 5xx rate and comparison with baseline:
+- Critical-route p95 and comparison with baseline:
+- New `api_error` signatures:
+- PostgreSQL and `documents_data` growth/free space:
+- Login/generation/payment/download/print health:
+- 15/30/60-minute and 24/48-hour evidence links:
 - Incidents opened:
+- Hold/rollback decisions:
 
 ## 4) Open Issues After Release
 

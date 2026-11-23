@@ -8,6 +8,13 @@ import { useLocale } from "@/hooks/use-locale"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { DocumentsTable, type DocumentTableRow } from "@/components/documents/documents-table"
 import { DocumentCards } from "@/components/documents/document-cards"
 
@@ -21,6 +28,8 @@ type TemplateOption = {
   id: string
   title: string
   titleAr?: string | null
+  documentType: { id: number; name: string; nameAr?: string | null }
+  category: { id: number; name: string; nameAr?: string | null }
 }
 
 type CreatorOption = {
@@ -44,6 +53,8 @@ export function DocumentsDashboard() {
     search: "",
     status: "all",
     template: "all",
+    documentType: "all",
+    category: "all",
     dateFrom: "",
     dateTo: "",
     createdBy: "all",
@@ -71,6 +82,12 @@ export function DocumentsDashboard() {
     city?: string | null
   } | null>(null)
   const [isLoadingClientHistory, setIsLoadingClientHistory] = useState(false)
+  const [clientHistoryPage, setClientHistoryPage] = useState(1)
+  const [clientHistoryTotalPages, setClientHistoryTotalPages] = useState(1)
+  const [clientHistoryFilters, setClientHistoryFilters] = useState({
+    documentType: "all",
+    category: "all",
+  })
   const [clientHistory, setClientHistory] = useState<
     Array<{
       documentId: string
@@ -116,23 +133,31 @@ export function DocumentsDashboard() {
 
   const visibleClientResults = clientQuery.trim().length >= 2 ? clientResults : []
 
-  const loadClientHistory = async (client: {
-    id: string
-    fullName?: string | null
-    fullNameAr?: string | null
-    nationalId?: string | null
-    phone?: string | null
-    city?: string | null
-  }) => {
+  type ClientSummary = NonNullable<typeof selectedClient>
+
+  const loadClientHistory = async (
+    client: ClientSummary,
+    nextFilters = clientHistoryFilters,
+    nextPage = 1,
+  ) => {
     setSelectedClient(client)
     setIsLoadingClientHistory(true)
     try {
-      const response = await fetch(`/api/personas/${client.id}/documents?page=1&pageSize=12`)
+      const query = new URLSearchParams({ page: String(nextPage), pageSize: "12" })
+      if (nextFilters.documentType !== "all") {
+        query.set("documentTypeId", nextFilters.documentType)
+      }
+      if (nextFilters.category !== "all") {
+        query.set("categoryId", nextFilters.category)
+      }
+      const response = await fetch(`/api/personas/${client.id}/documents?${query}`)
       if (!response.ok) {
         throw new Error("Client history fetch failed")
       }
       const data = await response.json()
       setClientHistory(Array.isArray(data.data) ? data.data : [])
+      setClientHistoryPage(data.page ?? nextPage)
+      setClientHistoryTotalPages(Math.max(data.totalPages ?? 1, 1))
     } catch (error) {
       console.error("Client history fetch failed:", error)
       setClientHistory([])
@@ -156,6 +181,12 @@ export function DocumentsDashboard() {
         }
         if (appliedFilters.template !== "all") {
           query.set("templateId", appliedFilters.template)
+        }
+        if (appliedFilters.documentType !== "all") {
+          query.set("documentTypeId", appliedFilters.documentType)
+        }
+        if (appliedFilters.category !== "all") {
+          query.set("categoryId", appliedFilters.category)
         }
         if (appliedFilters.createdBy && appliedFilters.createdBy !== "all") {
           query.set("createdById", appliedFilters.createdBy)
@@ -192,6 +223,8 @@ export function DocumentsDashboard() {
             id: template.id,
             title: template.title,
             titleAr: template.titleAr ?? null,
+            documentType: template.documentType,
+            category: template.category,
           })),
         )
       } catch (error) {
@@ -252,6 +285,50 @@ export function DocumentsDashboard() {
         label: creator.label || creator.email || creator.id,
       })),
     [creators],
+  )
+
+  const documentTypeOptions = useMemo(
+    () =>
+      [...new Map(templates.map((template) => [template.documentType.id, template.documentType])).values()]
+        .map((documentType) => ({
+          value: String(documentType.id),
+          label: documentType.nameAr || documentType.name,
+        })),
+    [templates],
+  )
+
+  const categoryOptions = useMemo(
+    () =>
+      [...new Map(
+        templates
+          .filter(
+            (template) =>
+              filters.documentType === "all" ||
+              String(template.documentType.id) === filters.documentType,
+          )
+          .map((template) => [template.category.id, template.category]),
+      ).values()].map((category) => ({
+        value: String(category.id),
+        label: category.nameAr || category.name,
+      })),
+    [filters.documentType, templates],
+  )
+
+  const clientHistoryCategoryOptions = useMemo(
+    () =>
+      [...new Map(
+        templates
+          .filter(
+            (template) =>
+              clientHistoryFilters.documentType === "all" ||
+              String(template.documentType.id) === clientHistoryFilters.documentType,
+          )
+          .map((template) => [template.category.id, template.category]),
+      ).values()].map((category) => ({
+        value: String(category.id),
+        label: category.nameAr || category.name,
+      })),
+    [clientHistoryFilters.documentType, templates],
   )
 
   if (isLoading) {
@@ -366,7 +443,11 @@ export function DocumentsDashboard() {
                       <button
                         key={client.id}
                         type="button"
-                        onClick={() => loadClientHistory(client)}
+                        onClick={() => {
+                          const reset = { documentType: "all", category: "all" }
+                          setClientHistoryFilters(reset)
+                          void loadClientHistory(client, reset)
+                        }}
                         className="flex w-full items-center justify-between rounded-md border bg-background px-3 py-2 text-left text-sm transition hover:border-primary/40"
                       >
                         <span className="font-medium">{client.fullNameAr || client.fullName || "—"}</span>
@@ -416,6 +497,52 @@ export function DocumentsDashboard() {
               <p className="text-sm font-semibold">
                 {t("documents.clients.historyTitle", { defaultValue: "Historique du client" })}
               </p>
+              <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                <Select
+                  value={clientHistoryFilters.documentType}
+                  onValueChange={(value) =>
+                    setClientHistoryFilters({ documentType: value, category: "all" })
+                  }
+                >
+                  <SelectTrigger aria-label={t("documents.documentTypeFilter")}>
+                    <SelectValue placeholder={t("documents.documentTypeFilter")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("common.all")}</SelectItem>
+                    {documentTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={clientHistoryFilters.category}
+                  onValueChange={(value) =>
+                    setClientHistoryFilters((current) => ({ ...current, category: value }))
+                  }
+                >
+                  <SelectTrigger aria-label={t("documents.categoryFilter")}>
+                    <SelectValue placeholder={t("documents.categoryFilter")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("common.all")}</SelectItem>
+                    {clientHistoryCategoryOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isLoadingClientHistory}
+                  onClick={() => void loadClientHistory(selectedClient, clientHistoryFilters)}
+                >
+                  {t("documents.applyFilters")}
+                </Button>
+              </div>
               {isLoadingClientHistory ? (
                 <p className="text-sm text-muted-foreground">
                   {t("documents.clients.loadingHistory", { defaultValue: "Chargement de l'historique..." })}
@@ -447,6 +574,49 @@ export function DocumentsDashboard() {
                       </div>
                     </div>
                   ))}
+                  {clientHistoryTotalPages > 1 ? (
+                    <div className="flex items-center justify-between pt-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={clientHistoryPage <= 1 || isLoadingClientHistory}
+                        onClick={() =>
+                          void loadClientHistory(
+                            selectedClient,
+                            clientHistoryFilters,
+                            clientHistoryPage - 1,
+                          )
+                        }
+                      >
+                        {t("documents.pagination.previous")}
+                      </Button>
+                      <span className="text-xs text-muted-foreground">
+                        {t("documents.pagination.page", {
+                          page: clientHistoryPage,
+                          total: clientHistoryTotalPages,
+                        })}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={
+                          clientHistoryPage >= clientHistoryTotalPages ||
+                          isLoadingClientHistory
+                        }
+                        onClick={() =>
+                          void loadClientHistory(
+                            selectedClient,
+                            clientHistoryFilters,
+                            clientHistoryPage + 1,
+                          )
+                        }
+                      >
+                        {t("documents.pagination.next")}
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
@@ -518,6 +688,8 @@ export function DocumentsDashboard() {
           data={documents}
           statusOptions={statusOptions}
           templateOptions={templateOptions}
+          documentTypeOptions={documentTypeOptions}
+          categoryOptions={categoryOptions}
           creatorOptions={creatorOptions}
           filters={filters}
           total={totalDocuments}
@@ -531,6 +703,8 @@ export function DocumentsDashboard() {
               search: "",
               status: "all",
               template: "all",
+              documentType: "all",
+              category: "all",
               dateFrom: "",
               dateTo: "",
               createdBy: "all",

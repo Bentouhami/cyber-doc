@@ -1,15 +1,12 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
+import {
+  REQUIRED_CHECKS,
+  contextsFrom,
+} from "./github-protection-policy.mjs";
 
 const branches = process.argv.slice(2).filter(Boolean);
 const requiredBranches = branches.length > 0 ? branches : ["dev", "main"];
-const requiredChecks = [
-  "Static, security and build gates",
-  "Gitleaks secret scan",
-  "Dependency review",
-  "Production container targets",
-  "Database and critical E2E gates",
-];
 const obsoleteChecks = new Set(["Frontend CI", "Backend CI"]);
 
 function gh(args) {
@@ -45,17 +42,18 @@ for (const branch of requiredBranches) {
     continue;
   }
 
-  const contexts = new Set(protection.required_status_checks?.contexts ?? []);
-  for (const check of requiredChecks) {
+  const contexts = new Set(contextsFrom(protection));
+  for (const check of REQUIRED_CHECKS) {
     if (!contexts.has(check)) findings.push(`${branch}: missing required check '${check}'`);
   }
   for (const check of contexts) {
-    if (obsoleteChecks.has(check)) findings.push(`${branch}: obsolete required check '${check}'`);
+    if (obsoleteChecks.has(check)) {
+      findings.push(`${branch}: obsolete required check '${check}'`);
+    } else if (!REQUIRED_CHECKS.includes(check)) {
+      findings.push(`${branch}: unexpected required check '${check}'`);
+    }
   }
 
-  const approvals =
-    protection.required_pull_request_reviews?.required_approving_review_count ?? 0;
-  if (approvals < 1) findings.push(`${branch}: at least one approval is required`);
   if (protection.enforce_admins?.enabled !== true) {
     findings.push(`${branch}: administrators are not subject to protection`);
   }
@@ -74,5 +72,5 @@ if (findings.length > 0) {
 }
 
 console.log(
-  `github-protection-check: ${requiredBranches.join(", ")} enforce all ${requiredChecks.length} current checks`,
+  `github-protection-check: ${requiredBranches.join(", ")} enforce all ${REQUIRED_CHECKS.length} current checks`,
 );

@@ -10,8 +10,15 @@ and make missing production configuration fail closed.
 
 - `DATABASE_URL`
 
-  - Used by Prisma client and migrations.
+  - Used by the Prisma application client and, when no direct URL is configured,
+    migrations.
   - Example: `postgresql://user:password@localhost:5433/cyber-doc-db?schema=public`
+
+- `DATABASE_URL_UNPOOLED` (optional)
+
+  - Preferred by Prisma CLI commands when a database provider supplies a direct
+    connection alongside a pooled `DATABASE_URL` (for example Neon).
+  - Leave blank for deployments where `DATABASE_URL` is already direct.
 
 - `BETTER_AUTH_SECRET`
 
@@ -63,6 +70,12 @@ and make missing production configuration fail closed.
     through the environment and never print it in reports.
 - `SMOKE_ALLOW_EPERM_SKIP`
   - Local restricted-env fallback for critical runner. Use only with value `1`.
+- `SMOKE_DISPOSABLE_DATABASE`
+  - Required with value `1` before the mutating critical E2E suite will start.
+  - Local database names must contain a disposable marker such as `ci`, `test` or
+    `restore`. Remote targets additionally require `NEON_BRANCH` to contain such
+    a marker; `production`, `main` and other unmarked branches fail closed.
+  - Never persist this acknowledgement in a production environment.
 
 ## Optional (legacy utility script)
 

@@ -42,6 +42,7 @@ jobs:
     timeout-minutes: 15
     env:
       GITLEAKS_ALREADY_RUN: "1"
+      BETTER_AUTH_SECRET: ${{ secrets.CI_BETTER_AUTH_SECRET }}
       BETTER_AUTH_URL: https://ci.cyberdoc.invalid
       NEXT_PUBLIC_APP_URL: https://ci.cyberdoc.invalid
 
@@ -140,6 +141,7 @@ jobs:
 
     env:
       DATABASE_URL: ${{ format('postgresql://postgres:{0}@127.0.0.1:5432/cyber_doc_ci', secrets.CI_DB_PASSWORD) }}
+      SMOKE_DISPOSABLE_DATABASE: "1"
       BETTER_AUTH_SECRET: ${{ secrets.CI_BETTER_AUTH_SECRET }}
       BETTER_AUTH_URL: http://127.0.0.1:3000
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
@@ -176,8 +178,20 @@ jobs:
       - name: Seed isolated test database
         run: pnpm run db:seed
 
+      - name: Re-run seed to prove idempotence
+        run: pnpm run db:seed
+
+      - name: Verify seeded data invariants
+        run: pnpm run check:data
+
       - name: Verify migration state
         run: pnpm exec prisma migrate status
+
+      - name: Exercise disposable database and document recovery
+        run: bash scripts/release/ci-recovery-drill.sh
+        env:
+          RECOVERY_DRILL_DATABASE_URL: ${{ format('postgresql://postgres:{0}@127.0.0.1:5432/cyber_doc_restore', secrets.CI_DB_PASSWORD) }}
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
 
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
@@ -196,4 +210,7 @@ jobs:
             tmp/documents-smoke/results.json
             tmp/ux-check/results.json
             tmp/e2e-critical/results.json
+            tmp/data-quality/results.json
+            tmp/recovery-drill.*/results.txt
+            tmp/recovery-drill.*/SHA256SUMS
           if-no-files-found: warn

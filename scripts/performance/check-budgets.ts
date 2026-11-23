@@ -5,12 +5,16 @@ import { gzipSync } from "node:zlib";
 import {
   collectRouteAssetPaths,
   evaluateRouteBudgets,
+  parseClientReferenceManifest,
   ROUTE_ASSET_BUDGETS,
   type RouteAssetManifest,
   type RouteAssetMeasurement,
 } from "./budget-policy";
 
-const BUILD_DIRECTORY = path.resolve(process.cwd(), ".next");
+const BUILD_DIRECTORY = path.resolve(
+  process.cwd(),
+  process.env.CYBERDOC_NEXT_DIST_DIR?.trim() || ".next",
+);
 
 function readRouteManifest(manifestRoute: string): RouteAssetManifest {
   const manifestPath = path.join(
@@ -20,21 +24,15 @@ function readRouteManifest(manifestRoute: string): RouteAssetManifest {
     ...manifestRoute.split("/"),
   ) + "_client-reference-manifest.js";
   const source = readFileSync(manifestPath, "utf8");
-  const assignmentIndex = source.indexOf("] = ");
-
-  if (assignmentIndex === -1) {
+  try {
+    return parseClientReferenceManifest(source);
+  } catch {
     throw new Error(`Unsupported client-reference manifest format: ${manifestPath}`);
   }
-
-  const serializedManifest = source
-    .slice(assignmentIndex + 4)
-    .trim()
-    .replace(/;$/, "");
-  return JSON.parse(serializedManifest) as RouteAssetManifest;
 }
 
 function resolveBuildAsset(assetPath: string) {
-  const resolvedPath = path.resolve(BUILD_DIRECTORY, assetPath);
+  const resolvedPath = path.resolve(BUILD_DIRECTORY, decodeURIComponent(assetPath));
   const buildPrefix = `${BUILD_DIRECTORY}${path.sep}`;
 
   if (!resolvedPath.startsWith(buildPrefix)) {

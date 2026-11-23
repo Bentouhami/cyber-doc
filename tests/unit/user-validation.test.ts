@@ -9,6 +9,7 @@ import {
 
 const validCreatePayload = {
   email: " Employee@Example.COM ",
+  username: " Alice.Example ",
   password: "Aa123456",
   firstName: "  Alice ",
   lastName: " Example  ",
@@ -20,6 +21,7 @@ describe("user API validation", () => {
     const parsed = createUserSchema.parse(validCreatePayload);
 
     assert.equal(parsed.email, "employee@example.com");
+    assert.equal(parsed.username, "alice.example");
     assert.equal(parsed.firstName, "Alice");
     assert.equal(parsed.lastName, "Example");
     assert.deepEqual(parsed.roleNames, ["employee"]);
@@ -45,6 +47,8 @@ describe("user API validation", () => {
   it("rejects malformed emails, control characters, invalid roles and unknown fields", () => {
     const payloads = [
       { ...validCreatePayload, email: "not-an-email" },
+      { ...validCreatePayload, username: "ab" },
+      { ...validCreatePayload, username: "alice admin" },
       { ...validCreatePayload, firstName: "Alice\r\nAdmin" },
       { ...validCreatePayload, roleNames: ["Admin Role"] },
       { ...validCreatePayload, unexpected: true },

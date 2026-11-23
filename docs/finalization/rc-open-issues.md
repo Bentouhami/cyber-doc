@@ -9,30 +9,14 @@ The automated baseline and independent code review are green. Production release
 remains blocked by the following operational and governance conditions; there is
 no unresolved critical/high code finding in the reviewed working tree.
 
-### RC-007 — Container artifact not yet built in CI
-
-- Severity: Blocker for release, not an application defect
-- Area: deployment
-- Current state: Docker is unavailable locally. The Dockerfile and Compose
-  topology have been statically reviewed; CI now builds both `migrator` and
-  `runner` targets, but that CI execution has not yet been observed. Existing PR
-  #12 points at historical SHA `369de8086fe9fd910571e3c9c3e1d560ecab34e1`.
-  Its old `critical-smoke` job failed without a database service, migrations or
-  seed and attempted to permit DB-unavailable skips. Detailed logs have expired,
-  but the retained check annotation records exit code 1. The required reviewed-
-  constraint label and CI-only secrets were provisioned on 2026-10-31; the new
-  exact-revision run remains pending.
-- Exit criterion: green required `container-build` check for the release commit.
-- Owner: DevOps / release owner
-
-Evidence: `evidence/2026-10-31-pr-12-ci-analysis.md`.
-
 ### RC-008 — Restore and rollback exercise pending
 
 - Severity: Blocker for release
 - Area: operations and data safety
-- Current state: backup, restore and rollback commands are documented but have
-  not been exercised against the target environment.
+- Current state: the coordinated PostgreSQL + `documents_data` backup procedure,
+  archive validation and rollback evidence contract are documented. CI now
+  exercises a guarded PostgreSQL 17 + document-archive restore into disposable
+  targets, but the procedure has not been witnessed on the production target.
 - Exit criterion: timestamped evidence of backup creation, restore validation,
   previous-image rollback and post-rollback smoke.
 - Owner: operations / database owner
@@ -50,6 +34,31 @@ Evidence: `evidence/2026-10-31-pr-12-ci-analysis.md`.
 - Owner: operations / architecture / release owner
 
 Evidence: `evidence/2026-10-31-vercel-target-audit.md`.
+
+### RC-018 — Production monitoring is not provisioned
+
+- Severity: Blocker for release
+- Area: observability and incident response
+- Current state: the vendor-neutral monitoring contract, safe `api_error` event
+  fields, staged rollout, relative 5xx/p95 thresholds and 48-hour evidence template
+  are documented. No target dashboard, external readiness probe or tested alert
+  delivery is available from this workspace.
+- Exit criterion: named operator, staging baseline, saved dashboard/log queries,
+  one-minute external health probe and a successfully delivered synthetic alert.
+- Owner: operations / release owner
+
+### RC-019 — Login throttling and trusted proxy are not approved
+
+- Severity: Blocker for release
+- Area: authentication / deployment network
+- Current state: Better Auth's production default limits sign-in to 3 attempts per
+  10 seconds, but counters are process-local and client identity depends on
+  `x-forwarded-for` or a shared fallback bucket. The existing PostgreSQL
+  `rate_limits` model supports a shared counter without another service.
+- Exit criterion: approve the employee lockout tradeoff and exact proxy CIDRs;
+  configure database-backed sign-in limiting, prevent direct origin/header spoofing,
+  and prove allowed attempts plus `429` behavior in the critical smoke.
+- Owner: security / operations / Cyber Owner
 
 ### RC-009 — Privacy and retention policy pending
 
@@ -92,6 +101,8 @@ Evidence: `evidence/2026-10-31-vercel-target-audit.md`.
 
 ## Resolved Historical Items
 
+- RC-007 container CI: PR #13 builds both production targets and passes all five
+  required checks on the release revision.
 - auth/session lifecycle and inactive-user revocation;
 - protected UI/API role boundaries;
 - security headers, strict preview isolation and template sanitization;

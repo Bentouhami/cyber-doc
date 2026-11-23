@@ -7,6 +7,9 @@ import { internalServerError, logApiError } from "@/lib/api-error";
 import { findTemplateDuplicateCandidates } from "@/services/templateDuplicateService";
 import { TEMPLATE_CONTENT_LIMITS } from "@/services/templateContentSecurity";
 import { importTemplateWithAsset } from "@/services/templateImportService";
+import { catalogPriceSchema } from "@/lib/payment-policy";
+import { analyzeTemplatePublication } from "@/lib/template-placeholder-policy";
+import { sanitizeTemplateContent } from "@/services/templateContentSecurity";
 
 const assetSchema = z.object({
   fileName: z.string().min(1),
@@ -125,6 +128,39 @@ export async function POST(request: Request) {
       );
     }
     data = parsed.data;
+    const metadataPrice = data.metadata?.basePrice;
+    if (
+      ((data.isActive ?? true) && !catalogPriceSchema.safeParse(metadataPrice).success) ||
+      (metadataPrice !== undefined &&
+        metadataPrice !== null &&
+        !catalogPriceSchema.safeParse(metadataPrice).success)
+    ) {
+      return NextResponse.json(
+        { message: "An active template requires a valid base price", code: "PRICE_REQUIRED" },
+        { status: 400 },
+      );
+    }
+    const publication = analyzeTemplatePublication(
+      data.isActive ?? true,
+      sanitizeTemplateContent(data.contentHtml, data.contentCss).contentHtml,
+      data.fields ?? [],
+    );
+    if (
+      publication.missingContent ||
+      publication.missingRequired.length ||
+      publication.unknownPlaceholders.length
+    ) {
+      return NextResponse.json(
+        {
+          message: "An active template requires valid HTML content and placeholders",
+          code: publication.missingContent
+            ? "TEMPLATE_CONTENT_REQUIRED"
+            : "INVALID_TEMPLATE_PLACEHOLDERS",
+          ...publication,
+        },
+        { status: 400 },
+      );
+    }
   } catch (error) {
     logApiError(
       { route: "/api/templates/import", operation: "parse_request" },

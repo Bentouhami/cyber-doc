@@ -3,7 +3,8 @@ import { access, cp, mkdir } from "node:fs/promises";
 import path from "node:path";
 
 const root = process.cwd();
-const standaloneRoot = path.join(root, ".next", "standalone");
+const buildDirectory = process.env.CYBERDOC_NEXT_DIST_DIR?.trim() || ".next";
+const standaloneRoot = path.join(root, buildDirectory, "standalone");
 const serverPath = path.join(standaloneRoot, "server.js");
 
 async function copyIfPresent(source, destination) {
@@ -31,7 +32,7 @@ async function run() {
     path.join(standaloneRoot, "public"),
   );
   await copyIfPresent(
-    path.join(root, ".next", "static"),
+    path.join(root, buildDirectory, "static"),
     path.join(standaloneRoot, ".next", "static"),
   );
 

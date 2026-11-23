@@ -17,6 +17,7 @@ export function mapUserToEmployeeDTO(user: UserWithRoles): EmployeeDTO {
     firstName: user.firstName,
     lastName: user.lastName,
     email: user.email,
+    username: user.username,
     displayName: computedDisplayName,
     image: user.image,
     roles: user.roles.map(({ role }) => ({

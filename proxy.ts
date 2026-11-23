@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import {
+  DOCUMENT_ROLES,
+  MANAGEMENT_ROLES,
+} from "@/lib/management-role-policy";
 import { isUserActive } from "@/lib/user-access-policy";
 import { buildApplicationContentSecurityPolicy } from "@/lib/security-headers";
 
-const ADMIN_ROLES = new Set(["admin"]);
-const EMPLOYEE_ROLES = new Set(["employee"]);
+const ADMIN_ROLES = new Set<string>(MANAGEMENT_ROLES);
+const EMPLOYEE_ROLES = new Set<string>(DOCUMENT_ROLES);
 
 function isRoleAllowed(roles: string[], allowed: Set<string>) {
   return roles.some((role) => allowed.has(role));
@@ -66,7 +70,7 @@ export default async function proxy(request: NextRequest) {
   }
 
   if (pathname.startsWith("/documents")) {
-    if (!isRoleAllowed(roleNames, ADMIN_ROLES) && !isRoleAllowed(roleNames, EMPLOYEE_ROLES)) {
+    if (!isRoleAllowed(roleNames, EMPLOYEE_ROLES)) {
       return secureResponse(NextResponse.redirect(new URL("/", request.url)));
     }
   }

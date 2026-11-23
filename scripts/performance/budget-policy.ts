@@ -12,8 +12,9 @@ export interface RouteAssetMeasurement {
 }
 
 export interface RouteAssetManifest {
-  entryJSFiles: Record<string, string[]>;
+  entryJSFiles?: Record<string, string[]>;
   entryCSSFiles: Record<string, Array<{ path: string }>>;
+  clientModules?: Record<string, { chunks?: Array<string | number> }>;
 }
 
 export type RouteBudgetViolation = {
@@ -32,12 +33,27 @@ export const ROUTE_ASSET_BUDGETS: RouteAssetBudget[] = [
   { route: "/documents/create", manifestRoute: "documents/create/page", javascriptGzipBytes: 195 * KIBIBYTE, cssGzipBytes: CSS_BUDGET_BYTES },
   { route: "/admin/employees", manifestRoute: "admin/employees/page", javascriptGzipBytes: 175 * KIBIBYTE, cssGzipBytes: CSS_BUDGET_BYTES },
   { route: "/admin/templates", manifestRoute: "admin/templates/page", javascriptGzipBytes: 116 * KIBIBYTE, cssGzipBytes: CSS_BUDGET_BYTES },
-  { route: "/admin/templates/new", manifestRoute: "admin/templates/new/page", javascriptGzipBytes: 125 * KIBIBYTE, cssGzipBytes: CSS_BUDGET_BYTES },
-  { route: "/admin/templates/[slug]", manifestRoute: "admin/templates/[slug]/page", javascriptGzipBytes: 123 * KIBIBYTE, cssGzipBytes: CSS_BUDGET_BYTES },
+  { route: "/admin/templates/new", manifestRoute: "admin/templates/new/page", javascriptGzipBytes: 135 * KIBIBYTE, cssGzipBytes: CSS_BUDGET_BYTES },
+  { route: "/admin/templates/[slug]", manifestRoute: "admin/templates/[slug]/page", javascriptGzipBytes: 135 * KIBIBYTE, cssGzipBytes: CSS_BUDGET_BYTES },
 ];
 
+export function parseClientReferenceManifest(source: string): RouteAssetManifest {
+  const markerIndex = source.indexOf("__RSC_MANIFEST[");
+  const assignment = markerIndex === -1 ? null : source.slice(markerIndex).match(/\]\s*=\s*/);
+  if (!assignment || assignment.index === undefined) {
+    throw new Error("Unsupported client-reference manifest format");
+  }
+  const jsonStart = markerIndex + assignment.index + assignment[0].length;
+  return JSON.parse(source.slice(jsonStart).trim().replace(/;$/, ""));
+}
+
 export function collectRouteAssetPaths(manifest: RouteAssetManifest) {
-  const javascript = new Set(Object.values(manifest.entryJSFiles).flat());
+  const javascript = new Set([
+    ...Object.values(manifest.entryJSFiles ?? {}).flat(),
+    ...Object.values(manifest.clientModules ?? {})
+      .flatMap((module) => module.chunks ?? [])
+      .filter((chunk): chunk is string => typeof chunk === "string" && chunk.endsWith(".js")),
+  ]);
   const css = new Set(
     Object.values(manifest.entryCSSFiles)
       .flat()

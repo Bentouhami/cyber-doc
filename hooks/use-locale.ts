@@ -7,7 +7,7 @@ const STORAGE_KEY = "cyberdoc_lang";
 
 export function useLocale() {
   const { i18n, t } = useTranslation();
-  const language = i18n.resolvedLanguage ?? i18n.language ?? "fr";
+  const language = i18n.resolvedLanguage ?? i18n.language ?? "ar";
 
   const dir = useMemo(() => i18n.dir(language), [i18n, language]);
   const isRTL = dir === "rtl";

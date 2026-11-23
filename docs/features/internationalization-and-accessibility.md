@@ -3,7 +3,7 @@ id: UX-001
 title: Internationalisation, RTL et accessibilité
 status: production-candidate
 owners: product/frontend
-last-reviewed: 2026-10-24
+last-reviewed: 2026-11-23
 ---
 
 # Internationalisation, RTL et accessibilité
@@ -16,11 +16,15 @@ conserve un parcours clavier sur desktop et mobile.
 ## Périmètre utilisateur
 
 Le sélecteur de langue s’applique aux espaces de connexion, administration,
-modèles et documents. Les documents possèdent aussi leur propre langue métier.
+modèles et documents, y compris les titres et descriptions du navigateur générés
+côté serveur. Les documents possèdent aussi leur propre langue métier.
 
 ## Règles métier
 
 - Chaque clé utilisée existe en français et en arabe.
+- Une première visite sans préférence enregistrée démarre en arabe.
+- Le rendu serveur n’accepte que `ar` ou `fr`; une préférence absente ou non
+  supportée revient à l’arabe avant l’envoi du HTML.
 - L’arabe applique `dir="rtl"`; le français applique `dir="ltr"`.
 - Le changement de langue UI ne modifie pas silencieusement la langue d’un document.
 - Les contrôles interactifs restent accessibles au clavier.
@@ -47,7 +51,9 @@ hydratation divergente sont des régressions bloquantes.
 
 ## Tests et preuves
 
-`pnpm run i18n:audit` exige zéro clé manquante. `pnpm run check:ux` teste FR/AR,
+`pnpm run i18n:audit` exige zéro clé manquante et interdit l’affichage direct des
+messages techniques renvoyés par les APIs dans les composants d’interface.
+`pnpm run check:ux` teste FR/AR,
 desktop/mobile, RTL, débordement, erreurs runtime et navigation clavier. La même
 matrice exécute Axe sur les règles WCAG 2 A/AA, 2.1 A/AA et 2.2 AA et bloque toute
 violation `critical` ou `serious`.
@@ -66,6 +72,16 @@ seule la conformité WCAG.
 
 ## Historique
 
+- 2026-11-23 — Métadonnées de la racine, des documents et du back-office modèles
+  rendues dynamiques en arabe ou français selon la préférence serveur.
+- 2026-11-23 — Défaut français résiduel supprimé du layout serveur; politique de
+  locale testée pour garantir un premier rendu arabe et préserver un choix FR/AR.
+- 2026-11-23 — Messages d’erreur API remplacés par des messages localisés,
+  fermeture des dialogues traduite et bordure de navigation corrigée en RTL;
+  l’audit empêche désormais la réexposition des messages serveur bruts.
+- 2026-11-23 — Accueil, états de session, thème et en-tête de génération retirés des chaînes figées et traduits FR/AR.
+- 2026-11-23 — Arabe défini comme langue initiale; ajout des libellés owner et
+  responsible en français et en arabe.
 - 2026-10-30 — Axe exécuté sur 32/32 parcours, zéro violation sérieuse/critique.
 - 2026-10-24 — Axe ajouté au gate critique; 28/28 parcours validés, zéro
   violation serious/critical et corrections des noms accessibles, labels, focus

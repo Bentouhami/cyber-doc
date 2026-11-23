@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { EMPLOYEE_ROLE, OWNER_ROLE, RESPONSIBLE_ROLE } from "@/lib/management-role-policy"
 import type { EmployeeDTO } from "@/types/employees"
 import { translateRoleName } from "@/utils/roles"
 
@@ -21,6 +22,7 @@ const schemaShape = z.object({
   firstName: z.string(),
   lastName: z.string(),
   email: z.string(),
+  username: z.string(),
   password: z.union([z.string(), z.literal("")]).optional(),
   roleName: z.string(),
 })
@@ -32,27 +34,47 @@ interface EmployeeFormProps {
   onCancel?: () => void
   mode?: EmployeeFormMode
   employee?: EmployeeDTO | null
-  currentUserId?: string | null
+  actorRoleNames?: string[]
 }
 
-const ROLE_OPTIONS = ["admin", "employee"]
-
-export function EmployeeForm({ onSuccess, onCancel, mode = "create", employee, currentUserId = null }: EmployeeFormProps) {
+export function EmployeeForm({
+  onSuccess,
+  onCancel,
+  mode = "create",
+  employee,
+  actorRoleNames = [],
+}: EmployeeFormProps) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const isEditMode = mode === "edit"
+  const isOwnerActor = actorRoleNames.includes(OWNER_ROLE) || actorRoleNames.includes("admin")
+  const isOwnerTarget = employee?.roles.some((role) => role.name === OWNER_ROLE) ?? false
+  const roleOptions = isOwnerTarget
+    ? [OWNER_ROLE]
+    : isOwnerActor
+      ? [RESPONSIBLE_ROLE, EMPLOYEE_ROLE]
+      : [EMPLOYEE_ROLE]
 
   const mapEmployeeApiError = (message: string) => {
     if (message.includes("User already exists") || message.includes("Email already in use")) {
       return t("employeeForm.errors.emailAlreadyUsed")
+    }
+    if (message.includes("Username already in use")) {
+      return t("employeeForm.errors.usernameAlreadyUsed")
+    }
+    if (message.includes("Email or username already in use")) {
+      return t("employeeForm.errors.identityAlreadyUsed")
     }
     if (message.includes("Missing required fields")) {
       return t("employeeForm.errors.missingFields")
     }
     if (message.includes("Invalid roles payload")) {
       return t("employeeForm.errors.invalidRole")
+    }
+    if (message.includes("cannot assign these roles") || message.includes("cannot update this account")) {
+      return t("employeeForm.errors.forbiddenRole")
     }
     if (message.includes("No updates provided")) {
       return t("employeeForm.errors.noUpdates")
@@ -84,6 +106,11 @@ export function EmployeeForm({ onSuccess, onCancel, mode = "create", employee, c
       firstName: z.string().min(2, t("employeeForm.validation.firstNameMin")),
       lastName: z.string().min(2, t("employeeForm.validation.lastNameMin")),
       email: z.string().email(t("employeeForm.validation.email")),
+      username: z
+        .string()
+        .min(3, t("employeeForm.validation.usernameMin"))
+        .max(30, t("employeeForm.validation.usernameMax"))
+        .regex(/^[a-zA-Z0-9_.]+$/, t("employeeForm.validation.usernameFormat")),
       password: z.union([passwordSchema, z.literal("")]).optional(),
       roleName: z.string().min(1, t("employeeForm.validation.roleRequired")),
     })
@@ -105,6 +132,7 @@ export function EmployeeForm({ onSuccess, onCancel, mode = "create", employee, c
       firstName: employee?.firstName ?? "",
       lastName: employee?.lastName ?? "",
       email: employee?.email ?? "",
+      username: employee?.username ?? "",
       password: "",
       roleName: employee?.roles?.[0]?.name ?? "",
     },
@@ -116,6 +144,7 @@ export function EmployeeForm({ onSuccess, onCancel, mode = "create", employee, c
         firstName: employee?.firstName ?? "",
         lastName: employee?.lastName ?? "",
         email: employee?.email ?? "",
+        username: employee?.username ?? "",
         password: "",
         roleName: employee?.roles?.[0]?.name ?? "",
       })
@@ -128,11 +157,11 @@ export function EmployeeForm({ onSuccess, onCancel, mode = "create", employee, c
   async function onSubmit(values: EmployeeFormValues) {
     try {
       setIsSubmitting(true)
-      if (!ROLE_OPTIONS.includes(values.roleName)) {
+      if (!roleOptions.includes(values.roleName)) {
         throw new Error(t("employeeForm.errors.invalidRole"))
       }
 
-      if (isEditMode && employee?.id === currentUserId && values.roleName !== "admin") {
+      if (isEditMode && isOwnerTarget && values.roleName !== OWNER_ROLE) {
         throw new Error(t("employeeStatus.selfRoleBlocked"))
       }
 
@@ -140,6 +169,7 @@ export function EmployeeForm({ onSuccess, onCancel, mode = "create", employee, c
         firstName: values.firstName,
         lastName: values.lastName,
         email: values.email,
+        username: values.username,
         roleNames: [values.roleName],
       }
 
@@ -174,6 +204,7 @@ export function EmployeeForm({ onSuccess, onCancel, mode = "create", employee, c
           firstName: "",
           lastName: "",
           email: "",
+          username: "",
           password: "",
           roleName: "",
         })
@@ -222,6 +253,25 @@ export function EmployeeForm({ onSuccess, onCancel, mode = "create", employee, c
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("employeeForm.labels.username")}</FormLabel>
+              <FormControl>
+                <Input
+                  autoComplete="username"
+                  placeholder={t("employeeForm.placeholders.username")}
+                  {...field}
+                  disabled={isSubmitting}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
@@ -278,14 +328,14 @@ export function EmployeeForm({ onSuccess, onCancel, mode = "create", employee, c
           render={({ field }) => (
             <FormItem>
               <FormLabel>{t("employeeForm.labels.role")}</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
+              <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isOwnerTarget}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder={t("employeeForm.placeholders.role")} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {ROLE_OPTIONS.map((roleName) => (
+                  {roleOptions.map((roleName) => (
                     <SelectItem key={roleName} value={roleName}>
                       {translateRoleName(roleName, t)}
                     </SelectItem>

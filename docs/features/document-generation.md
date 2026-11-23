@@ -3,7 +3,7 @@ id: DOC-001
 title: Création et génération des documents
 status: production-candidate
 owners: product/fullstack
-last-reviewed: 2026-10-31
+last-reviewed: 2026-11-23
 ---
 
 # Création et génération des documents
@@ -30,12 +30,20 @@ existant, choix de langue, formulaire dynamique et génération.
 - Le PDF doit être rendu et écrit avant la transaction de création. La transaction
   persiste ensuite un document directement `READY`, ses champs, participants,
   journal et statistiques comme une seule unité atomique.
+- Avec `sourceDocumentId`, la transaction verrouille la version source, conserve
+  celle-ci et crée la version suivante. La source doit exister, être actuelle et
+  utiliser le même modèle.
 
 ## Architecture et données
 
 UI dans `components/templates/template-form.tsx`; API
 `POST /api/documents/generate`; service `documentGenerationService`; modèles
 `Document`, valeurs, participants, template et statut.
+
+Le catalogue source couvre les 13 fichiers DOCX historiques présents. Tous disposent
+d'un brouillon HTML anonymisé et tokenisé; dix restent inactifs. Ils ne doivent être
+activés qu'après validation juridique, traitement ou confinement de l'asset historique
+contenant des données personnelles et définition du prix par le propriétaire.
 
 ## API et contrats
 
@@ -70,6 +78,9 @@ en plus les refus adverses de participants et paiement initial, les
 nouveaux/existants clients, la garde de langue et la génération PDF réelle.
 `pnpm exec tsx scripts/performance/pdf-render-check.ts`
 vérifie le rendu embarqué, le blocage réseau et publie une médiane locale comparable.
+`pnpm run check:template-sources` garantit que chaque DOCX source est référencé une
+seule fois, possède un contenu HTML tokenisé et qu'aucune référence ne pointe vers
+un fichier absent.
 
 ## Exploitation
 
@@ -79,6 +90,8 @@ doivent être sauvegardés ensemble pour conserver les liens.
 
 ## Historique
 
+- 2026-11-23 — Inventaire et tokenisation 13/13 des DOCX historiques; dix brouillons restent inactifs en attente de validation métier et juridique.
+- 2026-11-23 — Remplacement non destructif par version liée et verrouillage de la source.
 - 2026-10-31 — Invariants modèle/participants/paiement et cohérence compensatoire PDF/DB.
 - 2026-10-24 — Rendu PDF accéléré et isolé du réseau avec délai borné et nettoyage garanti.
 - 2026-10-24 — Parcours complet validé avec PostgreSQL et Chromium.

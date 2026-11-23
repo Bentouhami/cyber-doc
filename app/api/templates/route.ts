@@ -11,6 +11,8 @@ import {
   TEMPLATE_CONTENT_LIMITS,
 } from "@/services/templateContentSecurity";
 import { findTemplateDuplicateCandidates } from "@/services/templateDuplicateService";
+import { catalogPriceSchema } from "@/lib/payment-policy";
+import { analyzeTemplatePublication } from "@/lib/template-placeholder-policy";
 
 const templateCreateSchema = z.object({
   slug: z.string().min(1).optional(),
@@ -24,7 +26,7 @@ const templateCreateSchema = z.object({
   metadata: z.record(z.string(), z.json()).optional(),
   contentHtml: z.string().max(TEMPLATE_CONTENT_LIMITS.html).nullable().optional(),
   contentCss: z.string().max(TEMPLATE_CONTENT_LIMITS.css).nullable().optional(),
-  basePrice: z.number().nullable().optional(),
+  basePrice: catalogPriceSchema.nullable().optional(),
   pdfOptions: z
     .object({
       format: z.string().optional(),
@@ -157,6 +159,8 @@ export async function GET(request: Request) {
           : false,
         participantRoles: includeRoles ? { orderBy: { displayOrder: "asc" } } : false,
         asset: includeAsset ? true : false,
+        documentType: true,
+        category: true,
       },
       orderBy: { updatedAt: "desc" },
     })) as any[];
@@ -171,6 +175,16 @@ export async function GET(request: Request) {
         locale: template.locale,
         version: template.version,
         isActive: template.isActive,
+        documentType: {
+          id: template.documentType.id,
+          name: template.documentType.name,
+          nameAr: template.documentType.nameAr,
+        },
+        category: {
+          id: template.category.id,
+          name: template.category.name,
+          nameAr: template.category.nameAr,
+        },
         fields: includeFields
           ? template.fields.map((field: any) => ({
               id: field.id,
@@ -239,6 +253,19 @@ export async function POST(request: Request) {
       );
     }
     data = parsed.data;
+    const metadataPrice = data.metadata?.basePrice;
+    const effectivePrice = data.basePrice !== undefined ? data.basePrice : metadataPrice;
+    if (
+      ((data.isActive ?? true) && !catalogPriceSchema.safeParse(effectivePrice).success) ||
+      (effectivePrice !== undefined &&
+        effectivePrice !== null &&
+        !catalogPriceSchema.safeParse(effectivePrice).success)
+    ) {
+      return NextResponse.json(
+        { message: "An active template requires a valid base price", code: "PRICE_REQUIRED" },
+        { status: 400 },
+      );
+    }
   } catch (error) {
     logApiError({ route: "/api/templates", operation: "parse_request" }, error);
     return NextResponse.json({ message: "Unable to parse request body" }, { status: 400 });
@@ -270,6 +297,27 @@ export async function POST(request: Request) {
       : await ensureUniqueSlug(fallbackSlugBase);
 
     const sanitizedContent = sanitizeTemplateContent(data.contentHtml, data.contentCss);
+    const publication = analyzeTemplatePublication(
+      data.isActive ?? true,
+      sanitizedContent.contentHtml,
+      data.fields ?? [],
+    );
+    if (
+      publication.missingContent ||
+      publication.missingRequired.length ||
+      publication.unknownPlaceholders.length
+    ) {
+      return NextResponse.json(
+        {
+          message: "An active template requires valid HTML content and placeholders",
+          code: publication.missingContent
+            ? "TEMPLATE_CONTENT_REQUIRED"
+            : "INVALID_TEMPLATE_PLACEHOLDERS",
+          ...publication,
+        },
+        { status: 400 },
+      );
+    }
 
     const mergedMetadata = {
       ...(data.metadata ?? {}),

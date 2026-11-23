@@ -5,7 +5,7 @@ import { request as playwrightRequest } from "playwright";
 const baseURL = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
 const adminEmail = process.env.SMOKE_ADMIN_EMAIL ?? "admin@cybercafe.com";
 const adminPassword = process.env.SMOKE_ADMIN_PASSWORD ?? "12345678";
-const employeeEmail = process.env.SMOKE_EMPLOYEE_EMAIL ?? "employee@cybercafe.com";
+const employeeUsername = process.env.SMOKE_EMPLOYEE_USERNAME ?? "employee";
 const employeePassword = process.env.SMOKE_EMPLOYEE_PASSWORD ?? "12345678";
 const outDir = path.join(process.cwd(), "tmp", "permissions-smoke");
 
@@ -25,17 +25,16 @@ async function requestJson(api, method, routePath, data) {
   return { response, body };
 }
 
-async function login(api, email, password, label) {
-  const endpoints = [
-    "/api/auth/sign-in/email",
-    "/api/auth/sign-in/credential",
-    "/api/auth/sign-in",
-  ];
+async function login(api, identifier, password, label) {
+  const usesEmail = identifier.includes("@");
+  const endpoints = usesEmail
+    ? ["/api/auth/sign-in/email", "/api/auth/sign-in/credential", "/api/auth/sign-in"]
+    : ["/api/auth/sign-in/username"];
 
   for (const endpoint of endpoints) {
     try {
       const { response } = await requestJson(api, "POST", endpoint, {
-        email,
+        ...(usesEmail ? { email: identifier } : { username: identifier }),
         password,
         rememberMe: true,
       });
@@ -125,6 +124,7 @@ async function runGuestChecks() {
 
 async function runAccountLifecycleChecks(admin) {
   const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const username = `perm_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
   const email = `permissions-${unique}@example.invalid`;
   const initialPassword = "Aa12345678!";
   const nextPassword = "Bb12345678!";
@@ -134,6 +134,7 @@ async function runAccountLifecycleChecks(admin) {
   try {
     const created = await requestJson(admin, "POST", "/api/users", {
       email,
+      username,
       password: initialPassword,
       firstName: "Permissions",
       lastName: "Lifecycle",
@@ -239,7 +240,7 @@ async function runAccountLifecycleChecks(admin) {
 async function runEmployeeChecks() {
   const employee = await playwrightRequest.newContext({ baseURL });
   try {
-    const me = await login(employee, employeeEmail, employeePassword, "Employee");
+    const me = await login(employee, employeeUsername, employeePassword, "Employee username");
     if (!me) return;
 
     const roleNames = Array.isArray(me?.roles) ? me.roles.map((role) => role?.name).filter(Boolean) : [];
@@ -251,6 +252,7 @@ async function runEmployeeChecks() {
       ["Employee document creators", "GET", "/api/document-creators", 200],
       ["Employee document statuses", "GET", "/api/document-statuses", 200],
       ["Employee personas list", "GET", "/api/personas", 200],
+      ["Employee shortcuts list", "GET", "/api/shortcuts", 200],
     ];
 
     for (const [name, method, route, expected] of allowedChecks) {
@@ -279,6 +281,11 @@ async function runEmployeeChecks() {
         403,
       ],
       ["Employee activity logs denied", "GET", "/api/activity-logs", 403],
+      ["Employee shortcut create denied", "POST", "/api/shortcuts", 403, {
+        title: "Denied",
+        titleAr: "مرفوض",
+        url: "https://example.com/",
+      }],
     ];
 
     for (const [name, method, route, expected, payload] of deniedChecks) {
@@ -297,7 +304,7 @@ async function runAdminChecks() {
     if (!me) return;
 
     const roleNames = Array.isArray(me?.roles) ? me.roles.map((role) => role?.name).filter(Boolean) : [];
-    pushResult("Admin role check", roleNames.includes("admin"), `roles=${roleNames.join(",") || "none"}`);
+    pushResult("Owner role check", roleNames.includes("owner"), `roles=${roleNames.join(",") || "none"}`);
 
     const checks = [
       ["Admin users list", "GET", "/api/users", 200],

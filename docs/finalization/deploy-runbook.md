@@ -11,6 +11,9 @@ preview-only until the requirements in ADR 0007 are implemented and verified.
 A Vercel `Ready` status is not release evidence for file persistence or PDF
 generation.
 
+The supported Compose database major is PostgreSQL 17, matching the CI critical
+smoke service. A major-version change requires a separately tested migration plan.
+
 ## 1) Pre-Deploy Gate (mandatory)
 
 Run from project root:
@@ -36,14 +39,11 @@ produce release sign-off evidence.
 
 ## 2) Database Backup (before migrate)
 
-PowerShell example:
-
-```powershell
-$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$backupDir = "tmp/backups"
-New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
-pg_dump --dbname "$env:DATABASE_URL" --format=custom --file "$backupDir/cyberdoc-$stamp.dump"
-```
+Create one consistent recovery point containing both PostgreSQL and the mounted
+document volume. Quiesce writes for the entire capture, validate both archives and
+record their hashes before migration. Follow
+`docs/finalization/backup-restore-checklist.md`; a database-only dump is not an
+acceptable CyberDoc recovery point.
 
 ## 3) Deploy Steps
 
@@ -92,16 +92,24 @@ application image active.
 
 Health check:
 
+- verify `/api/health` returns `200 {"status":"ok"}`; this proves both PostgreSQL
+  connectivity and read/write access to `DOCS_STORAGE_DIR` without exposing internals;
 - open `/`
 - open `/documents`
 - open `/admin/templates`
 
 ## 4) Post-Deploy Smoke
 
-Run critical checks against deployed base URL:
+Run the dedicated read-only smoke against the deployed base URL with a named
+Owner/Responsible smoke account. Supply credentials through the environment;
+inject their values from the deployment secret manager and never store them in
+the command history or repository:
 
 ```bash
-SMOKE_BASE_URL=https://<your-domain> pnpm run release:smoke:critical
+SMOKE_BASE_URL=https://<your-domain> \
+SMOKE_ADMIN_EMAIL=<secret-manager-reference> \
+SMOKE_ADMIN_PASSWORD=<secret-manager-reference> \
+pnpm run release:smoke:postdeploy
 ```
 
 PowerShell shortcut:
@@ -109,6 +117,16 @@ PowerShell shortcut:
 ```powershell
 ./scripts/release/post-deploy-smoke.ps1 -BaseUrl "https://<your-domain>"
 ```
+
+The PowerShell launcher accepts only an exact HTTP(S) origin, requires HTTPS for
+every non-loopback target and checks `/api/health` without credentials before it
+starts authenticated smoke flows. Paths, query strings, fragments, embedded
+credentials and non-HTTP schemes fail closed.
+
+The remote suite performs login, bounded reads of the current profile, documents,
+templates and activity log, then logout. It never runs employee/template/document
+CRUD against production. The full mutating critical E2E suite remains a pre-release
+CI/staging gate and must not be pointed at production.
 
 ## 5) Rollback Procedure
 
@@ -126,11 +144,11 @@ Rollback steps:
    breaking change, stop traffic and restore the verified pre-deploy backup.
 3. Re-run smoke checks on rolled-back version.
 
-DB restore example:
-
-```powershell
-pg_restore --clean --if-exists --no-owner --dbname "$env:DATABASE_URL" "tmp/backups/<backup-file>.dump"
-```
+Restore the database and document volume from the same validated recovery point.
+First exercise the restore on a disposable target and run `check:data`, readiness
+and the critical smoke. Production restore commands are intentionally not generic
+copy/paste commands because `pg_restore --clean` and volume replacement are
+destructive; the witnessed procedure must name and confirm the exact targets.
 
 ## 6) Go/No-Go Sign-off
 
@@ -140,3 +158,11 @@ Before release close:
 - update `docs/finalization/rc-open-issues.md`
 - validate `docs/finalization/rc-go-no-go.md`
 - record evidence file in `docs/finalization/evidence/`
+
+## 7) Monitored rollout
+
+Follow `docs/finalization/post-release-monitoring-checklist.md`. Keep access limited
+to the release team for the first business hour, record the 15/30/60-minute gates,
+and open access to all employees only while readiness, 5xx, p95, structured errors
+and data-integrity signals remain green. Continue the recorded observation window
+for 48 hours before closing the release.

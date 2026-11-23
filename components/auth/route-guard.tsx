@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { useUserProfile } from "@/components/providers/user-profile-provider";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/hooks/use-locale";
 
 type RouteGuardProps = {
   children: ReactNode;
@@ -22,6 +23,7 @@ export function RouteGuard({
   const router = useRouter();
   const pathname = usePathname();
   const { user, status, isLoading, refresh } = useUserProfile();
+  const { t } = useLocale();
   const hasAllowedRole = Boolean(
     user && (!allowRoles?.length || user.roles.some((role) => allowRoles.includes(role.name))),
   );
@@ -48,16 +50,16 @@ export function RouteGuard({
   if (status === "error") {
     return (
       <div className="flex flex-col items-start gap-3 p-6" role="alert">
-        <p className="text-sm text-destructive">Unable to verify your session.</p>
+        <p className="text-sm text-destructive">{t("auth.session.verifyError")}</p>
         <Button type="button" variant="outline" onClick={() => void refresh()}>
-          Try again
+          {t("auth.session.retry")}
         </Button>
       </div>
     );
   }
 
   if (isLoading || !hasAllowedRole) {
-    return <div className="p-6 text-sm text-muted-foreground">Loading...</div>;
+    return <div className="p-6 text-sm text-muted-foreground">{t("auth.session.loading")}</div>;
   }
 
   return <>{children}</>;

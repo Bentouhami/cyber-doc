@@ -3,9 +3,11 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { nextCookies } from "better-auth/next-js";
+import { username } from "better-auth/plugins";
 import bcrypt from "bcryptjs";
 
 import { resolveAuthNetworkConfig } from "./auth-network-config";
+import { logApiError } from "./api-error";
 import prisma from "./prisma";
 import { PASSWORD_POLICY } from "./user-validation";
 import { isUserActive, userAccessStateSelect } from "./user-access-policy";
@@ -61,20 +63,25 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (context) => {
-      if (context.path !== "/sign-in/email") {
+      if (!["/sign-in/email", "/sign-in/username"].includes(context.path)) {
         return;
       }
 
-      const email =
+      const identifier =
         typeof context.body?.email === "string"
           ? context.body.email.trim().toLowerCase()
+          : typeof context.body?.username === "string"
+            ? context.body.username.trim().toLowerCase()
           : null;
-      if (!email) {
+      if (!identifier) {
         return;
       }
 
       const user = await prisma.user.findFirst({
-        where: { email: { equals: email, mode: "insensitive" } },
+        where:
+          context.path === "/sign-in/email"
+            ? { email: { equals: identifier, mode: "insensitive" } }
+            : { username: identifier },
         select: userAccessStateSelect,
       });
 
@@ -84,6 +91,45 @@ export const auth = betterAuth({
         });
       }
     }),
+    after: createAuthMiddleware(async (context) => {
+      if (
+        !["/sign-in/email", "/sign-in/username"].includes(context.path) ||
+        !context.context.newSession?.user.id
+      ) {
+        return;
+      }
+
+      try {
+        const activityType = await prisma.activityType.findUnique({
+          where: { name: "LOGIN" },
+          select: { id: true },
+        });
+        if (!activityType) {
+          throw new Error("Required LOGIN activity type is missing");
+        }
+        await prisma.activityLog.create({
+          data: {
+            userId: context.context.newSession.user.id,
+            activityTypeId: activityType.id,
+            resourceType: "Session",
+            resourceId: context.context.newSession.session.id,
+          },
+        });
+      } catch (error) {
+        logApiError(
+          { route: "/api/auth/sign-in", operation: "record_login_activity" },
+          error,
+        );
+      }
+    }),
   },
-  plugins: [nextCookies()],
+  plugins: [
+    username({
+      displayUsername: false,
+      minUsernameLength: 3,
+      maxUsernameLength: 30,
+      immutableUsername: false,
+    }),
+    nextCookies(),
+  ],
 });

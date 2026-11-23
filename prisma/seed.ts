@@ -5,6 +5,8 @@ import type { Prisma } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { hashPassword as betterAuthHashPassword } from "better-auth/crypto";
 
+import { resolveCatalogPrice } from "../lib/payment-policy";
+
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
@@ -378,8 +380,8 @@ body { direction: rtl; font-family: "Tajawal", "Segoe UI", Arial, sans-serif; }
       margin: { top: "1.2cm", right: "1.5cm", bottom: "1.2cm", left: "1.5cm" },
     },
     asset: {
-      fileName: "اشهــــــاد سكن زهير حسايني.docx",
-      filePath: "templates_docs/اشهــــــاد سكن زهير حسايني.docx",
+      fileName: "attestation-residence.docx",
+      filePath: "templates_docs/sanitized/attestation-residence.docx",
       storageDriver: "local",
       metadata: { status: "legacy_imported" },
     },
@@ -455,8 +457,8 @@ body { direction: rtl; font-family: "Tajawal", "Segoe UI", Arial, sans-serif; }
       margin: { top: "1.2cm", right: "1.5cm", bottom: "1.2cm", left: "1.5cm" },
     },
     asset: {
-      fileName: "اعتـــــــــراف بديــن الزروالي.docx",
-      filePath: "templates_docs/اعتـــــــــراف بديــن الزروالي.docx",
+      fileName: "debt-acknowledgement.docx",
+      filePath: "templates_docs/sanitized/debt-acknowledgement.docx",
       storageDriver: "local",
       metadata: { status: "legacy_imported" },
     },
@@ -494,9 +496,9 @@ body { direction: rtl; font-family: "Tajawal", "Segoe UI", Arial, sans-serif; }
   },
   {
     slug: "vehicle-sale-contract",
-    title: "Contrat de vente véhicule",
-    titleAr: "عقد بيع سيارة",
-    description: "عقد بيع سيارة بين بائع ومشتري",
+    title: "Contrat de vente de deux-roues",
+    titleAr: "عقد بيع دراجة نارية",
+    description: "عقد بيع دراجة نارية بين بائع ومشتري",
     documentType: { name: "CONTRACT", nameAr: "عقد" },
     category: { name: "vehicle_sale", nameAr: "عقد بيع سيارة" },
     locale: "ar-MA",
@@ -558,7 +560,7 @@ body { direction: rtl; font-family: "Tajawal", "Segoe UI", Arial, sans-serif; }
     },
     asset: {
       fileName: "vehicle-sale-contract.docx",
-      filePath: "templates_docs/vehicle-sale-contract.docx",
+      filePath: "templates_docs/sanitized/vehicle-sale-contract.docx",
       storageDriver: "local",
       metadata: { status: "legacy_imported" },
     },
@@ -610,13 +612,396 @@ body { direction: rtl; font-family: "Tajawal", "Segoe UI", Arial, sans-serif; }
       },
     ],
   },
+  {
+    slug: "employment-non-union-declaration",
+    title: "Déclaration de non-affiliation syndicale",
+    titleAr: "إشهاد بعدم الانتماء إلى نقابة",
+    description: "Source historique à valider juridiquement avant publication",
+    documentType: { name: "DECLARATION", nameAr: "تصريح" },
+    category: { name: "employment_declaration", nameAr: "تصريح مهني" },
+    locale: "ar-MA",
+    language: "ar",
+    contentHtml: `
+<div class="page">
+  <h1 class="title">إشهاد بعدم الانتماء إلى نقابة</h1>
+  <p>أنا الموقع(ة) أسفله {{declarant.fullName}}، الحامل(ة) لبطاقة التعريف الوطنية رقم {{declarant.nationalId}}، والساكن(ة) بـ {{declarant.addressLine1}}،</p>
+  <p>أشهد على نفسي وبكامل إرادتي أنني أعمل لدى {{employment.companyName}}، وأصرح بعدم انتمائي إلى أي نقابة مهنية إلى تاريخ تحرير هذا الإشهاد.</p>
+  <p>حرر للإدلاء به عند الحاجة، دون أن يحل محل أي وثيقة أو إجراء يفرضه القانون.</p>
+  <p>{{document.issueCity}} في {{document.issueDate}}</p>
+  <div class="signature">الإمضاء:</div>
+</div>
+`.trim(),
+    asset: {
+      fileName: "employment-non-union-declaration.docx",
+      filePath: "templates_docs/sanitized/employment-non-union-declaration.docx",
+      metadata: { status: "legacy_imported" },
+    },
+    metadata: { status: "needs_legal_review" },
+    participantRoles: [{ roleKey: "declarant", roleLabel: "Déclarant", roleLabelAr: "المصرّح(ة)", isRequired: true }],
+    groupAssignments: [
+      { code: "PERSON_CORE", roleKey: "declarant", section: "Déclarant", sectionAr: "المصرّح(ة)", displayOrder: 1 },
+      { code: "DOCUMENT_META_BASIC", fieldNamePrefix: "document", section: "Métadonnées", sectionAr: "بيانات الوثيقة", displayOrder: 3 },
+    ],
+    fields: [
+      { fieldName: "employment.companyName", fieldLabel: "Entreprise", fieldLabelAr: "الشركة", fieldType: "TEXT", isRequired: true, displayOrder: 2 },
+    ],
+  },
+  {
+    slug: "postal-bank-account-closure-request",
+    title: "Demande de clôture de compte bancaire",
+    titleAr: "طلب إغلاق حساب بنكي",
+    description: "Demande adressée à une agence bancaire; source historique à anonymiser",
+    documentType: { name: "REQUEST", nameAr: "طلب" },
+    category: { name: "bank_account_closure", nameAr: "إغلاق حساب بنكي" },
+    locale: "ar-MA",
+    language: "ar",
+    contentHtml: `
+<div class="page">
+  <h1 class="title">طلب إغلاق حساب بنكي</h1>
+  <p>إلى السيد(ة) مسؤول(ة) وكالة {{bank.officeName}}</p>
+  <p>أنا الموقع(ة) أسفله {{applicant.fullName}}، الحامل(ة) لبطاقة التعريف الوطنية رقم {{applicant.nationalId}}، والساكن(ة) بـ {{applicant.addressLine1}}،</p>
+  <p>ألتمس منكم إغلاق الحساب رقم {{bank.accountNumber}} بعد تسوية وضعيته، وتسليمي ما يثبت إتمام العملية وفق الإجراءات المعمول بها.</p>
+  <p>وتفضلوا بقبول فائق الاحترام.</p>
+  <p>{{document.issueCity}} في {{document.issueDate}}</p>
+  <div class="signature">الإمضاء:</div>
+</div>
+`.trim(),
+    asset: {
+      fileName: "postal-bank-account-closure-request.docx",
+      filePath: "templates_docs/sanitized/postal-bank-account-closure-request.docx",
+      metadata: { status: "legacy_imported" },
+    },
+    metadata: { status: "needs_legal_review" },
+    participantRoles: [{ roleKey: "applicant", roleLabel: "Demandeur", roleLabelAr: "صاحب(ة) الطلب", isRequired: true }],
+    groupAssignments: [
+      { code: "PERSON_CORE", roleKey: "applicant", section: "Demandeur", sectionAr: "صاحب(ة) الطلب", displayOrder: 1 },
+      { code: "DOCUMENT_META_BASIC", fieldNamePrefix: "document", section: "Métadonnées", sectionAr: "بيانات الوثيقة", displayOrder: 4 },
+    ],
+    fields: [
+      { fieldName: "bank.officeName", fieldLabel: "Agence destinataire", fieldLabelAr: "الوكالة المعنية", fieldType: "TEXT", isRequired: true, displayOrder: 2 },
+      { fieldName: "bank.accountNumber", fieldLabel: "Numéro de compte", fieldLabelAr: "رقم الحساب", fieldType: "TEXT", isRequired: true, displayOrder: 3 },
+    ],
+  },
+  {
+    slug: "motorcycle-document-compliance-commitment",
+    title: "Engagement de régularisation d’un deux-roues",
+    titleAr: "التزام تسوية وضعية دراجة نارية",
+    description: "Engagement relatif aux documents et à l’immatriculation d’un deux-roues",
+    documentType: { name: "COMMITMENT", nameAr: "التزام" },
+    category: { name: "motorcycle_compliance", nameAr: "تسوية وضعية دراجة نارية" },
+    locale: "ar-MA",
+    language: "ar",
+    contentHtml: `
+<div class="page">
+  <h1 class="title">التزام بتسوية وضعية دراجة نارية</h1>
+  <p>أنا الموقع(ة) أسفله {{declarant.fullName}}، الحامل(ة) لبطاقة التعريف الوطنية رقم {{declarant.nationalId}}، والساكن(ة) بـ {{declarant.addressLine1}}،</p>
+  <p>ألتزم باتخاذ الإجراءات اللازمة لتسوية الوثائق والوضعية الإدارية للدراجة النارية المبينة أدناه قبل تاريخ {{commitment.deadline}}:</p>
+  <p>الصانع: {{vehicle.manufacturer}} — الطراز: {{vehicle.model}} — رقم التسجيل: {{vehicle.registrationNumber}} — رقم الهيكل: {{vehicle.frameNumber}} — اللون: {{vehicle.color}}</p>
+  <p>حرر هذا الالتزام للإدلاء به عند الحاجة.</p>
+  <p>{{document.issueCity}} في {{document.issueDate}}</p>
+  <div class="signature">الإمضاء:</div>
+</div>
+`.trim(),
+    asset: {
+      fileName: "motorcycle-document-compliance-commitment.docx",
+      filePath: "templates_docs/sanitized/motorcycle-document-compliance-commitment.docx",
+      metadata: { status: "legacy_imported" },
+    },
+    metadata: { status: "needs_legal_review" },
+    participantRoles: [{ roleKey: "declarant", roleLabel: "Déclarant", roleLabelAr: "المصرّح(ة)", isRequired: true }],
+    groupAssignments: [
+      { code: "PERSON_CORE", roleKey: "declarant", section: "Déclarant", sectionAr: "المصرّح(ة)", displayOrder: 1 },
+      { code: "VEHICLE_CORE", fieldNamePrefix: "vehicle", section: "Deux-roues", sectionAr: "الدراجة النارية", displayOrder: 2 },
+      { code: "DOCUMENT_META_BASIC", fieldNamePrefix: "document", section: "Métadonnées", sectionAr: "بيانات الوثيقة", displayOrder: 4 },
+    ],
+    fields: [
+      { fieldName: "commitment.deadline", fieldLabel: "Échéance de régularisation", fieldLabelAr: "أجل التسوية", fieldType: "DATE", isRequired: true, displayOrder: 3 },
+    ],
+  },
+  {
+    slug: "motorcycle-ownership-declaration",
+    title: "Déclaration de propriété d’un deux-roues",
+    titleAr: "تصريح بالشرف بملكية دراجة نارية",
+    description: "Déclaration sur l’honneur relative à la propriété d’un deux-roues",
+    documentType: { name: "DECLARATION", nameAr: "تصريح" },
+    category: { name: "motorcycle_ownership", nameAr: "ملكية دراجة نارية" },
+    locale: "ar-MA",
+    language: "ar",
+    contentHtml: `
+<div class="page">
+  <h1 class="title">تصريح بالشرف بملكية دراجة نارية</h1>
+  <p>أنا الموقع(ة) أسفله {{owner.fullName}}، الحامل(ة) لبطاقة التعريف الوطنية رقم {{owner.nationalId}}، والساكن(ة) بـ {{owner.addressLine1}}،</p>
+  <p>أصرح بشرفي أن الدراجة النارية المبينة بياناتها أدناه في حيازتي، وذلك تحت مسؤوليتي ووفق الوثائق المؤيدة:</p>
+  <p>الصانع: {{vehicle.manufacturer}} — الطراز: {{vehicle.model}} — رقم التسجيل: {{vehicle.registrationNumber}} — رقم الهيكل: {{vehicle.frameNumber}} — اللون: {{vehicle.color}}</p>
+  <p>حرر هذا التصريح للإدلاء به عند الحاجة.</p>
+  <p>{{document.issueCity}} في {{document.issueDate}}</p>
+  <div class="signature">الإمضاء:</div>
+</div>
+`.trim(),
+    asset: {
+      fileName: "motorcycle-ownership-declaration.docx",
+      filePath: "templates_docs/sanitized/motorcycle-ownership-declaration.docx",
+      metadata: { status: "legacy_imported" },
+    },
+    metadata: { status: "needs_legal_review" },
+    participantRoles: [{ roleKey: "owner", roleLabel: "Propriétaire", roleLabelAr: "المالك(ة)", isRequired: true }],
+    groupAssignments: [
+      { code: "PERSON_CORE", roleKey: "owner", section: "Propriétaire", sectionAr: "المالك(ة)", displayOrder: 1 },
+      { code: "VEHICLE_CORE", fieldNamePrefix: "vehicle", section: "Deux-roues", sectionAr: "الدراجة النارية", displayOrder: 2 },
+      { code: "DOCUMENT_META_BASIC", fieldNamePrefix: "document", section: "Métadonnées", sectionAr: "بيانات الوثيقة", displayOrder: 3 },
+    ],
+  },
+  {
+    slug: "employment-settlement-waiver",
+    title: "Renonciation après règlement d’un différend professionnel",
+    titleAr: "تنازل بعد تسوية نزاع شغل",
+    description: "Document historique sensible nécessitant validation juridique explicite",
+    documentType: { name: "WAIVER", nameAr: "تنازل" },
+    category: { name: "employment_settlement", nameAr: "تسوية نزاع شغل" },
+    locale: "ar-MA",
+    language: "ar",
+    contentHtml: `
+<div class="page">
+  <h1 class="title">تصريح بتسوية نزاع شغل</h1>
+  <p>أنا الموقع(ة) أسفله {{employee.fullName}}، الحامل(ة) لبطاقة التعريف الوطنية رقم {{employee.nationalId}}، والساكن(ة) بـ {{employee.addressLine1}}،</p>
+  <p>أصرح بأن التسوية التالية تمت مع المشغّل {{employment.employerName}}:</p>
+  <p>{{employment.settlementDetails}}</p>
+  <p>أوقع هذا التصريح بعد الاطلاع على مضمونه، مع بقاء آثاره القانونية خاضعة للتشريع الجاري به العمل.</p>
+  <p>{{document.issueCity}} في {{document.issueDate}}</p>
+  <div class="signature">الإمضاء:</div>
+</div>
+`.trim(),
+    asset: {
+      fileName: "employment-settlement-waiver.docx",
+      filePath: "templates_docs/sanitized/employment-settlement-waiver.docx",
+      metadata: { status: "legacy_imported" },
+    },
+    metadata: { status: "needs_legal_review" },
+    participantRoles: [{ roleKey: "employee", roleLabel: "Salarié", roleLabelAr: "الأجير(ة)", isRequired: true }],
+    groupAssignments: [
+      { code: "PERSON_CORE", roleKey: "employee", section: "Salarié", sectionAr: "الأجير(ة)", displayOrder: 1 },
+      { code: "DOCUMENT_META_BASIC", fieldNamePrefix: "document", section: "Métadonnées", sectionAr: "بيانات الوثيقة", displayOrder: 4 },
+    ],
+    fields: [
+      { fieldName: "employment.employerName", fieldLabel: "Employeur", fieldLabelAr: "المشغّل", fieldType: "TEXT", isRequired: true, displayOrder: 2 },
+      { fieldName: "employment.settlementDetails", fieldLabel: "Détails du règlement", fieldLabelAr: "تفاصيل التسوية", fieldType: "TEXTAREA", isRequired: true, displayOrder: 3 },
+    ],
+  },
+  {
+    slug: "municipal-service-complaint",
+    title: "Réclamation adressée à la commune",
+    titleAr: "شكاية موجهة إلى المجلس البلدي",
+    description: "Réclamation administrative avec possibilité de cosignataires",
+    documentType: { name: "COMPLAINT", nameAr: "شكاية" },
+    category: { name: "municipal_service", nameAr: "خدمة جماعية" },
+    locale: "ar-MA",
+    language: "ar",
+    contentHtml: `
+<div class="page">
+  <h1 class="title">شكاية</h1>
+  <p>إلى {{complaint.recipient}}</p>
+  <p><strong>الموضوع:</strong> {{complaint.subject}}</p>
+  <p>أنا الموقع(ة) أسفله {{complainant.fullName}}، الحامل(ة) لبطاقة التعريف الوطنية رقم {{complainant.nationalId}}، والساكن(ة) بـ {{complainant.addressLine1}}، أتقدم إليكم بهذه الشكاية:</p>
+  <p>{{complaint.body}}</p>
+  <p><strong>الموقعون المشاركون:</strong> {{complaint.cosigners}}</p>
+  <p>وتفضلوا بقبول فائق الاحترام.</p>
+  <p>{{document.issueCity}} في {{document.issueDate}}</p>
+  <div class="signature">الإمضاءات:</div>
+</div>
+`.trim(),
+    asset: {
+      fileName: "municipal-service-complaint.docx",
+      filePath: "templates_docs/sanitized/municipal-service-complaint.docx",
+      metadata: { status: "legacy_imported" },
+    },
+    metadata: { status: "needs_legal_review" },
+    participantRoles: [{ roleKey: "complainant", roleLabel: "Réclamant", roleLabelAr: "المشتكي(ة)", isRequired: true }],
+    groupAssignments: [
+      { code: "PERSON_CORE", roleKey: "complainant", section: "Réclamant", sectionAr: "المشتكي(ة)", displayOrder: 1 },
+      { code: "DOCUMENT_META_BASIC", fieldNamePrefix: "document", section: "Métadonnées", sectionAr: "بيانات الوثيقة", displayOrder: 6 },
+    ],
+    fields: [
+      { fieldName: "complaint.recipient", fieldLabel: "Destinataire", fieldLabelAr: "المرسل إليه", fieldType: "TEXT", isRequired: true, displayOrder: 2 },
+      { fieldName: "complaint.subject", fieldLabel: "Objet", fieldLabelAr: "الموضوع", fieldType: "TEXT", isRequired: true, displayOrder: 3 },
+      { fieldName: "complaint.body", fieldLabel: "Texte de la réclamation", fieldLabelAr: "نص الشكاية", fieldType: "TEXTAREA", isRequired: true, displayOrder: 4 },
+      { fieldName: "complaint.cosigners", fieldLabel: "Cosignataires", fieldLabelAr: "الموقعون المشاركون", fieldType: "TEXTAREA", allowMultiple: true, displayOrder: 5 },
+    ],
+  },
+  {
+    slug: "boarding-school-exit-permission",
+    title: "Demande d’autorisation de sortie",
+    titleAr: "طلب إذن بالخروج",
+    description: "Demande d’un responsable légal auprès d’un établissement",
+    documentType: { name: "AUTHORIZATION", nameAr: "إذن" },
+    category: { name: "school_exit", nameAr: "الخروج من المؤسسة" },
+    locale: "ar-MA",
+    language: "ar",
+    contentHtml: `
+<div class="page">
+  <h1 class="title">طلب إذن بالخروج</h1>
+  <p>إلى إدارة {{institution.name}}</p>
+  <p>أنا الموقع(ة) أسفله {{guardian.fullName}}، الحامل(ة) لبطاقة التعريف الوطنية رقم {{guardian.nationalId}}، بصفتي ولي أمر التلميذ(ة) {{student.fullName}}،</p>
+  <p>ألتمس منكم الترخيص له(ا) بالخروج بتاريخ {{authorization.startDate}} والعودة بتاريخ {{authorization.endDate}}، وذلك للسبب التالي:</p>
+  <p>{{authorization.reason}}</p>
+  <p>وأتحمل مسؤوليتي خلال مدة الخروج وفق الإجراءات المعمول بها لدى المؤسسة.</p>
+  <p>{{document.issueCity}} في {{document.issueDate}}</p>
+  <div class="signature">إمضاء ولي الأمر:</div>
+</div>
+`.trim(),
+    asset: {
+      fileName: "boarding-school-exit-permission.docx",
+      filePath: "templates_docs/sanitized/boarding-school-exit-permission.docx",
+      metadata: { status: "legacy_imported" },
+    },
+    metadata: { status: "needs_legal_review" },
+    participantRoles: [
+      { roleKey: "guardian", roleLabel: "Responsable légal", roleLabelAr: "ولي الأمر", isRequired: true },
+      { roleKey: "student", roleLabel: "Élève", roleLabelAr: "التلميذ(ة)", isRequired: true },
+    ],
+    groupAssignments: [
+      { code: "PERSON_CORE", roleKey: "guardian", section: "Responsable légal", sectionAr: "ولي الأمر", displayOrder: 1 },
+      { code: "PERSON_MINIMAL", roleKey: "student", section: "Élève", sectionAr: "التلميذ(ة)", displayOrder: 2 },
+      { code: "DOCUMENT_META_BASIC", fieldNamePrefix: "document", section: "Métadonnées", sectionAr: "بيانات الوثيقة", displayOrder: 7 },
+    ],
+    fields: [
+      { fieldName: "institution.name", fieldLabel: "Établissement", fieldLabelAr: "المؤسسة", fieldType: "TEXT", isRequired: true, displayOrder: 3 },
+      { fieldName: "authorization.startDate", fieldLabel: "Date de sortie", fieldLabelAr: "تاريخ الخروج", fieldType: "DATE", isRequired: true, displayOrder: 4 },
+      { fieldName: "authorization.endDate", fieldLabel: "Date de retour", fieldLabelAr: "تاريخ العودة", fieldType: "DATE", isRequired: true, displayOrder: 5 },
+      { fieldName: "authorization.reason", fieldLabel: "Motif", fieldLabelAr: "السبب", fieldType: "TEXTAREA", isRequired: true, displayOrder: 6 },
+    ],
+  },
+  {
+    slug: "residential-lease-contract",
+    title: "Contrat de location d’habitation",
+    titleAr: "عقد كراء سكني",
+    description: "Contrat entre bailleur et locataire; clauses à valider avant publication",
+    documentType: { name: "LEASE", nameAr: "عقد كراء" },
+    category: { name: "residential_lease", nameAr: "كراء سكني" },
+    locale: "ar-MA",
+    language: "ar",
+    contentHtml: `
+<div class="page">
+  <h1 class="title">عقد كراء سكني</h1>
+  <p>أبرم هذا العقد بين:</p>
+  <p><strong>المكري:</strong> {{landlord.fullName}}، بطاقة التعريف الوطنية رقم {{landlord.nationalId}}، العنوان {{landlord.addressLine1}}.</p>
+  <p><strong>المكتري:</strong> {{tenant.fullName}}، بطاقة التعريف الوطنية رقم {{tenant.nationalId}}، العنوان {{tenant.addressLine1}}.</p>
+  <p>اتفق الطرفان على كراء العقار الكائن بـ {{lease.propertyAddress}}، ابتداء من {{lease.startDate}} إلى {{lease.endDate}}، بسومة شهرية قدرها {{lease.monthlyRent}} درهم.</p>
+  <p><strong>الشروط الخاصة:</strong> {{lease.terms}}</p>
+  <p>يخضع هذا العقد للقواعد القانونية الجاري بها العمل، وقد حرر بعد اطلاع الطرفين على مضمونه.</p>
+  <p>{{document.issueCity}} في {{document.issueDate}}</p>
+  <div class="signatures"><div>إمضاء المكري:</div><div>إمضاء المكتري:</div></div>
+</div>
+`.trim(),
+    asset: {
+      fileName: "residential-lease-contract.docx",
+      filePath: "templates_docs/sanitized/residential-lease-contract.docx",
+      metadata: { status: "legacy_imported" },
+    },
+    metadata: { status: "needs_legal_review" },
+    participantRoles: [
+      { roleKey: "landlord", roleLabel: "Bailleur", roleLabelAr: "المكري", isRequired: true },
+      { roleKey: "tenant", roleLabel: "Locataire", roleLabelAr: "المكتري", isRequired: true },
+    ],
+    groupAssignments: [
+      { code: "PERSON_CORE", roleKey: "landlord", section: "Bailleur", sectionAr: "المكري", displayOrder: 1 },
+      { code: "PERSON_CORE", roleKey: "tenant", section: "Locataire", sectionAr: "المكتري", displayOrder: 2 },
+      { code: "DOCUMENT_META_BASIC", fieldNamePrefix: "document", section: "Métadonnées", sectionAr: "بيانات الوثيقة", displayOrder: 8 },
+    ],
+    fields: [
+      { fieldName: "lease.propertyAddress", fieldLabel: "Adresse du bien", fieldLabelAr: "عنوان العقار", fieldType: "TEXTAREA", isRequired: true, displayOrder: 3 },
+      { fieldName: "lease.startDate", fieldLabel: "Début du bail", fieldLabelAr: "بداية الكراء", fieldType: "DATE", isRequired: true, displayOrder: 4 },
+      { fieldName: "lease.endDate", fieldLabel: "Fin du bail", fieldLabelAr: "نهاية الكراء", fieldType: "DATE", isRequired: true, displayOrder: 5 },
+      { fieldName: "lease.monthlyRent", fieldLabel: "Loyer mensuel", fieldLabelAr: "السومة الكرائية الشهرية", fieldType: "NUMBER", isRequired: true, displayOrder: 6 },
+      { fieldName: "lease.terms", fieldLabel: "Clauses particulières", fieldLabelAr: "الشروط الخاصة", fieldType: "TEXTAREA", displayOrder: 7 },
+    ],
+  },
+  {
+    slug: "vehicle-driving-power-of-attorney",
+    title: "Procuration pour la conduite d’un véhicule",
+    titleAr: "وكالة لسياقة سيارة",
+    description: "Autorisation de conduite et de démarches liées au véhicule",
+    documentType: { name: "POWER_OF_ATTORNEY", nameAr: "وكالة" },
+    category: { name: "vehicle_driving", nameAr: "سياقة مركبة" },
+    locale: "ar-MA",
+    language: "ar",
+    contentHtml: `
+<div class="page">
+  <h1 class="title">وكالة لسياقة سيارة</h1>
+  <p>أنا الموقع(ة) أسفله {{principal.fullName}}، الحامل(ة) لبطاقة التعريف الوطنية رقم {{principal.nationalId}}، والساكن(ة) بـ {{principal.addressLine1}}،</p>
+  <p>أوكل السيد(ة) {{agent.fullName}}، الحامل(ة) لبطاقة التعريف الوطنية رقم {{agent.nationalId}} وجواز السفر رقم {{agent.passportNumber}}، لسياقة المركبة المبينة أدناه والقيام بالإجراءات المرتبطة بها في حدود هذه الوكالة:</p>
+  <p>الصانع: {{vehicle.manufacturer}} — الطراز: {{vehicle.model}} — رقم التسجيل: {{vehicle.registrationNumber}} — رقم الهيكل: {{vehicle.frameNumber}} — اللون: {{vehicle.color}}</p>
+  <p>حررت هذه الوكالة دون نقل ملكية المركبة، وتبقى خاضعة للتشريع الجاري به العمل.</p>
+  <p>{{document.issueCity}} في {{document.issueDate}}</p>
+  <div class="signature">إمضاء الموكّل:</div>
+</div>
+`.trim(),
+    asset: {
+      fileName: "vehicle-driving-power-of-attorney.docx",
+      filePath: "templates_docs/sanitized/vehicle-driving-power-of-attorney.docx",
+      metadata: { status: "legacy_imported" },
+    },
+    metadata: { status: "needs_legal_review" },
+    participantRoles: [
+      { roleKey: "principal", roleLabel: "Mandant", roleLabelAr: "الموكّل", isRequired: true },
+      { roleKey: "agent", roleLabel: "Mandataire", roleLabelAr: "الوكيل", isRequired: true },
+    ],
+    groupAssignments: [
+      { code: "PERSON_CORE", roleKey: "principal", section: "Mandant", sectionAr: "الموكّل", displayOrder: 1 },
+      { code: "PERSON_CORE", roleKey: "agent", section: "Mandataire", sectionAr: "الوكيل", displayOrder: 2 },
+      { code: "VEHICLE_CORE", fieldNamePrefix: "vehicle", section: "Véhicule", sectionAr: "المركبة", displayOrder: 3 },
+      { code: "DOCUMENT_META_BASIC", fieldNamePrefix: "document", section: "Métadonnées", sectionAr: "بيانات الوثيقة", displayOrder: 5 },
+    ],
+    fields: [
+      { fieldName: "agent.passportNumber", fieldLabel: "Numéro de passeport", fieldLabelAr: "رقم جواز السفر", fieldType: "TEXT", displayOrder: 4 },
+    ],
+  },
+  {
+    slug: "general-administrative-power-of-attorney",
+    title: "Procuration administrative générale",
+    titleAr: "وكالة إدارية عامة",
+    description: "Mandat pour démarches administratives, judiciaires et postales",
+    documentType: { name: "POWER_OF_ATTORNEY", nameAr: "وكالة" },
+    category: { name: "general_administrative", nameAr: "إجراءات إدارية عامة" },
+    locale: "ar-MA",
+    language: "ar",
+    contentHtml: `
+<div class="page">
+  <h1 class="title">وكالة إدارية عامة</h1>
+  <p>أنا الموقع(ة) أسفله {{principal.fullName}}، الحامل(ة) لبطاقة التعريف الوطنية رقم {{principal.nationalId}}، والساكن(ة) بـ {{principal.addressLine1}}،</p>
+  <p>أوكل السيد(ة) {{agent.fullName}}، الحامل(ة) لبطاقة التعريف الوطنية رقم {{agent.nationalId}}، والساكن(ة) بـ {{agent.addressLine1}}، لينوب عني في الحدود التالية:</p>
+  <p>{{mandate.powers}}</p>
+  <p>لا تشمل هذه الوكالة أي تصرف غير مذكور صراحة أعلاه، وتبقى خاضعة للتشريع الجاري به العمل.</p>
+  <p>{{document.issueCity}} في {{document.issueDate}}</p>
+  <div class="signature">إمضاء الموكّل:</div>
+</div>
+`.trim(),
+    asset: {
+      fileName: "general-administrative-power-of-attorney.docx",
+      filePath: "templates_docs/sanitized/general-administrative-power-of-attorney.docx",
+      metadata: { status: "legacy_imported" },
+    },
+    metadata: { status: "needs_legal_review" },
+    participantRoles: [
+      { roleKey: "principal", roleLabel: "Mandant", roleLabelAr: "الموكّل", isRequired: true },
+      { roleKey: "agent", roleLabel: "Mandataire", roleLabelAr: "الوكيل", isRequired: true },
+    ],
+    groupAssignments: [
+      { code: "PERSON_CORE", roleKey: "principal", section: "Mandant", sectionAr: "الموكّل", displayOrder: 1 },
+      { code: "PERSON_CORE", roleKey: "agent", section: "Mandataire", sectionAr: "الوكيل", displayOrder: 2 },
+      { code: "DOCUMENT_META_BASIC", fieldNamePrefix: "document", section: "Métadonnées", sectionAr: "بيانات الوثيقة", displayOrder: 4 },
+    ],
+    fields: [
+      { fieldName: "mandate.powers", fieldLabel: "Pouvoirs accordés", fieldLabelAr: "الصلاحيات الممنوحة", fieldType: "TEXTAREA", isRequired: true, displayOrder: 3 },
+    ],
+  },
 ];
 
 
 async function seedRoles() {
   log.section("الأدوار (Roles)");
   const roles = [
-    { name: "admin", description: "Administrateur" },
+    { name: "owner", description: "Propriétaire CyberDoc" },
+    { name: "responsible", description: "Responsable délégué" },
     { name: "employee", description: "Employé" },
   ];
   for (const r of roles) {
@@ -633,35 +1018,40 @@ async function seedAdminUser() {
   log.section("الحسابات الافتراضية (Default Users)");
   const isProduction = process.env.NODE_ENV === "production";
 
-  const adminRole = await prisma.role.findUnique({ where: { name: "admin" } });
-  if (!adminRole) {
-    log.info("تخطي إنشاء حساب المدير: دور admin غير موجود.");
+  const ownerRole = await prisma.role.findUnique({ where: { name: "owner" } });
+  if (!ownerRole) {
+    log.info("تخطي إنشاء حساب المالك: دور owner غير موجود.");
     return;
   }
   const employeeRole = await prisma.role.findUnique({ where: { name: "employee" } });
 
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@cybercafe.com";
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? (isProduction ? "" : "admin@cybercafe.com");
+  const adminUsername = process.env.SEED_OWNER_USERNAME ?? (isProduction ? "" : "owner");
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? (isProduction ? "" : "12345678");
-  if (!adminPassword) {
-    throw new Error("SEED_ADMIN_PASSWORD is required in production");
+  if (!adminEmail || !adminUsername || !adminPassword) {
+    throw new Error(
+      "SEED_ADMIN_EMAIL, SEED_OWNER_USERNAME and SEED_ADMIN_PASSWORD are required in production",
+    );
+  }
+  const existingOwner = await prisma.userRole.findFirst({
+    where: { roleId: ownerRole.id },
+    select: { user: { select: { email: true } } },
+  });
+  if (
+    existingOwner &&
+    existingOwner.user.email.toLowerCase() !== adminEmail.toLowerCase()
+  ) {
+    throw new Error("An owner already exists; SEED_ADMIN_EMAIL cannot replace it");
   }
   const passwordHash = await hash(adminPassword, 10);
   const accountPasswordHash = await betterAuthHashPassword(adminPassword);
 
   const adminUser = await prisma.user.upsert({
     where: { email: adminEmail },
-    update: {
-      firstName: "أحمد",
-      lastName: "محمد",
-      name: "أحمد محمد",
-      emailVerified: true,
-      emailVerifiedAt: new Date(),
-      passwordHash,
-      deactivatedAt: null,
-      deletedAt: null,
-    },
+    update: {},
     create: {
       email: adminEmail,
+      username: adminUsername,
       firstName: "أحمد",
       lastName: "محمد",
       name: "أحمد محمد",
@@ -674,24 +1064,17 @@ async function seedAdminUser() {
     },
   });
 
-  if (!adminUser.activatedAt) {
-    await prisma.user.update({
-      where: { id: adminUser.id },
-      data: { activatedAt: new Date() },
-    });
-  }
-
   await prisma.userRole.upsert({
     where: {
       userId_roleId: {
         userId: adminUser.id,
-        roleId: adminRole.id,
+        roleId: ownerRole.id,
       },
     },
     update: {},
     create: {
       userId: adminUser.id,
-      roleId: adminRole.id,
+      roleId: ownerRole.id,
     },
   });
 
@@ -704,7 +1087,6 @@ async function seedAdminUser() {
     },
     update: {
       userId: adminUser.id,
-      password: accountPasswordHash,
     },
     create: {
       providerId: "credential",
@@ -714,8 +1096,6 @@ async function seedAdminUser() {
     },
   });
 
-  await prisma.session.deleteMany({ where: { userId: adminUser.id } });
-
   log.ok(`حساب المدير جاهز: ${adminEmail}`);
 
   if (!employeeRole) {
@@ -723,28 +1103,27 @@ async function seedAdminUser() {
     return;
   }
 
-  const employeeEmail = process.env.SEED_EMPLOYEE_EMAIL ?? "employee@cybercafe.com";
+  const employeeEmail = process.env.SEED_EMPLOYEE_EMAIL ?? (isProduction ? "" : "employee@cybercafe.com");
+  const employeeUsername = process.env.SEED_EMPLOYEE_USERNAME ?? (isProduction ? "" : "employee");
   const employeePassword = process.env.SEED_EMPLOYEE_PASSWORD ?? (isProduction ? "" : "12345678");
-  if (!employeePassword) {
-    throw new Error("SEED_EMPLOYEE_PASSWORD is required in production");
+  if (isProduction && !employeePassword) {
+    log.info("تخطي حساب الموظف الاختباري في الإنتاج.");
+    return;
+  }
+  if (!employeeEmail || !employeeUsername || !employeePassword) {
+    throw new Error(
+      "SEED_EMPLOYEE_EMAIL, SEED_EMPLOYEE_USERNAME and SEED_EMPLOYEE_PASSWORD must be provided together",
+    );
   }
   const employeePasswordHash = await hash(employeePassword, 10);
   const employeeAccountPasswordHash = await betterAuthHashPassword(employeePassword);
 
   const employeeUser = await prisma.user.upsert({
     where: { email: employeeEmail },
-    update: {
-      firstName: "سعيد",
-      lastName: "العمري",
-      name: "سعيد العمري",
-      emailVerified: true,
-      emailVerifiedAt: new Date(),
-      passwordHash: employeePasswordHash,
-      deactivatedAt: null,
-      deletedAt: null,
-    },
+    update: {},
     create: {
       email: employeeEmail,
+      username: employeeUsername,
       firstName: "سعيد",
       lastName: "العمري",
       name: "سعيد العمري",
@@ -756,13 +1135,6 @@ async function seedAdminUser() {
       deletedAt: null,
     },
   });
-
-  if (!employeeUser.activatedAt) {
-    await prisma.user.update({
-      where: { id: employeeUser.id },
-      data: { activatedAt: new Date() },
-    });
-  }
 
   await prisma.userRole.upsert({
     where: {
@@ -787,7 +1159,6 @@ async function seedAdminUser() {
     },
     update: {
       userId: employeeUser.id,
-      password: employeeAccountPasswordHash,
     },
     create: {
       providerId: "credential",
@@ -796,8 +1167,6 @@ async function seedAdminUser() {
       password: employeeAccountPasswordHash,
     },
   });
-
-  await prisma.session.deleteMany({ where: { userId: employeeUser.id } });
 
   log.ok(`حساب الموظف جاهز: ${employeeEmail}`);
 }
@@ -1171,17 +1540,28 @@ async function seedDocumentTemplates(params: {
       },
     });
 
+    const existingTemplate = await prismaAny.documentTemplate.findUnique({
+      where: { slug: template.slug },
+      select: { metadata: true, isActive: true },
+    });
+    const existingMetadata =
+      existingTemplate?.metadata && typeof existingTemplate.metadata === "object"
+        ? (existingTemplate.metadata as Record<string, unknown>)
+        : {};
     const baseMetadata =
       template.metadata && typeof template.metadata === "object"
         ? (template.metadata as Record<string, unknown>)
         : {};
+    const basePrice = resolveCatalogPrice(existingMetadata.basePrice, template.basePrice);
     const templateMetadata = {
+      ...existingMetadata,
       ...baseMetadata,
       assetVersion,
       ...(template.contentCss ? { htmlCss: template.contentCss } : {}),
       ...(template.pdfOptions ? { pdfOptions: template.pdfOptions } : {}),
-      ...(template.basePrice !== undefined ? { basePrice: template.basePrice } : {}),
+      ...(basePrice !== null ? { basePrice } : {}),
     } as Prisma.JsonValue;
+    const isActive = basePrice !== null && (existingTemplate?.isActive ?? true);
 
     const templateRecord = await prismaAny.documentTemplate.upsert({
       where: { slug: template.slug },
@@ -1197,7 +1577,7 @@ async function seedDocumentTemplates(params: {
         metadata: templateMetadata,
         assetId: asset.id,
         content: template.contentHtml ?? null,
-        isActive: true,
+        isActive,
       },
       create: {
         slug: template.slug,
@@ -1212,7 +1592,7 @@ async function seedDocumentTemplates(params: {
         metadata: templateMetadata,
         assetId: asset.id,
         content: template.contentHtml ?? null,
-        isActive: true,
+        isActive,
       },
     });
 

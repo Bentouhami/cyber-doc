@@ -24,7 +24,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   const { documentId } = await params;
 
-  const [document, draftStatus, pdfFormat] = await Promise.all([
+  const [document, draftStatus, pdfFormat, createDocumentActivity] = await Promise.all([
     prisma.document.findUnique({
       where: { id: documentId },
       select: {
@@ -48,12 +48,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }),
     prisma.documentStatus.findFirst({ where: { name: "DRAFT" } }),
     prisma.fileFormat.findFirst({ where: { name: "PDF" } }),
+    prisma.activityType.findFirst({ where: { name: "CREATE_DOCUMENT" } }),
   ]);
 
   if (!document) {
     return NextResponse.json({ message: "Document not found" }, { status: 404 });
   }
-  if (!draftStatus || !pdfFormat) {
+  if (!draftStatus || !pdfFormat || !createDocumentActivity) {
     return internalServerError(
       { route: "/api/documents/[documentId]/duplicate", operation: "load_document_defaults" },
       new Error("Document defaults unavailable"),
@@ -98,6 +99,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           skipDuplicates: true,
         });
       }
+
+      await tx.activityLog.create({
+        data: {
+          userId: currentUser.id,
+          activityTypeId: createDocumentActivity.id,
+          resourceType: "Document",
+          resourceId: created.id,
+        },
+      });
 
       return created;
     });

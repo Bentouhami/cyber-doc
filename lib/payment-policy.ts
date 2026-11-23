@@ -2,8 +2,23 @@ import { z } from "zod";
 
 export const PAYMENT_CURRENCY = "MAD" as const;
 export const MAX_MONEY_AMOUNT = 99_999_999.99;
+export const MAX_DOCUMENT_COPIES = 2_147_483_647;
 
-const moneySchema = z
+export const documentCopiesSchema = z
+  .number()
+  .int()
+  .min(1)
+  .max(MAX_DOCUMENT_COPIES);
+
+export function canAddDocumentCopies(current: number, additional: number) {
+  return (
+    documentCopiesSchema.safeParse(current).success &&
+    documentCopiesSchema.safeParse(additional).success &&
+    additional <= MAX_DOCUMENT_COPIES - current
+  );
+}
+
+export const catalogPriceSchema = z
   .number()
   .nonnegative()
   .max(MAX_MONEY_AMOUNT)
@@ -11,6 +26,22 @@ const moneySchema = z
     (value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-8,
     "Money values support at most two decimal places",
   );
+
+export function resolveCatalogPrice(
+  managedPrice: unknown,
+  defaultPrice: unknown,
+): number | null {
+  const managed = catalogPriceSchema.safeParse(managedPrice);
+  if (managed.success) return managed.data;
+  const fallback = catalogPriceSchema.safeParse(defaultPrice);
+  return fallback.success ? fallback.data : null;
+}
+
+const moneySchema = catalogPriceSchema;
+
+export const cashPaymentUpdateSchema = z
+  .object({ amountPaid: moneySchema })
+  .strict();
 
 export const paymentUpdateSchema = z
   .object({
@@ -37,6 +68,7 @@ export const paymentUpdateSchema = z
   );
 
 export type PaymentUpdate = z.infer<typeof paymentUpdateSchema>;
+export type CashPaymentUpdate = z.infer<typeof cashPaymentUpdateSchema>;
 
 export type ExistingPaymentState = {
   totalCopies: number;
@@ -87,7 +119,7 @@ export function calculatePaymentState(
   input: PaymentUpdate,
   now = new Date(),
 ): PaymentCalculationSuccess | PaymentCalculationError {
-  if (!Number.isSafeInteger(existing.totalCopies) || existing.totalCopies < 1) {
+  if (!documentCopiesSchema.safeParse(existing.totalCopies).success) {
     return {
       success: false,
       code: "INVALID_PAYMENT_STATE",

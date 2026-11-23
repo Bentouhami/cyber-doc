@@ -52,7 +52,7 @@ export default function nextConfig(phase: string) {
         "./node_modules/playwright-core/browsers.json",
         "./node_modules/.pnpm/playwright-core@*/node_modules/playwright-core/browsers.json",
       ],
-      "/api/templates/*/asset": ["./templates_docs/**/*"],
+      "/api/templates/*/asset": ["./templates_docs/sanitized/**/*"],
     },
     outputFileTracingExcludes: {
       "/api/documents/generate": ["./next.config.ts"],

@@ -43,6 +43,7 @@ model User {
   lastName        String?
   name            String    @default("") // peut être calculé à partir de firstName + lastName
   email           String    @unique
+  username        String    @unique
   image           String?
   emailVerified   Boolean   @default(false)
   emailVerifiedAt DateTime?
@@ -410,6 +411,13 @@ model DocumentParticipant {
 model Document {
   id String @id @default(cuid())
 
+  versionGroupId    String?   @map("version_group_id")
+  versionNumber     Int       @default(1) @map("version_number")
+  previousVersionId String?   @unique @map("previous_version_id_fk")
+  previousVersion   Document? @relation("DocumentVersions", fields: [previousVersionId], references: [id], onDelete: Restrict)
+  nextVersion       Document? @relation("DocumentVersions")
+  supersededAt      DateTime? @map("superseded_at")
+
   templateId String
   template   DocumentTemplate @relation(fields: [templateId], references: [id])
 
@@ -456,6 +464,8 @@ model Document {
   @@index([paidAt, cashierId])
   @@index([templateId, createdAt])
   @@index([createdById])
+  @@index([versionGroupId, versionNumber])
+  @@unique([versionGroupId, versionNumber])
   @@map("documents")
 }
 
@@ -531,6 +541,22 @@ model Printer {
   printHistories PrintHistory[]
 
   @@map("printers")
+}
+
+model ExternalShortcut {
+  id            String   @id @default(cuid())
+  title         String
+  titleAr       String   @map("title_ar")
+  description   String?
+  descriptionAr String?  @map("description_ar")
+  url           String
+  displayOrder  Int      @default(0) @map("display_order")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive, displayOrder, title])
+  @@map("external_shortcuts")
 }
 
 /**

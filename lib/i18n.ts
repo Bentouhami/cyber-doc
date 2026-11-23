@@ -27,7 +27,7 @@ export function getI18nInstance(lng?: string): i18n {
   instance.use(initReactI18next).init({
     resources,
     lng,
-    fallbackLng: "fr",
+    fallbackLng: "ar",
     supportedLngs,
     interpolation: {
       escapeValue: false,
@@ -35,7 +35,7 @@ export function getI18nInstance(lng?: string): i18n {
     detection:
       typeof window !== "undefined"
         ? {
-            order: ["cookie", "localStorage", "navigator", "htmlTag"],
+            order: ["cookie", "localStorage"],
             caches: ["cookie", "localStorage"],
             lookupCookie: "cyberdoc_lang",
             lookupLocalStorage: "cyberdoc_lang",

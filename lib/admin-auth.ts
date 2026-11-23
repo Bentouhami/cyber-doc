@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { hasManagementRole } from "@/lib/management-role-policy";
 import { isUserActive } from "@/lib/user-access-policy";
 
 export async function ensureAdminUser(headers: Headers) {
@@ -29,7 +30,9 @@ export async function ensureAdminUser(headers: Headers) {
     return { error: new NextResponse("Unauthorized", { status: 401 }) };
   }
 
-  const isAdmin = currentUser.roles.some((role) => role.role.name === "admin");
+  const isAdmin = hasManagementRole(
+    currentUser.roles.map((role) => role.role.name),
+  );
 
   if (!isAdmin) {
     return { error: new NextResponse("Forbidden", { status: 403 }) };

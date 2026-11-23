@@ -32,7 +32,7 @@ async function ensureRouteOk(page, routePath, name) {
 
 async function login(page, email, password) {
   await page.goto(`${baseURL}/`, { waitUntil: "domcontentloaded" });
-  await page.fill('input[name="email"]', email);
+  await page.fill('input[name="identifier"]', email);
   await page.fill('input[name="password"]', password);
   await page.click('button[type="submit"]');
   await page.waitForURL(

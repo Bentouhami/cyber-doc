@@ -1,15 +1,16 @@
-import { Metadata } from "next"
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import prisma from "@/lib/prisma"
 import { DocumentDetail, type DocumentDetailData } from "@/components/documents/document-detail"
+import { getServerLocale } from "@/lib/server-locale"
 
 type PageProps = {
   params: Promise<{ documentId: string }>
 }
 
-export const metadata: Metadata = {
-  title: "Document",
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getServerLocale()) === "ar" ? "الوثيقة" : "Document" }
 }
 
 export default async function DocumentDetailPage({ params }: PageProps) {
@@ -40,6 +41,20 @@ export default async function DocumentDetailPage({ params }: PageProps) {
     notFound()
   }
 
+  const versionHistory = document.versionGroupId
+    ? await prismaAny.document.findMany({
+        where: { versionGroupId: document.versionGroupId },
+        orderBy: { versionNumber: "desc" },
+        select: {
+          id: true,
+          versionNumber: true,
+          createdAt: true,
+          supersededAt: true,
+          createdBy: { select: { name: true, email: true } },
+        },
+      })
+    : [document]
+
   const detail: DocumentDetailData = {
     id: document.id,
     templateTitle: document.template.titleAr || document.template.title,
@@ -58,6 +73,15 @@ export default async function DocumentDetailPage({ params }: PageProps) {
     changeGiven: document.changeGiven ? document.changeGiven.toString() : null,
     currency: document.currency || "MAD",
     totalCopies: document.totalCopies,
+    versionNumber: document.versionNumber,
+    isCurrentVersion: !document.supersededAt,
+    versionHistory: versionHistory.map((version: any) => ({
+      id: version.id,
+      versionNumber: version.versionNumber,
+      createdAt: version.createdAt.toISOString(),
+      createdByName: version.createdBy.name || version.createdBy.email || "—",
+      isCurrent: !version.supersededAt,
+    })),
     paymentStatus: document.paymentStatus,
     paidAt: document.paidAt ? document.paidAt.toISOString() : null,
     fieldValues: document.fieldValues.map((value: any) => ({

@@ -56,6 +56,11 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
+import {
+  canDeleteManagedUser,
+  canUpdateManagedUser,
+  hasManagementRole,
+} from "@/lib/management-role-policy";
 import { EmployeeDTO } from "@/types/employees";
 import { translateRoleName } from "@/utils/roles";
 
@@ -80,6 +85,7 @@ export default function EmployeesPage() {
     "all" | "active" | "inactive"
   >("all");
   const currentUserId = currentUser?.id ?? null;
+  const currentRoleNames = currentUser?.roles.map((role) => role.name) ?? [];
 
   const fetchEmployees = useCallback(async () => {
     try {
@@ -120,6 +126,9 @@ export default function EmployeesPage() {
       }
       if (message.includes("cannot remove your own admin role")) {
         return t("employeeStatus.selfRoleBlocked");
+      }
+      if (message.includes("cannot update this account") || message.includes("cannot delete this account")) {
+        return t("employeeStatus.protectedAccount");
       }
       return message || t("employeeStatus.genericError");
     },
@@ -232,7 +241,8 @@ export default function EmployeesPage() {
     const matchesQuery =
       !normalizedQuery ||
       fullName.includes(normalizedQuery) ||
-      employee.email.toLowerCase().includes(normalizedQuery);
+      employee.email.toLowerCase().includes(normalizedQuery) ||
+      employee.username.toLowerCase().includes(normalizedQuery);
     const matchesStatus =
       statusFilter === "all" ||
       (statusFilter === "active" && isActive) ||
@@ -240,6 +250,22 @@ export default function EmployeesPage() {
 
     return matchesQuery && matchesStatus;
   });
+
+  const canUpdateEmployee = (employee: EmployeeDTO) =>
+    Boolean(
+      currentUserId &&
+        canUpdateManagedUser({
+          actorId: currentUserId,
+          actorRoleNames: currentRoleNames,
+          targetId: employee.id,
+          targetRoleNames: employee.roles.map((role) => role.name),
+        }),
+    );
+  const canDeleteEmployee = (employee: EmployeeDTO) =>
+    canDeleteManagedUser(
+      currentRoleNames,
+      employee.roles.map((role) => role.name),
+    );
 
   const stats = {
     total: employees.length,
@@ -250,12 +276,12 @@ export default function EmployeesPage() {
       Boolean(employee.deactivatedAt || employee.deletedAt),
     ).length,
     admins: employees.filter((employee) =>
-      employee.roles.some((role) => role.name === "admin"),
+      hasManagementRole(employee.roles.map((role) => role.name)),
     ).length,
   };
 
   const adminEmployees = employees.filter((employee) =>
-    employee.roles.some((role) => role.name === "admin"),
+    hasManagementRole(employee.roles.map((role) => role.name)),
   );
   const activeAdminCount = adminEmployees.filter(
     (employee) => !employee.deactivatedAt && !employee.deletedAt,
@@ -286,7 +312,11 @@ export default function EmployeesPage() {
             <DialogHeader>
               <DialogTitle>{t("employees.createDialogTitle")}</DialogTitle>
             </DialogHeader>
-            <EmployeeForm onSuccess={handleCreateSuccess} mode="create" />
+            <EmployeeForm
+              onSuccess={handleCreateSuccess}
+              mode="create"
+              actorRoleNames={currentRoleNames}
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -405,7 +435,7 @@ export default function EmployeesPage() {
                     {t("employees.columns.lastName")}
                   </TableHead>
                   <TableHead className={cellAlignmentClass}>
-                    {t("employees.columns.email")}
+                    {t("employees.columns.identity")}
                   </TableHead>
                   <TableHead className={cellAlignmentClass}>
                     {t("employees.columns.roles")}
@@ -441,7 +471,10 @@ export default function EmployeesPage() {
                         {employee.lastName ?? "—"}
                       </TableCell>
                       <TableCell className={cellAlignmentClass}>
-                        {employee.email}
+                        <p>{employee.email}</p>
+                        <p className="text-xs text-muted-foreground">
+                          @{employee.username}
+                        </p>
                       </TableCell>
                       <TableCell className={cellAlignmentClass}>
                         {employee.roles.length ? (
@@ -485,6 +518,7 @@ export default function EmployeesPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align={isRTL ? "start" : "end"}>
                             <DropdownMenuItem
+                              disabled={!canUpdateEmployee(employee)}
                               onSelect={(event) => {
                                 event.preventDefault();
                                 setSelectedEmployee(employee);
@@ -495,6 +529,7 @@ export default function EmployeesPage() {
                               {t("employees.menu.edit")}
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              disabled={!canDeleteEmployee(employee)}
                               onSelect={(event) => {
                                 event.preventDefault();
                                 if (
@@ -535,7 +570,7 @@ export default function EmployeesPage() {
                                   }
                                   handleToggleStatus(employee, false);
                                 }}
-                                disabled={isTogglingStatus}
+                                disabled={isTogglingStatus || !canUpdateEmployee(employee)}
                               >
                                 {t("employeeStatus.deactivate")}
                               </DropdownMenuItem>
@@ -545,7 +580,7 @@ export default function EmployeesPage() {
                                   event.preventDefault();
                                   handleToggleStatus(employee, true);
                                 }}
-                                disabled={isTogglingStatus}
+                                disabled={isTogglingStatus || !canUpdateEmployee(employee)}
                               >
                                 {t("employeeStatus.activate")}
                               </DropdownMenuItem>
@@ -589,7 +624,7 @@ export default function EmployeesPage() {
           <EmployeeForm
             mode="edit"
             employee={selectedEmployee}
-            currentUserId={currentUserId}
+            actorRoleNames={currentRoleNames}
             onSuccess={handleEditSuccess}
             onCancel={handleCancelEdit}
           />

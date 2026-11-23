@@ -2,8 +2,13 @@ import fs from "node:fs/promises";
 import net from "node:net";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
+import nextEnv from "@next/env";
+
+import { assertDisposableSmokeDatabase } from "./smoke-database-policy.mjs";
 
 const cwd = process.cwd();
+const { loadEnvConfig } = nextEnv;
+loadEnvConfig(cwd);
 const outDir = path.join(cwd, "tmp", "e2e-critical");
 const requestedBaseURL = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
 const allowEpermSkip = process.env.SMOKE_ALLOW_EPERM_SKIP === "1";
@@ -97,6 +102,11 @@ async function waitForServer(url, timeoutMs = 60000) {
 }
 
 async function run() {
+  assertDisposableSmokeDatabase({
+    databaseUrl: process.env.DATABASE_URL,
+    disposableAcknowledgement: process.env.SMOKE_DISPOSABLE_DATABASE,
+    branchName: process.env.NEON_BRANCH,
+  });
   const baseURL = await reserveSmokeBaseUrl();
   const serverUrl = new URL(baseURL);
   const smokeDistDir = "tmp/next-smoke";

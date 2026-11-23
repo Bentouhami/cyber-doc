@@ -6,8 +6,11 @@ This folder contains the end-to-end project health audit and finalization plan.
 
 Use these files for the current `release/v1.0.0-candidate` decision:
 
+- `2026-11-23-project-analysis-and-production-plan.md` — analyse actuelle des besoins, données et backlog;
+- `evidence/2026-11-23-quality-verify.md` — current local quality/build evidence;
+- `evidence/2026-11-23-documents-smoke-current.md` — current 46/46 standalone document smoke;
 - `../../tasks/todo.md` — live production-readiness work and acceptance criteria;
-- `rc-smoke-report.md` — latest verified technical evidence;
+- `rc-smoke-report.md` — current technical evidence summary and its verification boundary;
 - `rc-open-issues.md` — current blocking conditions and risks;
 - `rc-go-no-go.md` — authoritative release decision;
 - `deploy-runbook.md` and `backup-restore-checklist.md` — operations procedure;
