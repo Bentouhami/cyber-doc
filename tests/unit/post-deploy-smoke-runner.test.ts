@@ -31,11 +31,11 @@ describe("remote post-deploy smoke", () => {
   });
 
   it("uses only read operations between login and logout", async () => {
-    const requests: Array<{ method: string; url: string }> = [];
+    const requests: Array<{ method: string; url: string; origin?: string }> = [];
     const server = createServer((request, response) => {
       const method = request.method ?? "";
       const url = request.url ?? "";
-      requests.push({ method, url });
+      requests.push({ method, url, origin: request.headers.origin });
 
       response.setHeader("content-type", "application/json");
       if (url === "/api/health") return response.end('{"status":"ok"}');
@@ -61,7 +61,8 @@ describe("remote post-deploy smoke", () => {
     assert.ok(address && typeof address !== "string");
 
     try {
-      const result = await runSmoke(`http://127.0.0.1:${address.port}`);
+      const baseURL = `http://127.0.0.1:${address.port}`;
+      const result = await runSmoke(baseURL);
       assert.equal(result.code, 0, result.output);
       assert.match(result.output, /7 read-only checks passed/);
       assert.deepEqual(
@@ -71,6 +72,10 @@ describe("remote post-deploy smoke", () => {
       assert.deepEqual(
         requests.filter(({ method }) => method === "POST").map(({ url }) => url),
         ["/api/auth/sign-in/email", "/api/auth/sign-out"],
+      );
+      assert.equal(
+        requests.find(({ url }) => url === "/api/auth/sign-out")?.origin,
+        baseURL,
       );
     } finally {
       await new Promise<void>((resolve, reject) =>

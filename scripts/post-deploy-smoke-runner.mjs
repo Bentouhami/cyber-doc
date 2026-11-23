@@ -77,7 +77,10 @@ async function run() {
     await expectOk("activity", "/api/activity-logs?page=1&pageSize=1");
   } finally {
     if (authenticated) {
-      const logout = await api.post("/api/auth/sign-out", { maxRedirects: 0 });
+      const logout = await api.post("/api/auth/sign-out", {
+        headers: { origin: baseURL },
+        maxRedirects: 0,
+      });
       results.push({
         name: "logout",
         method: "POST",
