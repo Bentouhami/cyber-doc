@@ -70,6 +70,12 @@ and make missing production configuration fail closed.
     through the environment and never print it in reports.
 - `SMOKE_ALLOW_EPERM_SKIP`
   - Local restricted-env fallback for critical runner. Use only with value `1`.
+- `SMOKE_DISPOSABLE_DATABASE`
+  - Required with value `1` before the mutating critical E2E suite will start.
+  - Local database names must contain a disposable marker such as `ci`, `test` or
+    `restore`. Remote targets additionally require `NEON_BRANCH` to contain such
+    a marker; `production`, `main` and other unmarked branches fail closed.
+  - Never persist this acknowledgement in a production environment.
 
 ## Optional (legacy utility script)
 

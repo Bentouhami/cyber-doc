@@ -101,7 +101,7 @@ PostgreSQL.
   bout en bout; preuve locale dans `evidence/2026-11-23-quality-verify.md`.
 - `quality:fast` : réussi.
 - ESLint et TypeScript : réussis.
-- Tests unitaires : **108/108 réussis**.
+- Tests unitaires : **115/115 réussis**.
 - Audit contrats API : **20/20 handlers réussis**.
 - Audit i18n : **555 clés utilisées, 0 manque FR, 0 manque AR, 0 message serveur brut dans l’UI**;
   le premier rendu serveur arabe est couvert par une politique testée.
@@ -139,13 +139,11 @@ PostgreSQL.
 
 ## 5. Données : état réel et limite de vérification
 
-Le script de qualité des données et `prisma migrate status` ont été tentés, mais la
-base réelle configurée (`cyber_doc_ci` sur `127.0.0.1:5432`) est inaccessible et
-Docker n'est pas installé sur cette machine. Une base jetable compatible PostgreSQL
-a toutefois permis de rejouer les 16 migrations, puis d'exécuter deux fois le vrai
-seed Prisma et `check:data`. Deux incompatibilités SQL ont ainsi été détectées et
-corrigées avant livraison. Après chaque seed, les comptes sont stables: 13 modèles,
-224 champs, 20 rôles participants et 13 assets.
+Le projet est maintenant relié au PostgreSQL Neon réel `doc-cyber`. Les 16
+migrations ont été appliquées sur sa branche primaire `production`, le seed a été
+exécuté deux fois sans écraser les comptes existants et `check:data` passe. Une
+branche temporaire clonée depuis cet état a confirmé le même statut de migration
+et les mêmes invariants.
 
 Les assertions post-seed prouvent que les 13 contenus respectent leur contrat de
 placeholders, que les 13 chemins d'asset sont anonymisés et qu'un seul modèle tarifé
@@ -157,27 +155,33 @@ est incohérent ou si un asset packagé sort du répertoire anonymisé. Sur le s
 En conséquence :
 
 - le schéma, la chaîne des migrations, le seed idempotent et les invariants de
-  données initiales sont prouvés sur une base compatible jetable;
-- **aucune affirmation n'est faite sur la qualité des données réelles**;
-- migrations, seed, `check:data` et `prisma migrate status` restent à exécuter sur
-  le vrai PostgreSQL de recette;
-- les trois smokes ciblés avec données, PDF et navigateur sont réussis sur PGlite;
-  la matrice UX intégrée complète reste à rejouer sur PostgreSQL réel. Le pont socket
-  PGlite mélange les prepared statements sous les requêtes parallèles d'une page
-  documentaire (`08P01`), limite de l'émulateur et non résultat produit.
+  données initiales sont prouvés sur Neon réel et sur une branche isolée;
+- une branche `clean-production-candidate-20261123`, restaurée depuis le snapshot
+  pré-migration, a reçu les 16 migrations et le seed puis passé `check:data` avec
+  zéro persona/document et un seul Owner actif;
+- l'audit a détecté cinq documents et huit personas synthétiques laissés sur
+  `production` par un ancien pré-push local. Aucun n'a été supprimé; la bascule vers
+  la branche propre ou une purge ciblée exige l'accord explicite du Cyber Owner;
+- le runner critique refuse désormais toute base non explicitement jetable. Les
+  permissions repassent 52/52 sur la branche Neon isolée après refus HTTP 400 de
+  l'inscription publique avant toute transaction Better Auth.
+
+Preuve détaillée :
+`evidence/2026-11-23-neon-recovery-and-smoke-isolation.md`.
 
 ## 6. Backlog de production priorisé
 
 ### P0 — bloque la mise en production
 
-1. Publier les changements actuels dans une nouvelle PR et obtenir les cinq checks verts.
+1. Maintenir la PR 13 et ses cinq checks verts sur chaque nouveau commit.
 2. Approuver le seuil de limitation des connexions et les CIDR du reverse proxy,
    puis utiliser la table PostgreSQL `rate_limits` et tester la réponse `429`.
-3. Fournir une base PostgreSQL de recette jetable ou démarrer le service local.
-4. Appliquer les migrations déjà rejouées sur le PostgreSQL de recette, exécuter
-   le seed contrôlé et lancer `check:data`.
-5. Rejouer `quality:verify`, `test:e2e:critical` et `check:ux` en FR et AR sur
-   PostgreSQL réel; confirmer les trois smokes ciblés déjà verts sur la base jetable.
+3. Décider entre la bascule vers la branche Neon propre vérifiée et une purge
+   précisément ciblée des données synthétiques actuellement sur `production`.
+4. Remplacer le snapshot pré-migration par un point de reprise post-migration après
+   approbation, puis conserver la preuve de restauration.
+5. Rejouer le gate critique unifié sur la branche Neon jetable après chaque changement;
+   la matrice documents/admin/UX et les permissions ciblées sont déjà vertes sur Neon.
 6. Vérifier manuellement Owner/Responsable, nouvelle version documentaire,
    raccourcis, prix, paiement, impressions et journal `LOGIN`.
 7. Tarifer et faire valider juridiquement les dix modèles historiques encore inactifs.
@@ -204,7 +208,8 @@ En conséquence :
 
 1. **Sécurité runtime — terminée** : Next.js 16.4.6, build, tests et audit sans
    vulnérabilité haute ou critique.
-2. **Recette données** — PostgreSQL disponible, migrations, seed, contrôle qualité.
+2. **Recette données — terminée sur candidat isolé** : Neon disponible, 16 migrations,
+   seed et contrôle qualité verts; bascule de la branche propre encore à approuver.
 3. **Recette fonctionnelle** — smokes complets et parcours manuels des onze besoins.
 4. **Exploitation** — backup/restore, rétention, secrets, stockage et monitoring.
 5. **Décision go/no-go** — seulement si les P0 sont verts et les validations métier
@@ -216,5 +221,5 @@ Le code couvre les parcours des onze besoins exprimés et le catalogue référen
 13 sources disponibles. La fonctionnalité modèles n'est toutefois pas homologuée:
 10 sources restent volontairement inactives en attente de traitement métier et
 juridique. Le produit ne doit pas être annoncé « production ready » tant que cette
-homologation, la migration sur une base réelle, la vérification des données et la
-matrice critique sur PostgreSQL réel n'ont pas réussi.
+homologation, le choix de la branche Neon propre, la restauration du stockage,
+le monitoring, la confidentialité et la recette métier manuelle ne sont pas approuvés.

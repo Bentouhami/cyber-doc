@@ -28,8 +28,8 @@ déconnexion ferme la session. L’inscription publique n’est pas un parcours 
   un chiffre pour les créations et remplacements administratifs; les limites
   Better Auth sont explicitement alignées à 8/128.
 - `Account.accountId` d’un compte credential est égal à `User.id`.
-- L’inscription publique Better Auth est désactivée; les comptes sont créés par un
-  administrateur.
+- L’inscription publique est rejetée à la frontière HTTP avant Better Auth et tout
+  accès base; les comptes sont créés par un administrateur.
 - Une désactivation, une suppression logique ou un changement de mot de passe
   révoque immédiatement toutes les sessions du compte.
 - Chaque connexion réussie par nom d'utilisateur ou e-mail crée un événement
@@ -103,6 +103,8 @@ modifie ni l’identité, ni les identifiants, ni les sessions d’un compte exi
 
 ## Historique
 
+- 2026-11-23 — Refus de l’inscription publique déplacé avant Better Auth pour ne
+  jamais ouvrir de transaction sur ce parcours interdit.
 - 2026-11-23 — Limiteur Better Auth existant audité; stockage partagé, fenêtre de
   connexion et proxy de confiance identifiés comme gate de production.
 - 2026-11-23 — Bootstrap de production explicite et seed idempotent sans mutation

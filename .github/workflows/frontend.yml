@@ -141,6 +141,7 @@ jobs:
 
     env:
       DATABASE_URL: ${{ format('postgresql://postgres:{0}@127.0.0.1:5432/cyber_doc_ci', secrets.CI_DB_PASSWORD) }}
+      SMOKE_DISPOSABLE_DATABASE: "1"
       BETTER_AUTH_SECRET: ${{ secrets.CI_BETTER_AUTH_SECRET }}
       BETTER_AUTH_URL: http://127.0.0.1:3000
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000

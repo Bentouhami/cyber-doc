@@ -229,6 +229,13 @@
     revision. Required CI secret names exist.
     `main` and `dev` enforce the five current checks. Zero approving reviews is the
     explicit Cyber Owner policy for this single-maintainer repository.
+    Neon recovery was rehearsed without touching production: a branch cloned from
+    the current primary state passed all 16 migrations and data invariants, while a
+    clean candidate restored from the pre-migration snapshot was migrated, seeded
+    and verified with zero personas/documents. The exercise also exposed and closed
+    a release-gate defect that allowed mutating smokes to inherit a production URL.
+    A witnessed container-volume restore and an approved production branch cutover
+    remain pending; see `evidence/2026-11-23-neon-recovery-and-smoke-isolation.md`.
 
 - [ ] **PRIV-001 — Define PII retention and subject-request operations**
   - Acceptance: data classes, purposes, retention owners and deletion/export paths are documented.
@@ -244,7 +251,7 @@
 
 - [x] `pnpm install --frozen-lockfile --ignore-scripts` succeeds under the documented policy.
 - [x] `pnpm run quality:prepush` passes without skipped suites.
-  - Evidence: 108/108 unit tests and the production build pass; PostgreSQL 17 CI
+  - Evidence: 115/115 unit tests and the production build pass; PostgreSQL 17 CI
     records permissions 52/52, documents 46/46, admin 47/47, UX 32/32 and critical
     E2E 4/4, all without failure or skip.
 - [x] Independent correctness, architecture, security and performance code review is approved.
