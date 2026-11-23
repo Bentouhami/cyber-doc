@@ -10,8 +10,15 @@ and make missing production configuration fail closed.
 
 - `DATABASE_URL`
 
-  - Used by Prisma client and migrations.
+  - Used by the Prisma application client and, when no direct URL is configured,
+    migrations.
   - Example: `postgresql://user:password@localhost:5433/cyber-doc-db?schema=public`
+
+- `DATABASE_URL_UNPOOLED` (optional)
+
+  - Preferred by Prisma CLI commands when a database provider supplies a direct
+    connection alongside a pooled `DATABASE_URL` (for example Neon).
+  - Leave blank for deployments where `DATABASE_URL` is already direct.
 
 - `BETTER_AUTH_SECRET`
 

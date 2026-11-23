@@ -9,7 +9,9 @@ loadEnv();
 // CI may run `prisma generate` without a real DB URL.
 // Use a local placeholder to keep schema-based generation working.
 const databaseUrl =
-  process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/cyber_doc_ci";
+  process.env.DATABASE_URL_UNPOOLED ??
+  process.env.DATABASE_URL ??
+  "postgresql://postgres:postgres@127.0.0.1:5432/cyber_doc_ci";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
