@@ -47,6 +47,12 @@ curl --fail --silent --show-error "https://<your-domain>/api/health"
 If any command fails, keep traffic stopped until the operator has confirmed that
 no migration has started and that the previous application instance is healthy.
 
+The critical CI gate runs `scripts/release/ci-recovery-drill.sh` against its
+isolated PostgreSQL 17 service. It creates and verifies both archives, restores
+them into a new database and directory, then runs migration status and data
+invariants. This proves the commands on disposable data only; it does not satisfy
+the witnessed target-environment exercise or validate production RPO/RTO.
+
 ## Restore Checklist (rollback)
 
 - [ ] Stop app traffic (maintenance mode or rollback routing).

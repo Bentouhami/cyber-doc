@@ -14,8 +14,9 @@ no unresolved critical/high code finding in the reviewed working tree.
 - Severity: Blocker for release
 - Area: operations and data safety
 - Current state: the coordinated PostgreSQL + `documents_data` backup procedure,
-  archive validation, disposable restore gate and rollback evidence contract are
-  documented but have not been exercised against the target environment.
+  archive validation and rollback evidence contract are documented. CI now
+  exercises a guarded PostgreSQL 17 + document-archive restore into disposable
+  targets, but the procedure has not been witnessed on the production target.
 - Exit criterion: timestamped evidence of backup creation, restore validation,
   previous-image rollback and post-rollback smoke.
 - Owner: operations / database owner

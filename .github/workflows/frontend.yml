@@ -186,6 +186,12 @@ jobs:
       - name: Verify migration state
         run: pnpm exec prisma migrate status
 
+      - name: Exercise disposable database and document recovery
+        run: bash scripts/release/ci-recovery-drill.sh
+        env:
+          RECOVERY_DRILL_DATABASE_URL: ${{ format('postgresql://postgres:{0}@127.0.0.1:5432/cyber_doc_restore', secrets.CI_DB_PASSWORD) }}
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
+
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
 
@@ -204,4 +210,6 @@ jobs:
             tmp/ux-check/results.json
             tmp/e2e-critical/results.json
             tmp/data-quality/results.json
+            tmp/recovery-drill.*/results.txt
+            tmp/recovery-drill.*/SHA256SUMS
           if-no-files-found: warn

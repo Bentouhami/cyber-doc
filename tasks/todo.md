@@ -218,7 +218,9 @@
     availability; its 200/503 behavior is locally verified and wired to Docker health.
     The recovery procedure now treats PostgreSQL and `documents_data` as one
     quiesced, hashed recovery point and requires a disposable restore before any
-    destructive rollback. The witnessed target-environment exercise remains pending.
+    destructive rollback. CI exercises that paired archive and restores it into a
+    new PostgreSQL 17 database and empty directory before rerunning migration and
+    data invariants. The witnessed target-environment exercise remains pending.
     The monitored rollout contract now defines external readiness probes, safe
     structured-error queries, relative 5xx/p95 thresholds, first-hour gates and
     48-hour evidence. Provider dashboards and alert delivery still require the target environment.
