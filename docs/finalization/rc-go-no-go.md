@@ -36,7 +36,7 @@ Current evidence:
 - [x] Full critical E2E and FR/AR UX/accessibility matrix pass on CI PostgreSQL 17
 - [ ] Manual Owner/Responsible, template, payment, print and audit acceptance passes
 
-The PostgreSQL CI artifact records permissions 50/50, administration 45/45,
+The PostgreSQL CI artifact records permissions 52/52, administration 47/47,
 documents 46/46, FR/AR UX 32/32 and critical E2E 4/4, all without failure.
 Production data, durability and recovery remain separate operational gates.
 

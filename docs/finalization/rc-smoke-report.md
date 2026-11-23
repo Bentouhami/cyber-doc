@@ -27,8 +27,8 @@ Canonical detailed evidence:
 
 ## 2) Current functional smoke evidence
 
-- permissions smoke: **50/50 PASS** on PostgreSQL 17;
-- administration smoke: **45/45 PASS** on PostgreSQL 17;
+- permissions smoke: **52/52 PASS** on PostgreSQL 17;
+- administration smoke: **47/47 PASS** on PostgreSQL 17;
 - documents smoke: **46/46 PASS** on PostgreSQL 17, including real PDF generation;
 - full FR/AR UX/accessibility matrix: **32/32 PASS** on PostgreSQL 17;
 - critical Playwright E2E: **4/4 PASS**, zero skip.

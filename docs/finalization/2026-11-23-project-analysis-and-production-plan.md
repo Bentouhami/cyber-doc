@@ -125,8 +125,8 @@ PostgreSQL.
 - `git diff --check` : aucune erreur de whitespace.
 - Couverture des sources modèles : **13/13 DOCX référencés exactement une fois avec contenu HTML tokenisé**.
 - Audit du standalone : **13/13 assets DOCX anonymisés, 0 DOCX historique brut et 0 référence brute dans les manifestes**.
-- Smokes sur base jetable et build standalone: **permissions 50/50**, **documents
-  46/46** et **administration 45/45**, avec génération PDF réelle dans Chromium.
+- Smokes sur base jetable et build standalone: **permissions 52/52**, **documents
+  46/46** et **administration 47/47**, avec génération PDF réelle dans Chromium.
   Le smoke documentaire courant couvre aussi les filtres globaux et par client,
   les dates invalides, les identifiants excessifs et la limite cumulative des copies.
 - Contrôle responsive isolé de la liste des modèles: FR/LTR et AR/RTL à 390 px,

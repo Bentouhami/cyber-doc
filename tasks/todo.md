@@ -20,7 +20,7 @@
   - Progress: role migration, server policy, bilingual UI and adverse unit tests
     are implemented; the full migration chain and representative role conversion
     fixtures pass on a disposable PostgreSQL-compatible database. Permission smoke
-    passes 50/50 on PostgreSQL 17 in PR #13 CI.
+    passes 52/52 on PostgreSQL 17 in PR #13 CI.
     `check:data` also enforces exactly one assigned and active owner.
 - [ ] **I18N-002 — Arabic-first bilingual interface**
   - Acceptance: Arabic is used on first visit, while an explicit Arabic/French
@@ -36,7 +36,7 @@
   - Acceptance: employees authenticate with either unique username or email and
     the same password without disclosing which identifier exists.
   - Progress: schema migration, employee CRUD, Better Auth username plugin,
-    bilingual login and smoke scenario are implemented; admin smoke passes 45/45
+    bilingual login and smoke scenario are implemented; admin smoke passes 47/47
     and critical Playwright E2E passes 4/4 on PostgreSQL 17 in CI.
 - [ ] **AUTH-003 — Production login throttling**
   - Acceptance: sign-in counters survive restarts/replicas, forwarded client IPs
@@ -52,12 +52,13 @@
   - Progress: immutable version chain, current-version guard, actor audit,
     bilingual history UI, migration and smoke scenarios are implemented; document
     smoke passes 46/46 and critical E2E passes on PostgreSQL 17 in CI.
-- [ ] **ADM-002 — Managed external shortcuts**
+- [x] **ADM-002 — Managed external shortcuts**
   - Acceptance: owner/responsible CRUD shared shortcuts; employees use accessible
     card/list views.
-  - Progress: data model, guarded CRUD API, bilingual page, card/list toggle and
-    adversarial URL tests are implemented; admin browser smoke passes and the full
-    staging browser matrix remains pending.
+  - Evidence: data model, guarded CRUD API, bilingual page and adversarial URL tests
+    are implemented. PostgreSQL 17 CI records administration 47/47 and permissions
+    52/52, including owner CRUD, employee read/mutation denial and accessible
+    cards/list toggle states.
 - [ ] **PAY-002 — Central service and print pricing**
   - Acceptance: owner/responsible manage prices; document totals and customer
     change are derived server-side from the active price and print quantity.
@@ -244,7 +245,7 @@
 - [x] `pnpm install --frozen-lockfile --ignore-scripts` succeeds under the documented policy.
 - [x] `pnpm run quality:prepush` passes without skipped suites.
   - Evidence: 108/108 unit tests and the production build pass; PostgreSQL 17 CI
-    records permissions 50/50, documents 46/46, admin 45/45, UX 32/32 and critical
+    records permissions 52/52, documents 46/46, admin 47/47, UX 32/32 and critical
     E2E 4/4, all without failure or skip.
 - [x] Independent correctness, architecture, security and performance code review is approved.
 - [x] Release evidence, known limitations and rollback instructions are current.
