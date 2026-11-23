@@ -53,7 +53,9 @@ absent `404`. Une erreur interne ne révèle pas son détail.
 
 `tests/unit/external-shortcut-validation.test.ts` couvre les URL valides et les
 charges adverses. Le smoke admin couvre la page, la création, la modification, le
-refus de `javascript:` et la désactivation; il reste à l'exécuter sur une base migrée.
+refus de `javascript:`, la désactivation et le basculement accessible cartes/liste.
+Le smoke de permissions vérifie que l'employé consulte les liens actifs sans pouvoir
+les créer. Ces scénarios font partie de la gate PostgreSQL critique de la PR.
 
 ## Exploitation
 
@@ -62,4 +64,5 @@ disponibilité ni le contenu des sites tiers.
 
 ## Historique
 
+- 2026-11-23 — Ajout des preuves employé et du sélecteur de vue exposé aux technologies d'assistance.
 - 2026-11-23 — Première version CRUD bilingue avec vues cartes/liste.
