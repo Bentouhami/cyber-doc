@@ -18,13 +18,14 @@ Current evidence:
 - `docs/finalization/evidence/2026-11-23-quality-verify.md`;
 - `docs/finalization/evidence/2026-11-23-documents-smoke-current.md`;
 - `docs/finalization/evidence/2026-11-23-github-governance-audit.md`;
+- `docs/finalization/evidence/2026-11-23-dependency-alert-triage.md`;
 - `docs/finalization/rc-smoke-report.md`.
 
 ## Engineering Entry Criteria
 
 - [x] Frozen pnpm install succeeds
 - [x] ESLint and TypeScript pass
-- [x] Unit tests pass: 108/108
+- [x] Unit tests pass: 115/115
 - [x] Production build passes: 29 pages
 - [x] API contracts and FR/AR i18n audit pass
 - [x] Dependency and dual secret scans have no high/critical finding

@@ -164,7 +164,7 @@
   - Acceptance: each proven gap has a regression test and canonical doc update.
   - Verify: focused tests, contracts, i18n and E2E.
   - Dependencies: PR-001, QA-001.
-  - Progress: the contract auditor passes 4/4 self-tests and inspects 20/20
+  - Progress: the contract auditor passes 4/4 self-tests and inspects 21/21
     request handlers; invalid pagination returns structured `400` responses;
     the browser suites prove guest/employee/admin denials, lifecycle revocation,
     duplicate/language guards, preview/CSP, download, duplication, immutability,
