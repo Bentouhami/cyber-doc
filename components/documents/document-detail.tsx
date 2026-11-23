@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { calculatePaymentPreview } from "@/lib/payment-preview";
 
 export type DocumentDetailData = {
   id: string;
@@ -99,11 +100,9 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
 
   const updateAmountPaid = (value: string) => {
     setAmountPaid(value);
-    const charged = chargedTotal ? Number(chargedTotal) : 0;
-    const paid = value ? Number(value) : 0;
-    setPaymentStatus(
-      paid >= charged && charged > 0 ? "PAID" : paid > 0 ? "PARTIAL" : "UNPAID",
-    );
+    const preview = calculatePaymentPreview(chargedTotal, value);
+    setPaymentStatus(preview.paymentStatus);
+    setChangeGiven(preview.changeGiven);
   };
 
   const statusStyle = document.statusColor
@@ -419,7 +418,10 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
               <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
                 <div className="flex items-center justify-between">
                   <span>{t("documents.detail.amount")}</span>
-                  <span>
+                  <span
+                    data-testid="payment-charged-total"
+                    data-amount={chargedTotal}
+                  >
                     {chargedTotal || "—"} {document.currency}
                   </span>
                 </div>
@@ -431,13 +433,17 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
                 </div>
                 <div className="flex items-center justify-between">
                   <span>{t("documents.detail.changeGiven")}</span>
-                  <span>
+                  <span
+                    data-testid="payment-change"
+                    data-amount={changeGiven}
+                  >
                     {changeGiven || "—"} {document.currency}
                   </span>
                 </div>
               </div>
               <div className="grid gap-3">
                 <Input
+                  data-testid="payment-amount-paid"
                   type="number"
                   inputMode="decimal"
                   min={0}

@@ -22,6 +22,8 @@ La caisse est intégrée à `/documents/[documentId]` pour les utilisateurs auto
 - Les montants sont non négatifs et manipulés avec une représentation décimale.
 - Le statut est dérivé de la relation entre montant dû et montant payé.
 - La monnaie rendue ne peut pas être négative.
+- La saisie du montant reçu actualise immédiatement le statut et la monnaie à
+  rendre dans l'interface; la réponse serveur reste l'autorité après sauvegarde.
 - La caisse actuelle accepte uniquement le MAD, au plus deux décimales et des
   montants bornés par la précision `Decimal(10,2)` du schéma.
 - Une impression supplémentaire augmente le nombre de copies et déclenche le
@@ -77,6 +79,8 @@ géré et payloads
 contradictoires. `smoke:documents` lance deux impressions concurrentes, vérifie
 le nouveau total sans incrément perdu puis un paiement serveur `PAID`, le montant reçu, la monnaie, et
 le refus d’un montant négatif, d’un statut injecté et d’une devise non supportée.
+La matrice navigateur FR/AR et desktop/mobile vérifie aussi la monnaie exacte
+actualisée pendant la saisie, sans mutation de la base.
 
 ## Exploitation
 
@@ -85,6 +89,8 @@ d’arrondi exige une décision documentée et une migration si les données cha
 
 ## Historique
 
+- 2026-11-23 — La monnaie et le statut sont prévisualisés en centimes pendant
+  la saisie; preuve navigateur bilingue et responsive ajoutée.
 - 2026-11-23 — Le nombre initial et le cumul des copies sont bornés à la capacité
   du champ PostgreSQL; régressions unitaire, mutation et smoke ajoutées.
 - 2026-11-23 — Les nouvelles versions ne recopient plus le paiement ni la quantité

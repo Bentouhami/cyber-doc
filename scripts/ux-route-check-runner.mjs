@@ -199,6 +199,42 @@ async function getSampleDocumentId(page) {
   return body?.data?.[0]?.id ?? null;
 }
 
+async function evaluatePaymentPreview(page) {
+  const chargedTotal = await page
+    .getByTestId("payment-charged-total")
+    .getAttribute("data-amount");
+  const chargedCents = Math.round(Number(chargedTotal) * 100);
+  const paidAmount = "99999999.99";
+  const paidCents = 9_999_999_999;
+
+  if (!chargedTotal || !Number.isSafeInteger(chargedCents) || chargedCents <= 0) {
+    return { ok: false, chargedTotal, reason: "invalid-charged-total" };
+  }
+
+  const expectedChange = (
+    Math.max(0, paidCents - chargedCents) / 100
+  ).toFixed(2);
+  await page.getByTestId("payment-amount-paid").fill(paidAmount);
+  await page.waitForFunction(
+    (expected) =>
+      document.querySelector('[data-testid="payment-change"]')?.getAttribute(
+        "data-amount",
+      ) === expected,
+    expectedChange,
+  );
+  const actualChange = await page
+    .getByTestId("payment-change")
+    .getAttribute("data-amount");
+
+  return {
+    ok: actualChange === expectedChange,
+    chargedTotal,
+    paidAmount,
+    expectedChange,
+    actualChange,
+  };
+}
+
 async function evaluateFieldQuality(page) {
   return page.evaluate(() => {
     const fields = Array.from(document.querySelectorAll("input, textarea"));
@@ -403,6 +439,10 @@ async function run() {
                 .locator('[data-testid="activity-log-page"] [aria-busy="true"]')
                 .waitFor({ state: "detached", timeout: 10000 });
             }
+            const paymentPreview =
+              sampleDocumentId && route === `/documents/${sampleDocumentId}`
+                ? await evaluatePaymentPreview(page)
+                : null;
             const status = response?.status() ?? 0;
             const pathOk = new URL(page.url()).pathname === new URL(route, baseURL).pathname;
             const pageText =
@@ -455,17 +495,19 @@ async function run() {
               keysOk &&
               !hasRuntimeError &&
               keyboardFlow.ok &&
-              accessibility.ok;
+              accessibility.ok &&
+              (paymentPreview?.ok ?? true);
 
             languageChecks.push({
               profile: `${language.id}-${viewport.id}`,
               route,
               ok,
-              details: `status=${status} pathOk=${pathOk} dir=${htmlDir} overflow=${overflow} rawKeys=${rawKeys.length} runtimeError=${hasRuntimeError} fields=${fieldQuality.important} lacking=${fieldQuality.lacking} fieldWarning=${fieldWarning} keyboardOk=${keyboardFlow.ok} focusable=${keyboardFlow.focusableCount} axeBlocking=${accessibility.violationCount}`,
+              details: `status=${status} pathOk=${pathOk} dir=${htmlDir} overflow=${overflow} rawKeys=${rawKeys.length} runtimeError=${hasRuntimeError} fields=${fieldQuality.important} lacking=${fieldQuality.lacking} fieldWarning=${fieldWarning} keyboardOk=${keyboardFlow.ok} focusable=${keyboardFlow.focusableCount} axeBlocking=${accessibility.violationCount} paymentPreview=${paymentPreview?.ok ?? "n/a"}`,
               rawKeys,
               keyboardFlow,
               accessibility,
               overflowSources,
+              paymentPreview,
             });
           } finally {
             await page.close();
