@@ -494,6 +494,15 @@ async function runTemplateDuplicateGuard(adminRequest) {
     },
     basePrice: detail.basePrice ?? 25,
     contentHtml: "<p>{{client.fullName}}</p>",
+    fields: [
+      {
+        fieldName: "client.fullName",
+        fieldLabel: "Client full name",
+        fieldLabelAr: "اسم العميل",
+        fieldType: "text",
+        isRequired: true,
+      },
+    ],
   };
 
   const createRes = await adminRequest.post(`${baseURL}/api/templates`, {
@@ -543,6 +552,15 @@ async function runTemplateCrudAndImport(adminRequest) {
     contentCss: "body { font-family: Arial, sans-serif; }",
     metadata: { basePrice: 25 },
     basePrice: 25,
+    fields: [
+      {
+        fieldName: "client.fullName",
+        fieldLabel: "Client full name",
+        fieldLabelAr: "اسم العميل",
+        fieldType: "text",
+        isRequired: true,
+      },
+    ],
     documentType: {
       name: `SMOKE_TYPE_${unique}`,
       nameAr: "نوع اختبار",
