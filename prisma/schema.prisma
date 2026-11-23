@@ -567,6 +567,10 @@ model ActivityLog {
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "activity_logs_created_id_idx")
+  @@index([userId, createdAt(sort: Desc), id(sort: Desc)], map: "activity_logs_user_created_id_idx")
+  @@index([activityTypeId, createdAt(sort: Desc), id(sort: Desc)], map: "activity_logs_type_created_id_idx")
+  @@index([resourceType, createdAt(sort: Desc), id(sort: Desc)], map: "activity_logs_resource_created_id_idx")
   @@map("activity_logs")
 }
 

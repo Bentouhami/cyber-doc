@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/admin-auth";
+import { internalServerError } from "@/lib/api-error";
 import { hasAnyRole } from "@/lib/permissions";
 
 export const runtime = "nodejs";
@@ -53,9 +54,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ message: "Document not found" }, { status: 404 });
   }
   if (!draftStatus || !pdfFormat) {
-    return NextResponse.json(
-      { message: "Document defaults are not configured. Please seed the database." },
-      { status: 500 },
+    return internalServerError(
+      { route: "/api/documents/[documentId]/duplicate", operation: "load_document_defaults" },
+      new Error("Document defaults unavailable"),
+      "Duplicate failed",
     );
   }
 
@@ -102,7 +104,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     return NextResponse.json({ documentId: duplicated.id });
   } catch (error) {
-    console.error("Duplicate failed:", error);
-    return NextResponse.json({ message: "Duplicate failed" }, { status: 500 });
+    return internalServerError(
+      { route: "/api/documents/[documentId]/duplicate", operation: "duplicate_document" },
+      error,
+      "Duplicate failed",
+    );
   }
 }

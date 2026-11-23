@@ -16,6 +16,7 @@ export interface EmployeeDTO {
   createdAt: string;
   updatedAt: string;
   activatedAt: string | null;
+  deactivatedAt: string | null;
   deletedAt: string | null;
 }
 

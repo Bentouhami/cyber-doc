@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+echo "CyberDoc pre-push quality gate"
+pnpm run quality:prepush

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/admin-auth";
+import { PREVIEW_SECURITY_HEADERS } from "@/lib/preview-security-headers";
+import { hasAnyRole } from "@/lib/permissions";
 import { buildNestedPayload, ensureHtmlDocument, renderHtmlTemplate } from "@/services/documentRenderService";
 
 export const runtime = "nodejs";
@@ -14,6 +16,9 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   const authResult = await getAuthenticatedUser(request.headers);
   if ("error" in authResult) {
     return authResult.error;
+  }
+  if (!hasAnyRole(authResult.currentUser, ["employee", "admin"])) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
   const { documentId } = await params;
@@ -64,6 +69,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store",
+      ...PREVIEW_SECURITY_HEADERS,
     },
   });
 }

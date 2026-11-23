@@ -1,23 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/admin-auth";
+import { internalServerError, logApiError } from "@/lib/api-error";
+import {
+  calculatePaymentState,
+  paymentUpdateSchema,
+  type PaymentUpdate,
+} from "@/lib/payment-policy";
 import { hasAnyRole } from "@/lib/permissions";
-
-const paymentSchema = z.object({
-  standardPrice: z.number().optional(),
-  negotiatedPrice: z.number().optional(),
-  unitPrice: z.number().optional(),
-  discount: z.number().optional(),
-  surcharge: z.number().optional(),
-  chargedTotal: z.number().optional(),
-  amountPaid: z.number().optional(),
-  changeGiven: z.number().optional(),
-  paidAt: z.string().datetime().optional(),
-  paymentStatus: z.string().optional(),
-  currency: z.string().optional(),
-});
+import { lockDocumentForUpdate } from "@/lib/document-transaction-lock";
 
 type RouteContext = {
   params: Promise<{ documentId: string }>;
@@ -35,10 +27,10 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  let data: z.infer<typeof paymentSchema>;
+  let data: PaymentUpdate;
   try {
     const body = await request.json();
-    const parsed = paymentSchema.safeParse(body);
+    const parsed = paymentUpdateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         { message: "Invalid payload", issues: parsed.error.flatten() },
@@ -47,14 +39,20 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     }
     data = parsed.data;
   } catch (error) {
-    console.error("Invalid JSON payload:", error);
+    logApiError(
+      { route: "/api/documents/[documentId]/payment", operation: "parse_request" },
+      error,
+    );
     return NextResponse.json({ message: "Unable to parse request body" }, { status: 400 });
   }
 
   const { documentId } = await params;
 
   try {
-    const document = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
+      if (!(await lockDocumentForUpdate(tx, documentId))) {
+        return { kind: "not-found" } as const;
+      }
       const existing = await tx.document.findUnique({
         where: { id: documentId },
         select: {
@@ -64,87 +62,84 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
           unitPrice: true,
           discount: true,
           surcharge: true,
-          chargedTotal: true,
           amountPaid: true,
+          paidAt: true,
           currency: true,
         },
       });
-      if (!existing) {
-        throw new Error("Document not found");
+      if (!existing) return { kind: "not-found" } as const;
+
+      const calculated = calculatePaymentState(
+        {
+          totalCopies: existing.totalCopies,
+          standardPrice:
+            existing.standardPrice === null
+              ? null
+              : Number(existing.standardPrice),
+          negotiatedPrice:
+            existing.negotiatedPrice === null
+              ? null
+              : Number(existing.negotiatedPrice),
+          unitPrice:
+            existing.unitPrice === null ? null : Number(existing.unitPrice),
+          discount:
+            existing.discount === null ? null : Number(existing.discount),
+          surcharge:
+            existing.surcharge === null ? null : Number(existing.surcharge),
+          amountPaid:
+            existing.amountPaid === null ? null : Number(existing.amountPaid),
+          paidAt: existing.paidAt,
+          currency: existing.currency,
+        },
+        data,
+      );
+
+      if (!calculated.success) {
+        return {
+          kind: "invalid-payment",
+          code: calculated.code,
+          message: calculated.message,
+        } as const;
       }
 
-      const unitPrice =
-        data.unitPrice ??
-        (existing.unitPrice !== null && existing.unitPrice !== undefined
-          ? Number(existing.unitPrice)
-          : existing.standardPrice !== null && existing.standardPrice !== undefined
-            ? Number(existing.standardPrice)
-            : undefined);
-      const discount =
-        data.discount ??
-        (existing.discount !== null && existing.discount !== undefined ? Number(existing.discount) : 0);
-      const surcharge =
-        data.surcharge ??
-        (existing.surcharge !== null && existing.surcharge !== undefined ? Number(existing.surcharge) : 0);
-      const totalCopies = existing.totalCopies ?? 1;
-      const chargedTotal =
-        data.chargedTotal ?? (unitPrice ? unitPrice * totalCopies - discount + surcharge : undefined);
-      const amountPaid =
-        data.amountPaid ??
-        (existing.amountPaid !== null && existing.amountPaid !== undefined
-          ? Number(existing.amountPaid)
-          : undefined);
-      const changeGiven =
-        data.changeGiven ?? (chargedTotal !== undefined && amountPaid !== undefined
-          ? Math.max(0, amountPaid - chargedTotal)
-          : undefined);
-      const paymentStatus =
-        data.paymentStatus ??
-        (chargedTotal !== undefined && amountPaid !== undefined
-          ? amountPaid >= chargedTotal
-            ? "PAID"
-            : amountPaid > 0
-              ? "PARTIAL"
-              : "UNPAID"
-          : amountPaid
-            ? "PARTIAL"
-            : undefined);
-      const paidAt =
-        data.paidAt ? new Date(data.paidAt) : amountPaid ? new Date() : undefined;
+      const activityType = await tx.activityType.findUnique({
+        where: { name: "UPDATE_DOCUMENT" },
+        select: { id: true },
+      });
+      if (!activityType) {
+        throw new Error("Required UPDATE_DOCUMENT activity type is missing");
+      }
 
-      return tx.document.update({
+      const document = await tx.document.update({
         where: { id: documentId },
         data: {
-          standardPrice: data.standardPrice ?? existing.standardPrice ?? null,
-          negotiatedPrice: data.negotiatedPrice ?? existing.negotiatedPrice ?? null,
-          unitPrice: unitPrice ?? null,
-          discount: data.discount ?? existing.discount ?? null,
-          surcharge: data.surcharge ?? existing.surcharge ?? null,
-          chargedTotal: chargedTotal ?? null,
-          amountPaid: amountPaid ?? null,
-          changeGiven: changeGiven ?? null,
-          paidAt,
-          paymentStatus,
-          currency: data.currency ?? existing.currency ?? "MAD",
+          ...calculated.value,
           cashierId: currentUser.id,
         },
       });
-    });
 
-    const updateDocumentActivity = await prisma.activityType.findFirst({
-      where: { name: "UPDATE_DOCUMENT" },
-      select: { id: true },
-    });
-    if (updateDocumentActivity) {
-      await prisma.activityLog.create({
+      await tx.activityLog.create({
         data: {
           userId: currentUser.id,
-          activityTypeId: updateDocumentActivity.id,
+          activityTypeId: activityType.id,
           resourceType: "Document",
           resourceId: document.id,
         },
       });
+
+      return { kind: "updated", document } as const;
+    });
+
+    if (result.kind === "not-found") {
+      return NextResponse.json({ message: "Document not found" }, { status: 404 });
     }
+    if (result.kind === "invalid-payment") {
+      return NextResponse.json(
+        { message: result.message, code: result.code },
+        { status: 400 },
+      );
+    }
+    const document = result.document;
 
     return NextResponse.json({
       id: document.id,
@@ -155,8 +150,9 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       changeGiven: document.changeGiven?.toString() ?? null,
     });
   } catch (error) {
-    console.error("Error updating payment:", error);
-    const message = error instanceof Error ? error.message : "Internal Server Error";
-    return NextResponse.json({ message }, { status: message === "Document not found" ? 404 : 500 });
+    return internalServerError(
+      { route: "/api/documents/[documentId]/payment", operation: "update_payment" },
+      error,
+    );
   }
 }

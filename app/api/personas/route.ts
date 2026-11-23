@@ -3,7 +3,9 @@ import { z } from "zod";
 
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/admin-auth";
+import { internalServerError, logApiError } from "@/lib/api-error";
 import { hasAnyRole } from "@/lib/permissions";
+import { parseIntegerQueryParam } from "@/lib/query-params";
 
 const personaSchema = z.object({
   fullName: z.string().min(1).optional(),
@@ -31,8 +33,28 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const query = url.searchParams.get("q")?.trim();
-  const take = Math.min(Number(url.searchParams.get("limit") ?? 20), 50);
-  const skip = Math.max(Number(url.searchParams.get("skip") ?? 0), 0);
+  const limitResult = parseIntegerQueryParam(url.searchParams, "limit", {
+    defaultValue: 20,
+    min: 1,
+    max: 50,
+  });
+  const skipResult = parseIntegerQueryParam(url.searchParams, "skip", {
+    defaultValue: 0,
+    min: 0,
+    max: 1_000_000,
+  });
+  if (!limitResult.success || !skipResult.success) {
+    const issues = [
+      ...(!limitResult.success ? limitResult.error.issues : []),
+      ...(!skipResult.success ? skipResult.error.issues : []),
+    ];
+    return NextResponse.json(
+      { message: "Invalid query parameter", issues },
+      { status: 400 },
+    );
+  }
+  const take = limitResult.value;
+  const skip = skipResult.value;
 
   try {
     const personas = await prisma.persona.findMany({
@@ -60,7 +82,9 @@ export async function GET(request: Request) {
         nationalId: persona.nationalId,
         phone: persona.phone,
         email: persona.email,
-        birthDate: persona.birthDate ? persona.birthDate.toISOString().slice(0, 10) : null,
+        birthDate: persona.birthDate
+          ? persona.birthDate.toISOString().slice(0, 10)
+          : null,
         birthPlace: persona.birthPlace,
         addressLine1: persona.addressLine1,
         city: persona.city,
@@ -72,8 +96,10 @@ export async function GET(request: Request) {
       })),
     );
   } catch (error) {
-    console.error("Error fetching personas:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError(
+      { route: "/api/personas", operation: "list_personas" },
+      error,
+    );
   }
 }
 
@@ -99,8 +125,11 @@ export async function POST(request: Request) {
     }
     data = parsed.data;
   } catch (error) {
-    console.error("Invalid JSON payload:", error);
-    return NextResponse.json({ message: "Unable to parse request body" }, { status: 400 });
+    logApiError({ route: "/api/personas", operation: "parse_request" }, error);
+    return NextResponse.json(
+      { message: "Unable to parse request body" },
+      { status: 400 },
+    );
   }
 
   if (!data.fullName && !data.fullNameAr && !data.nationalId) {
@@ -142,7 +171,9 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Error creating persona:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError(
+      { route: "/api/personas", operation: "create_persona" },
+      error,
+    );
   }
 }

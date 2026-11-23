@@ -1,0 +1,8 @@
+# Do not invoke machine-wide text converters while Gitleaks walks Git history.
+*.docx -diff
+*.pdf -diff
+
+# Linux containers execute tracked shell scripts directly. Preserve their
+# shebang and line endings even when contributors work on Windows.
+*.sh text eol=lf
+Dockerfile text eol=lf

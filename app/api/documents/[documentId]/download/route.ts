@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import path from "node:path";
 import fs from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/admin-auth";
+import { internalServerError, logApiError } from "@/lib/api-error";
+import { hasAnyRole } from "@/lib/permissions";
 import {
   buildNestedPayload,
   generatePdfBufferFromHtml,
@@ -11,9 +13,13 @@ import {
 } from "@/services/documentRenderService";
 import {
   buildDocumentStoragePath,
-  ensureStoragePath,
   resolveStorageRoot,
+  writeDocumentFileAtomically,
 } from "@/services/documentStorageService";
+import {
+  resolveOwnedStoredFile,
+  safeDownloadFileName,
+} from "@/services/storageSecurity";
 
 export const runtime = "nodejs";
 
@@ -21,49 +27,50 @@ type RouteContext = {
   params: Promise<{ documentId: string }>;
 };
 
-function isSafeRelativePath(filePath: string) {
-  if (filePath.startsWith("/") || filePath.includes(":")) {
-    return false;
-  }
-  if (filePath.includes("..")) {
-    return false;
-  }
-  return true;
-}
-
 export async function GET(request: NextRequest, { params }: RouteContext) {
   const authResult = await getAuthenticatedUser(request.headers);
   if ("error" in authResult) {
     return authResult.error;
   }
+  if (!hasAnyRole(authResult.currentUser, ["employee", "admin"])) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+  }
 
   const { documentId } = await params;
 
-  const document = await prisma.document.findUnique({
-    where: { id: documentId },
-    select: {
-      fileName: true,
-      filePath: true,
-      template: {
-        select: {
-          slug: true,
-          content: true,
-          metadata: true,
+  let document;
+  try {
+    document = await prisma.document.findUnique({
+      where: { id: documentId },
+      select: {
+        fileName: true,
+        filePath: true,
+        template: {
+          select: {
+            slug: true,
+            content: true,
+            metadata: true,
+          },
         },
-      },
-      fieldValues: {
-        select: {
-          value: true,
-          valueJson: true,
-          field: {
-            select: {
-              fieldName: true,
+        fieldValues: {
+          select: {
+            value: true,
+            valueJson: true,
+            field: {
+              select: {
+                fieldName: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    });
+  } catch (error) {
+    return internalServerError(
+      { route: "/api/documents/[documentId]/download", operation: "load_document" },
+      error,
+    );
+  }
 
   if (!document) {
     return new NextResponse("Document not found", { status: 404 });
@@ -121,30 +128,42 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
           : undefined;
 
       const buffer = await generatePdfBufferFromHtml(html, pdfConfig, contentCss);
-      const nextFileName = `${document.template?.slug ?? "document"}-${documentId}.pdf`;
+      const nextFileName = `${document.template?.slug ?? "document"}-${randomUUID()}.pdf`;
       const nextFilePath = buildDocumentStoragePath(nextFileName);
-      const outputPath = await ensureStoragePath(nextFilePath);
-      await fs.writeFile(outputPath, buffer);
+      const outputPath = await writeDocumentFileAtomically(nextFilePath, buffer);
 
-      const pdfFormat = await prisma.fileFormat.findFirst({ where: { name: "PDF" } });
-      await prisma.document.update({
-        where: { id: documentId },
-        data: {
-          fileName: nextFileName,
-          filePath: nextFilePath,
-          fileFormatId: pdfFormat?.id ?? undefined,
-        },
-      });
+      try {
+        const pdfFormat = await prisma.fileFormat.findFirst({ where: { name: "PDF" } });
+        await prisma.document.update({
+          where: { id: documentId },
+          data: {
+            fileName: nextFileName,
+            filePath: nextFilePath,
+            fileFormatId: pdfFormat?.id ?? undefined,
+          },
+        });
+      } catch (error) {
+        await fs.unlink(outputPath).catch((cleanupError) => {
+          logApiError(
+            { route: "/api/documents/[documentId]/download", operation: "cleanup_regenerated_pdf" },
+            cleanupError,
+          );
+        });
+        throw error;
+      }
 
       return new NextResponse(new Uint8Array(buffer), {
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${nextFileName}"`,
+          "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${safeDownloadFileName(nextFileName, "document.pdf")}"`,
         },
       });
     } catch (error) {
-      console.error("PDF regeneration failed:", error);
-      return new NextResponse("Unable to generate PDF", { status: 500 });
+      return internalServerError(
+        { route: "/api/documents/[documentId]/download", operation: "regenerate_pdf" },
+        error,
+        "Unable to generate PDF",
+      );
     }
   }
 
@@ -156,15 +175,12 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     return new NextResponse("File not found", { status: 404 });
   }
 
-  const normalizedPath = filePath.replace(/\\/g, "/");
-
-  if (!isSafeRelativePath(normalizedPath)) {
-    return new NextResponse("Invalid file path", { status: 400 });
-  }
-
   try {
-    const storageRoot = resolveStorageRoot();
-    const absolutePath = path.join(storageRoot, normalizedPath);
+    const absolutePath = await resolveOwnedStoredFile({
+      root: resolveStorageRoot(),
+      storedPath: filePath,
+      legacyPrefixes: ["storage"],
+    });
     const buffer = await fs.readFile(absolutePath);
 
     return new NextResponse(new Uint8Array(buffer), {
@@ -172,11 +188,14 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         "Content-Type": isPdf
           ? "application/pdf"
           : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": `${isPdf && inline ? "inline" : "attachment"}; filename="${fileName ?? "document.pdf"}"`,
+        "Content-Disposition": `${isPdf && inline ? "inline" : "attachment"}; filename="${safeDownloadFileName(fileName, "document.pdf")}"`,
       },
     });
   } catch (error) {
-    console.error("Download failed:", error);
+    logApiError(
+      { route: "/api/documents/[documentId]/download", operation: "read_stored_file" },
+      error,
+    );
     return new NextResponse("File not found", { status: 404 });
   }
 }

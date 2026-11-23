@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { FileText, Home, LogOut, User } from "lucide-react";
+import { FileText, LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/hooks/use-locale";
@@ -14,36 +14,25 @@ const LanguageSwitcher = dynamic(
   { ssr: false },
 );
 
-const navItems = [
-  { href: "/", icon: Home, labelKey: "navigation.employee.home" },
-  { href: "/documents", icon: FileText, labelKey: "navigation.employee.documents" },
-  { href: "/profile", icon: User, labelKey: "navigation.employee.profile" },
-];
+const ThemeToggle = dynamic(
+  () => import("@/components/theme-toggle").then((mod) => mod.ThemeToggle),
+  { ssr: false },
+);
 
 export function EmployeeHeader() {
   const { t, dir } = useLocale();
   const { user } = useUserProfile();
 
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60" dir={dir}>
-      <div className="container mx-auto flex h-16 items-center justify-between gap-4 px-4">
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70" dir={dir}>
+      <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
           <FileText className="h-5 w-5" />
           <span suppressHydrationWarning>{t("navigation.brand")}</span>
         </Link>
-        <nav className="hidden items-center gap-4 text-sm font-medium md:flex">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link key={item.href} href={item.href} className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
-                <Icon className="h-4 w-4" />
-                {t(item.labelKey)}
-              </Link>
-            );
-          })}
-        </nav>
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
+          <ThemeToggle />
           {user ? (
             <>
               <span className="hidden text-sm text-muted-foreground sm:inline" suppressHydrationWarning>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import prisma from "@/lib/prisma";
 import { ensureAdminUser } from "@/lib/admin-auth";
+import { internalServerError } from "@/lib/api-error";
 import { buildNestedPayload, generatePdfBufferFromHtml, renderHtmlTemplate } from "@/services/documentRenderService";
 
 export const runtime = "nodejs";
@@ -71,7 +72,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       },
     });
   } catch (error) {
-    console.error("Render test failed:", error);
-    return NextResponse.json({ message: "Render test failed." }, { status: 500 });
+    return internalServerError(
+      { route: "/api/templates/[slug]/render-test", operation: "render_template_pdf" },
+      error,
+      "Render test failed.",
+    );
   }
 }

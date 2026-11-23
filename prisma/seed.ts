@@ -631,6 +631,7 @@ async function seedRoles() {
 
 async function seedAdminUser() {
   log.section("الحسابات الافتراضية (Default Users)");
+  const isProduction = process.env.NODE_ENV === "production";
 
   const adminRole = await prisma.role.findUnique({ where: { name: "admin" } });
   if (!adminRole) {
@@ -639,8 +640,11 @@ async function seedAdminUser() {
   }
   const employeeRole = await prisma.role.findUnique({ where: { name: "employee" } });
 
-  const adminEmail = "admin@cybercafe.com";
-  const adminPassword = "12345678";
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@cybercafe.com";
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? (isProduction ? "" : "12345678");
+  if (!adminPassword) {
+    throw new Error("SEED_ADMIN_PASSWORD is required in production");
+  }
   const passwordHash = await hash(adminPassword, 10);
   const accountPasswordHash = await betterAuthHashPassword(adminPassword);
 
@@ -653,6 +657,8 @@ async function seedAdminUser() {
       emailVerified: true,
       emailVerifiedAt: new Date(),
       passwordHash,
+      deactivatedAt: null,
+      deletedAt: null,
     },
     create: {
       email: adminEmail,
@@ -662,8 +668,18 @@ async function seedAdminUser() {
       emailVerified: true,
       emailVerifiedAt: new Date(),
       passwordHash,
+      activatedAt: new Date(),
+      deactivatedAt: null,
+      deletedAt: null,
     },
   });
+
+  if (!adminUser.activatedAt) {
+    await prisma.user.update({
+      where: { id: adminUser.id },
+      data: { activatedAt: new Date() },
+    });
+  }
 
   await prisma.userRole.upsert({
     where: {
@@ -683,7 +699,7 @@ async function seedAdminUser() {
     where: {
       providerId_accountId: {
         providerId: "credential",
-        accountId: adminEmail,
+        accountId: adminUser.id,
       },
     },
     update: {
@@ -692,21 +708,26 @@ async function seedAdminUser() {
     },
     create: {
       providerId: "credential",
-      accountId: adminEmail,
+      accountId: adminUser.id,
       userId: adminUser.id,
       password: accountPasswordHash,
     },
   });
 
-  log.ok(`حساب المدير جاهز: ${adminEmail} / ${adminPassword}`);
+  await prisma.session.deleteMany({ where: { userId: adminUser.id } });
+
+  log.ok(`حساب المدير جاهز: ${adminEmail}`);
 
   if (!employeeRole) {
     log.info("تخطي إنشاء حساب الموظف: دور employee غير موجود.");
     return;
   }
 
-  const employeeEmail = "employee@cybercafe.com";
-  const employeePassword = "12345678";
+  const employeeEmail = process.env.SEED_EMPLOYEE_EMAIL ?? "employee@cybercafe.com";
+  const employeePassword = process.env.SEED_EMPLOYEE_PASSWORD ?? (isProduction ? "" : "12345678");
+  if (!employeePassword) {
+    throw new Error("SEED_EMPLOYEE_PASSWORD is required in production");
+  }
   const employeePasswordHash = await hash(employeePassword, 10);
   const employeeAccountPasswordHash = await betterAuthHashPassword(employeePassword);
 
@@ -719,6 +740,8 @@ async function seedAdminUser() {
       emailVerified: true,
       emailVerifiedAt: new Date(),
       passwordHash: employeePasswordHash,
+      deactivatedAt: null,
+      deletedAt: null,
     },
     create: {
       email: employeeEmail,
@@ -728,8 +751,18 @@ async function seedAdminUser() {
       emailVerified: true,
       emailVerifiedAt: new Date(),
       passwordHash: employeePasswordHash,
+      activatedAt: new Date(),
+      deactivatedAt: null,
+      deletedAt: null,
     },
   });
+
+  if (!employeeUser.activatedAt) {
+    await prisma.user.update({
+      where: { id: employeeUser.id },
+      data: { activatedAt: new Date() },
+    });
+  }
 
   await prisma.userRole.upsert({
     where: {
@@ -749,7 +782,7 @@ async function seedAdminUser() {
     where: {
       providerId_accountId: {
         providerId: "credential",
-        accountId: employeeEmail,
+        accountId: employeeUser.id,
       },
     },
     update: {
@@ -758,13 +791,15 @@ async function seedAdminUser() {
     },
     create: {
       providerId: "credential",
-      accountId: employeeEmail,
+      accountId: employeeUser.id,
       userId: employeeUser.id,
       password: employeeAccountPasswordHash,
     },
   });
 
-  log.ok(`حساب الموظف جاهز: ${employeeEmail} / ${employeePassword}`);
+  await prisma.session.deleteMany({ where: { userId: employeeUser.id } });
+
+  log.ok(`حساب الموظف جاهز: ${employeeEmail}`);
 }
 
 async function seedActivityTypes() {

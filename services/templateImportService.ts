@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 
+import { sanitizeTemplateContent } from "@/services/templateContentSecurity";
+
 export type TemplateImportDocumentType = {
   name: string;
   nameAr?: string | null;
@@ -93,6 +95,11 @@ export async function importTemplateWithAsset(
   prisma: PrismaClient,
   payload: TemplateImportPayload,
 ) {
+  const sanitizedContent = sanitizeTemplateContent(
+    payload.contentHtml,
+    payload.contentCss,
+  );
+
   return prisma.$transaction(async (tx) => {
     const documentType = await tx.documentType.upsert({
       where: { name: payload.documentType.name },
@@ -164,7 +171,9 @@ export async function importTemplateWithAsset(
         : {};
     const mergedMetadata = {
       ...metadataBase,
-      ...(payload.contentCss !== undefined ? { htmlCss: payload.contentCss } : {}),
+      ...(sanitizedContent.contentCss !== undefined
+        ? { htmlCss: sanitizedContent.contentCss }
+        : {}),
       ...(payload.pdfOptions !== undefined ? { pdfOptions: payload.pdfOptions } : {}),
     };
     const nextMetadata = Object.keys(mergedMetadata).length
@@ -185,7 +194,7 @@ export async function importTemplateWithAsset(
         isActive: payload.isActive ?? true,
         metadata: nextMetadata,
         assetId,
-        content: payload.contentHtml ?? null,
+        content: sanitizedContent.contentHtml ?? null,
       },
       create: {
         slug: payload.slug,
@@ -200,7 +209,7 @@ export async function importTemplateWithAsset(
         isActive: payload.isActive ?? true,
         metadata: nextMetadata,
         assetId,
-        content: payload.contentHtml ?? null,
+        content: sanitizedContent.contentHtml ?? null,
       },
     });
 

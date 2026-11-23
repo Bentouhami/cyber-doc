@@ -1,13 +1,18 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSession } from "@/lib/auth-client";
+import {
+  isCurrentProfileRequest,
+  type ProfileRequestIdentity,
+} from "@/lib/profile-request-policy";
 import type { EmployeeDTO } from "@/types/employees";
 
 type UserProfileStatus = "idle" | "loading" | "ready" | "error";
 
 interface UserProfileState {
+  subjectEmail: string | null;
   status: UserProfileStatus;
   user: EmployeeDTO | null;
   error: string | null;
@@ -23,8 +28,8 @@ interface UserProfileContextValue {
 
 const UserProfileContext = createContext<UserProfileContextValue | undefined>(undefined);
 
-async function fetchProfile(signal?: AbortSignal): Promise<EmployeeDTO | null> {
-  const response = await fetch("/api/users/me", { cache: "no-store", signal });
+async function fetchProfile(): Promise<EmployeeDTO | null> {
+  const response = await fetch("/api/users/me", { cache: "no-store" });
 
   if (!response.ok) {
     if (response.status === 401) {
@@ -40,38 +45,93 @@ async function fetchProfile(signal?: AbortSignal): Promise<EmployeeDTO | null> {
 
 export function UserProfileProvider({ children }: { children: React.ReactNode }) {
   const { data: session, isPending } = useSession();
-  const [state, setState] = useState<UserProfileState>({ status: "idle", user: null, error: null });
+  const sessionEmail = session?.user?.email ?? null;
+  const [state, setState] = useState<UserProfileState>({
+    subjectEmail: null,
+    status: "idle",
+    user: null,
+    error: null,
+  });
+  const currentSubjectEmailRef = useRef(sessionEmail);
+  const requestGenerationRef = useRef(0);
+  const profileRequestRef = useRef<ProfileRequestIdentity & {
+    promise: Promise<EmployeeDTO | null>;
+  } | null>(null);
+
+  useEffect(() => {
+    currentSubjectEmailRef.current = sessionEmail;
+  }, [sessionEmail]);
 
   const loadProfile = useCallback(
     async (options?: { signal?: AbortSignal }) => {
-      if (!session?.user?.email) {
+      if (!sessionEmail || currentSubjectEmailRef.current !== sessionEmail) {
         return;
       }
 
-      setState((prev) => ({ ...prev, status: "loading", error: null }));
+      setState((prev) => ({
+        ...prev,
+        subjectEmail: sessionEmail,
+        status: "loading",
+        error: null,
+      }));
+
+      let profileRequest = profileRequestRef.current;
 
       try {
-        const profile = await fetchProfile(options?.signal);
-        if (options?.signal?.aborted) {
+        if (!profileRequest || profileRequest.subjectEmail !== sessionEmail) {
+          const generation = requestGenerationRef.current + 1;
+          requestGenerationRef.current = generation;
+          profileRequest = {
+            subjectEmail: sessionEmail,
+            generation,
+            promise: fetchProfile(),
+          };
+          profileRequestRef.current = profileRequest;
+        }
+
+        const profile = await profileRequest.promise;
+        if (profileRequestRef.current === profileRequest) {
+          profileRequestRef.current = null;
+        }
+        if (
+          !isCurrentProfileRequest(
+            profileRequest,
+            currentSubjectEmailRef.current,
+            requestGenerationRef.current,
+            options?.signal?.aborted,
+          )
+        ) {
           return;
         }
-        setState({ status: "ready", user: profile, error: null });
+        setState({ subjectEmail: sessionEmail, status: "ready", user: profile, error: null });
       } catch (error) {
-        if (options?.signal?.aborted) {
+        if (profileRequestRef.current === profileRequest) {
+          profileRequestRef.current = null;
+        }
+        if (
+          !profileRequest ||
+          !isCurrentProfileRequest(
+            profileRequest,
+            currentSubjectEmailRef.current,
+            requestGenerationRef.current,
+            options?.signal?.aborted,
+          )
+        ) {
           return;
         }
         setState({
+          subjectEmail: sessionEmail,
           status: "error",
           user: null,
           error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     },
-    [session?.user?.email],
+    [sessionEmail],
   );
 
   useEffect(() => {
-    if (!session?.user?.email) {
+    if (!sessionEmail) {
       return;
     }
 
@@ -86,14 +146,17 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       controller.abort();
       clearTimeout(timeout);
     };
-  }, [loadProfile, session?.user?.email]);
+  }, [loadProfile, sessionEmail]);
 
   const effectiveState = useMemo<UserProfileState>(() => {
-    if (!session?.user?.email) {
-      return { status: "idle", user: null, error: null };
+    if (!sessionEmail) {
+      return { subjectEmail: null, status: "idle", user: null, error: null };
+    }
+    if (state.subjectEmail !== sessionEmail) {
+      return { subjectEmail: sessionEmail, status: "loading", user: null, error: null };
     }
     return state;
-  }, [session?.user?.email, state]);
+  }, [sessionEmail, state]);
 
   const refresh = useCallback(() => loadProfile(), [loadProfile]);
 

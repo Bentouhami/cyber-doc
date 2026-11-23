@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { ensureAdminUser } from "@/lib/admin-auth";
+import { internalServerError } from "@/lib/api-error";
 
 export async function GET(request: Request) {
   const adminCheck = await ensureAdminUser(request.headers);
@@ -22,7 +23,9 @@ export async function GET(request: Request) {
       })),
     );
   } catch (error) {
-    console.error("Error fetching template assets:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError(
+      { route: "/api/template-assets", operation: "list_template_assets" },
+      error,
+    );
   }
 }

@@ -5,6 +5,11 @@ import Docxtemplater from "docxtemplater";
 import PizZip from "pizzip";
 import { chromium } from "playwright";
 
+import {
+  sanitizeTemplateCss,
+  sanitizeTemplateHtml,
+} from "@/services/templateContentSecurity";
+
 export type DocumentGenerationInput = {
   templatePath: string;
   data: Record<string, unknown>;
@@ -74,6 +79,7 @@ function escapeHtml(value: string) {
 }
 
 export function renderHtmlTemplate(template: string, data: Record<string, unknown>) {
+  const safeTemplate = sanitizeTemplateHtml(template);
   const resolveValue = (key: string) =>
     key.split(".").reduce<unknown>((acc, part) => {
       if (acc && typeof acc === "object" && part in (acc as Record<string, unknown>)) {
@@ -110,7 +116,7 @@ export function renderHtmlTemplate(template: string, data: Record<string, unknow
     return isFemale ? "ة" : "";
   };
 
-  return template.replace(/{{\s*([\w.]+)(?:[:\s]+([\w.]+))?\s*}}/g, (_, token: string, arg?: string) => {
+  return safeTemplate.replace(/{{\s*([\w.]+)(?:[:\s]+([\w.]+))?\s*}}/g, (_, token: string, arg?: string) => {
     if (arg) {
       if (token === "genderSuffix") {
         return resolveGenderSuffix(resolveValue(arg));
@@ -169,10 +175,12 @@ function injectStyles(html: string, css?: string | null) {
 }
 
 export function ensureHtmlDocument(html: string, css?: string | null) {
-  const trimmed = html.trim();
-  const styleBlock = `${BASE_STYLES}${css ? `\n${css}` : ""}`;
+  const safeHtml = sanitizeTemplateHtml(html);
+  const safeCss = css ? sanitizeTemplateCss(css) : "";
+  const trimmed = safeHtml.trim();
+  const styleBlock = `${BASE_STYLES}${safeCss ? `\n${safeCss}` : ""}`;
   if (trimmed.includes("<html")) {
-    return injectStyles(html, styleBlock);
+    return injectStyles(safeHtml, styleBlock);
   }
   return `<!doctype html>
 <html lang="ar" dir="rtl">
@@ -182,7 +190,7 @@ export function ensureHtmlDocument(html: string, css?: string | null) {
     <style>${styleBlock}</style>
   </head>
   <body>
-    <div class="page">${html}</div>
+    <div class="page">${safeHtml}</div>
   </body>
 </html>`;
 }

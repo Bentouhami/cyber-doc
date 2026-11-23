@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/admin-auth";
+import { internalServerError } from "@/lib/api-error";
+import { hasAnyRole } from "@/lib/permissions";
+import { parseIntegerQueryParam } from "@/lib/query-params";
 
 export async function GET(request: Request) {
   const authResult = await getAuthenticatedUser(request.headers);
   if ("error" in authResult) {
     return authResult.error;
+  }
+  if (!hasAnyRole(authResult.currentUser, ["employee", "admin"])) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
   const url = new URL(request.url);
@@ -15,8 +21,28 @@ export async function GET(request: Request) {
   const dateFrom = url.searchParams.get("from");
   const dateTo = url.searchParams.get("to");
   const createdById = url.searchParams.get("createdById");
-  const page = Math.max(Number(url.searchParams.get("page") ?? 1), 1);
-  const pageSize = Math.min(Math.max(Number(url.searchParams.get("pageSize") ?? 20), 1), 100);
+  const pageResult = parseIntegerQueryParam(url.searchParams, "page", {
+    defaultValue: 1,
+    min: 1,
+    max: 1_000_000,
+  });
+  const pageSizeResult = parseIntegerQueryParam(url.searchParams, "pageSize", {
+    defaultValue: 20,
+    min: 1,
+    max: 100,
+  });
+  if (!pageResult.success || !pageSizeResult.success) {
+    const issues = [
+      ...(!pageResult.success ? pageResult.error.issues : []),
+      ...(!pageSizeResult.success ? pageSizeResult.error.issues : []),
+    ];
+    return NextResponse.json(
+      { message: "Invalid query parameter", issues },
+      { status: 400 },
+    );
+  }
+  const page = pageResult.value;
+  const pageSize = pageSizeResult.value;
 
   const where: Record<string, unknown> = {};
 
@@ -61,32 +87,37 @@ export async function GET(request: Request) {
       prisma.document.count({ where }),
     ]);
 
-    return NextResponse.json(
-      {
-        data: documents.map((document) => ({
-          id: document.id,
-          templateId: document.templateId,
-          templateTitle: document.template.titleAr || document.template.title,
-          templateCategory:
-            document.template.category?.nameAr || document.template.category?.name || null,
-          statusId: document.statusId,
-          statusName: document.status.nameAr || document.status.name,
-          statusColor: document.status.color,
-          createdAt: document.createdAt.toISOString(),
-          createdByName: document.createdBy.name || document.createdBy.email || "—",
-          chargedTotal: document.chargedTotal ? document.chargedTotal.toString() : null,
-          currency: document.currency || "MAD",
-          totalCopies: document.totalCopies,
-          filePath: document.filePath,
-        })),
-        page,
-        pageSize,
-        total,
-        totalPages: Math.ceil(total / pageSize),
-      },
-    );
+    return NextResponse.json({
+      data: documents.map((document) => ({
+        id: document.id,
+        templateId: document.templateId,
+        templateTitle: document.template.titleAr || document.template.title,
+        templateCategory:
+          document.template.category?.nameAr ||
+          document.template.category?.name ||
+          null,
+        statusId: document.statusId,
+        statusName: document.status.nameAr || document.status.name,
+        statusColor: document.status.color,
+        createdAt: document.createdAt.toISOString(),
+        createdByName:
+          document.createdBy.name || document.createdBy.email || "—",
+        chargedTotal: document.chargedTotal
+          ? document.chargedTotal.toString()
+          : null,
+        currency: document.currency || "MAD",
+        totalCopies: document.totalCopies,
+        filePath: document.filePath,
+      })),
+      page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize),
+    });
   } catch (error) {
-    console.error("Error fetching documents:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return internalServerError(
+      { route: "/api/documents", operation: "list_documents" },
+      error,
+    );
   }
 }

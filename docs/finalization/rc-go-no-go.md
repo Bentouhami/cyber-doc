@@ -1,40 +1,61 @@
 # RC Go/No-Go Decision
 
-Date: 2026-03-19  
-Branch: `release/rc-checklist`
+Date: 2026-10-31
+Branch: `release/v1.0.0-candidate`
 
 ## Decision Status
 
-Current status: **PENDING** (manual smoke execution pending)
+Current status: **NO-GO — production conditions pending**
 
-## Entry Criteria
+The application passes the full locally executable pre-push gate without skips,
+and a fresh independent review approves code readiness after closure of its
+payment, generation, asset, authorization, upload, CSP and concurrency findings.
+This does not replace the immutable-revision CI, container, recovery, privacy
+and accountable sign-off conditions below.
 
-- [x] Lint passes
-- [x] Type-check passes
+Evidence: `docs/finalization/evidence/2026-10-31-integrated-gate.md`.
+
+## Engineering Entry Criteria
+
+- [x] Frozen pnpm install succeeds
+- [x] Lint and TypeScript checks pass
+- [x] Unit tests pass
 - [x] Production build passes
-- [x] Prisma migration status is clean
-- [x] Prisma client generation passes
-- [x] Seed command passes
-- [ ] Manual functional smoke complete
-- [ ] Open issues triaged and accepted
+- [x] Prisma migration status is current
+- [x] API contracts and FR/AR i18n audit pass
+- [x] Dependency and dual secret scans pass
+- [x] Critical browser suites pass with no skip
+- [x] Seven critical-route performance budgets pass
+- [x] Activity-log administration UI and regression evidence complete
+- [x] Independent-review payment, generation, asset and role adverse cases closed
 
-## Go/No-Go Checklist
+## Operational and Governance Criteria
 
-- [ ] Auth flows validated (admin + employee)
-- [ ] Admin templates flow validated (list/detail/create/import/edit/delete)
-- [ ] Employee document flow validated (create/update/preview/download/print/duplicate/payment)
-- [ ] No blocker issues open
-- [ ] Rollback plan documented and accepted
+- [ ] CI builds the `migrator` and `runner` container targets
+- [ ] Exact immutable revision passes all required CI checks
+- [x] CI-only GitHub secrets are provisioned and the secret-name audit passes
+- [ ] Target-environment configuration and trusted origins reviewed
+- [ ] Durable storage and active-printer configuration validated
+- [ ] Supported immutable container target is deployed (historical Vercel build excluded)
+- [ ] Database backup/restore exercise recorded
+- [ ] Previous-image rollback and post-rollback smoke recorded
+- [ ] PII and activity-log retention/export/deletion policy approved
+- [x] Independent correctness, architecture, security and performance code review approved
 
 ## Decision
 
 - GO: [ ]
-- NO-GO: [ ]
+- NO-GO: [x]
+
+Move to GO only when every unchecked release condition has named evidence or an
+explicitly accepted, documented risk from the accountable owner. A green local
+test run alone must not change this decision.
 
 ## Sign-off
 
-- Product Owner:
-- Engineering Owner:
-- QA Owner:
-- Date:
-
+- Product Owner: pending
+- Engineering Owner: pending
+- QA Owner: pending
+- Security/Privacy Owner: pending
+- Operations Owner: pending
+- Decision date: pending

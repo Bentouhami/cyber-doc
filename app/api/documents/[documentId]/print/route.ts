@@ -3,6 +3,9 @@ import { z } from "zod";
 
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/admin-auth";
+import { internalServerError, logApiError } from "@/lib/api-error";
+import { calculatePaymentState } from "@/lib/payment-policy";
+import { lockDocumentForUpdate } from "@/lib/document-transaction-lock";
 import { hasAnyRole } from "@/lib/permissions";
 import { incrementDailyStats } from "@/services/dailyStatsService";
 
@@ -40,7 +43,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
     data = parsed.data;
   } catch (error) {
-    console.error("Invalid JSON payload:", error);
+    logApiError(
+      { route: "/api/documents/[documentId]/print", operation: "parse_request" },
+      error,
+    );
     return NextResponse.json({ message: "Unable to parse request body" }, { status: 400 });
   }
 
@@ -49,14 +55,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      if (!(await lockDocumentForUpdate(tx, documentId))) {
+        return { kind: "not-found" } as const;
+      }
       const document = await tx.document.findUnique({
         where: { id: documentId },
         include: { template: { include: { documentType: true, category: true } } },
       });
 
-      if (!document) {
-        throw new Error("Document not found");
-      }
+      if (!document) return { kind: "not-found" } as const;
 
       const printedStatus = await tx.documentStatus.findFirst({
         where: { name: "PRINTED" },
@@ -65,10 +72,19 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         where: { name: "PRINT_DOCUMENT" },
         select: { id: true },
       });
+      if (!printDocumentActivity) {
+        throw new Error("Required PRINT_DOCUMENT activity type is missing");
+      }
 
       let printer = data.printerId
-        ? await tx.printer.findUnique({ where: { id: data.printerId } })
+        ? await tx.printer.findFirst({
+            where: { id: data.printerId, isActive: true },
+          })
         : null;
+
+      if (data.printerId && !printer) {
+        return { kind: "invalid-printer" } as const;
+      }
 
       if (!printer) {
         printer = await tx.printer.findFirst({ where: { isActive: true } });
@@ -88,24 +104,47 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         },
       });
 
+      const nextTotalCopies = document.totalCopies + copies;
+      const hasPrice =
+        document.unitPrice !== null ||
+        document.negotiatedPrice !== null ||
+        document.standardPrice !== null;
+      const payment = hasPrice
+        ? calculatePaymentState({
+            totalCopies: nextTotalCopies,
+            standardPrice:
+              document.standardPrice === null ? null : Number(document.standardPrice),
+            negotiatedPrice:
+              document.negotiatedPrice === null ? null : Number(document.negotiatedPrice),
+            unitPrice: document.unitPrice === null ? null : Number(document.unitPrice),
+            discount: document.discount === null ? null : Number(document.discount),
+            surcharge: document.surcharge === null ? null : Number(document.surcharge),
+            amountPaid: document.amountPaid === null ? null : Number(document.amountPaid),
+            paidAt: document.paidAt,
+            currency: document.currency,
+          }, {})
+        : null;
+      if (payment && !payment.success) {
+        throw new Error(`Unable to reprice printed document: ${payment.code}`);
+      }
+
       await tx.document.update({
         where: { id: document.id },
         data: {
           statusId: printedStatus?.id ?? document.statusId,
-          totalCopies: document.totalCopies + copies,
+          totalCopies: nextTotalCopies,
+          ...(payment?.success ? payment.value : {}),
         },
       });
 
-      if (printDocumentActivity) {
-        await tx.activityLog.create({
-          data: {
-            userId: currentUser.id,
-            activityTypeId: printDocumentActivity.id,
-            resourceType: "Document",
-            resourceId: document.id,
-          },
-        });
-      }
+      await tx.activityLog.create({
+        data: {
+          userId: currentUser.id,
+          activityTypeId: printDocumentActivity.id,
+          resourceType: "Document",
+          resourceId: document.id,
+        },
+      });
 
       await incrementDailyStats(tx, new Date(), {
         documentsPrinted: 1,
@@ -114,8 +153,22 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         topCategory: document.template.category.name,
       });
 
-      return { documentId: document.id, historyId: history.id };
+      return {
+        kind: "printed",
+        documentId: document.id,
+        historyId: history.id,
+      } as const;
     });
+
+    if (result.kind === "not-found") {
+      return NextResponse.json({ message: "Document not found" }, { status: 404 });
+    }
+    if (result.kind === "invalid-printer") {
+      return NextResponse.json(
+        { message: "Printer not found or inactive", code: "INVALID_PRINTER" },
+        { status: 400 },
+      );
+    }
 
     return NextResponse.json({
       message: "Document printed",
@@ -123,8 +176,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       printHistoryId: result.historyId,
     });
   } catch (error) {
-    console.error("Error printing document:", error);
-    const message = error instanceof Error ? error.message : "Print failed";
-    return NextResponse.json({ message }, { status: 500 });
+    return internalServerError(
+      { route: "/api/documents/[documentId]/print", operation: "record_print" },
+      error,
+      "Print failed",
+    );
   }
 }
