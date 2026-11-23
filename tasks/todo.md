@@ -20,7 +20,7 @@
   - Progress: role migration, server policy, bilingual UI and adverse unit tests
     are implemented; the full migration chain and representative role conversion
     fixtures pass on a disposable PostgreSQL-compatible database. Permission smoke
-    passes 50/50 on the disposable database; confirmation on real PostgreSQL remains pending.
+    passes 50/50 on PostgreSQL 17 in PR #13 CI.
     `check:data` also enforces exactly one assigned and active owner.
 - [ ] **I18N-002 — Arabic-first bilingual interface**
   - Acceptance: Arabic is used on first visit, while an explicit Arabic/French
@@ -30,14 +30,14 @@
     raw API message exposed by UI components; dialog accessibility text and the
     RTL sidebar edge are localized. The server locale policy now proves Arabic on
     first render and preserves explicit FR/AR preferences. The Webpack production
-    build passes all 29 pages on the patched Next.js 16.4.6 runtime; the critical
-    browser run still needs real PostgreSQL.
+    build passes all 29 pages on the patched Next.js 16.4.6 runtime; the complete
+    FR/AR UX/accessibility matrix passes 32/32 on PostgreSQL 17 in CI.
 - [ ] **AUTH-002 — Username or email login**
   - Acceptance: employees authenticate with either unique username or email and
     the same password without disclosing which identifier exists.
   - Progress: schema migration, employee CRUD, Better Auth username plugin,
-    bilingual login and smoke scenario are implemented; admin smoke passes 45/45.
-    The framework security upgrade is complete; critical E2E still needs the staging database.
+    bilingual login and smoke scenario are implemented; admin smoke passes 45/45
+    and critical Playwright E2E passes 4/4 on PostgreSQL 17 in CI.
 - [ ] **AUTH-003 — Production login throttling**
   - Acceptance: sign-in counters survive restarts/replicas, forwarded client IPs
     come only through named trusted proxies, and approved thresholds return `429`
@@ -51,7 +51,7 @@
     earlier document; every relationship and actor is auditable.
   - Progress: immutable version chain, current-version guard, actor audit,
     bilingual history UI, migration and smoke scenarios are implemented; document
-    smoke passes 46/46, while the full real-PostgreSQL critical E2E remains pending.
+    smoke passes 46/46 and critical E2E passes on PostgreSQL 17 in CI.
 - [ ] **ADM-002 — Managed external shortcuts**
   - Acceptance: owner/responsible CRUD shared shortcuts; employees use accessible
     card/list views.
@@ -178,7 +178,7 @@
 - [ ] Every v1 catalogue capability is complete with automated evidence.
 - [ ] Build, schema status, contracts, i18n and critical E2E pass.
   - Progress: build, schema validation, contracts and i18n pass on the current
-    change with Next.js 16.4.6; critical E2E still needs staging PostgreSQL.
+    change with Next.js 16.4.6; critical E2E passes 4/4 on CI PostgreSQL 17.
 - [x] No behavior change lacks a `docs/features` update.
 
 ## Phase 3 — Measured performance and operations
@@ -209,9 +209,9 @@
   - Verify: release checklist and CI/container evidence.
   - Dependencies: Checkpoint B.
   - Progress: container topology, immutable image contract and rollback runbook
-    are implemented. Docker is unavailable locally; CI execution, CI-only secret
-    provisioning, backup/restore proof and replacement of obsolete GitHub
-    required-check contexts remain open. ADR 0007 identifies the persistent
+    are implemented. Docker is unavailable locally, but PR #13 builds both
+    production targets and passes PostgreSQL/critical-E2E CI. Backup/restore proof
+    remains open. ADR 0007 identifies the persistent
     container topology as the supported v1 production target; the historical
     Vercel deployment is preview-only and is not release evidence.
     The standalone readiness endpoint now proves database and document-storage
@@ -222,8 +222,8 @@
     The monitored rollout contract now defines external readiness probes, safe
     structured-error queries, relative 5xx/p95 thresholds, first-hour gates and
     48-hour evidence. Provider dashboards and alert delivery still require the target environment.
-    GitHub is reachable and PR #12's historical five gates were green at `93b3264`;
-    no remote run covers the current worktree. Required CI secret names exist.
+    PR #13 is mergeable and all five required gates are green on the release
+    revision. Required CI secret names exist.
     `main` and `dev` enforce the five current checks. Zero approving reviews is the
     explicit Cyber Owner policy for this single-maintainer repository.
 
@@ -240,10 +240,9 @@
 ## Final checkpoint
 
 - [x] `pnpm install --frozen-lockfile --ignore-scripts` succeeds under the documented policy.
-- [ ] `pnpm run quality:prepush` passes without skipped suites.
-  - Progress: 103/103 unit tests and the production build pass; permissions 50/50,
-    documents 46/46 and admin 45/45 pass on disposable PGlite. The integrated UX
-    run still requires real PostgreSQL because PGlite socket prepared statements
-    fail under parallel page queries.
+- [x] `pnpm run quality:prepush` passes without skipped suites.
+  - Evidence: 103/103 unit tests and the production build pass; PostgreSQL 17 CI
+    records permissions 50/50, documents 46/46, admin 45/45, UX 32/32 and critical
+    E2E 4/4, all without failure or skip.
 - [x] Independent correctness, architecture, security and performance code review is approved.
 - [x] Release evidence, known limitations and rollback instructions are current.

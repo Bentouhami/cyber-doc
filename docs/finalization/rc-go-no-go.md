@@ -8,9 +8,10 @@ Branch: `release/v1.0.0-candidate`
 
 Current status: **NO-GO — production conditions pending**
 
-The current dirty working tree passes its locally executable code gates and the
-standalone document smoke. It is not a reviewed release revision, has no current
-remote CI evidence and has not run against the target PostgreSQL environment.
+PR #13 is mergeable and its release revision passes all required GitHub checks,
+including PostgreSQL 17 migrations/data validation, critical browser suites and
+both production container targets. The remaining NO-GO conditions concern the
+supported deployment target, operator acceptance and governance evidence.
 
 Current evidence:
 
@@ -31,18 +32,18 @@ Current evidence:
 - [x] Permissions, administration and document smokes pass on disposable PGlite
 - [x] Real PDF generation passes in the standalone document smoke
 - [x] Independent-review payment, generation, asset and role adverse cases are closed
-- [ ] `prisma migrate deploy`, seed and `check:data` pass on target PostgreSQL
-- [ ] Full critical E2E and FR/AR UX/accessibility matrix pass on target PostgreSQL
+- [x] `prisma migrate deploy`, double seed and `check:data` pass on CI PostgreSQL 17
+- [x] Full critical E2E and FR/AR UX/accessibility matrix pass on CI PostgreSQL 17
 - [ ] Manual Owner/Responsible, template, payment, print and audit acceptance passes
 
-The 16 migration SQL files and real seed pass on PGlite, but the emulator's socket
-bridge cannot execute Prisma's schema engine and can mix prepared statements under
-parallel page queries. Those checks therefore remain open for real PostgreSQL.
+The PostgreSQL CI artifact records permissions 50/50, administration 45/45,
+documents 46/46, FR/AR UX 32/32 and critical E2E 4/4, all without failure.
+Production data, durability and recovery remain separate operational gates.
 
 ## Operational and Governance Criteria
 
-- [ ] Current exact revision builds the `migrator` and `runner` images in CI
-- [ ] Current exact revision passes all five required CI checks
+- [x] Current release revision builds the `migrator` and `runner` images in CI
+- [x] Current release revision passes all five required CI checks
 - [x] CI-only GitHub secret names are provisioned
 - [x] Zero required reviews is the documented Cyber Owner policy for this solo repository
 - [ ] Target configuration and trusted proxy/origin policy are approved

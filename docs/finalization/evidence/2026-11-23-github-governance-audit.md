@@ -2,15 +2,16 @@
 
 Repository: `Bentouhami/cyber-doc`
 Local branch: `release/v1.0.0-candidate`
-Local committed HEAD / remote branch head: `93b3264e46a84cd0fd3f3935d0f7d2ff3ba2fed2`
+Audited release head: `7b94375959b5221fda4fc261ddbcad3f25fefc3f`
 
 ## Remote state
 
 - GitHub authentication and read access succeeded outside the restricted sandbox.
-- PR #12 is merged into `dev`; it is not an open release PR.
-- The PR's final SHA was `93b3264`; its Gitleaks, dependency review, static/build,
-  production-container and database/critical-E2E checks completed successfully.
-- There is no open pull request for the current uncommitted working-tree changes.
+- PR #13 is open from `release/v1.0.0-candidate` to `dev`, mergeable and carries
+  the `quality-contract-change-approved` label.
+- Its Gitleaks, dependency review, static/build, production-container and
+  database/critical-E2E checks completed successfully on the audited release head.
+- Vercel preview and GitGuardian checks also completed successfully.
 
 ## Secrets and branch protection
 
@@ -26,10 +27,9 @@ Local committed HEAD / remote branch head: `93b3264e46a84cd0fd3f3935d0f7d2ff3ba2
 
 ## Boundary of evidence
 
-The green PR #12 checks prove only the historical committed SHA `93b3264`. They do
-not cover the current local Next.js 16.4.6, product, data, security or operations
-changes. Fresh evidence requires an authorized commit/push and a new pull request;
-none was created or modified by this read-only audit.
+PR run `45204065750` and push run `45204054894` cover the audited Next.js 16.4.6
+release head. They prove the repository CI boundary, not target deployment,
+durable storage, backup/restore, monitoring or organizational approval.
 
 ## Quality-label guard
 
@@ -37,6 +37,7 @@ none was created or modified by this read-only audit.
   resolves the single open pull request for the current branch.
 - The check now rejects a missing or ambiguous current-branch pull request and
   rejects an explicitly selected pull request unless its state is `OPEN`.
-- Verified on this branch: the implicit check exits with code 1 because no open
-  pull request exists; `--pr 12` also exits with code 1 because PR #12 is merged.
-- This removes the previous false-green path. No label or pull request was changed.
+- Verified for PR #13: the current open PR and approval label resolve correctly;
+  an explicitly selected merged PR remains rejected.
+- This removes the previous false-green path without requiring human approvals in
+  the Cyber Owner's single-maintainer workflow.

@@ -4,7 +4,8 @@ Date: 2026-11-23
 
 Branch: `release/v1.0.0-candidate`
 
-Scope: current dirty working tree; not a remote-CI release revision
+Scope: PR #13 release revision `7b94375`; remote CI runs `45204054894` and
+`45204065750`
 
 Canonical detailed evidence:
 
@@ -26,31 +27,29 @@ Canonical detailed evidence:
 
 ## 2) Current functional smoke evidence
 
-- permissions smoke: **50/50 PASS** on disposable PGlite;
-- administration smoke: **45/45 PASS** on disposable PGlite;
-- documents smoke: **46/46 PASS** on a fresh disposable PGlite database and
-  standalone build, including real PDF generation through installed Chrome;
-- isolated template-list responsive check: FR/LTR and AR/RTL at 390 px, zero overflow.
+- permissions smoke: **50/50 PASS** on PostgreSQL 17;
+- administration smoke: **45/45 PASS** on PostgreSQL 17;
+- documents smoke: **46/46 PASS** on PostgreSQL 17, including real PDF generation;
+- full FR/AR UX/accessibility matrix: **32/32 PASS** on PostgreSQL 17;
+- critical Playwright E2E: **4/4 PASS**, zero skip.
 
 The current document smoke covers request-boundary failures, new/existing clients,
 history and type/category filters, preview/download/print, immutable duplication,
 concurrent copy accounting, payment/change, price-override refusal, versioning and
-language override. Its machine report is `tmp/documents-smoke/results.json`.
+language override. The complete machine reports are preserved by run
+`45204065750` in the `critical-smoke-reports` artifact.
 
 ## 3) Database and runtime boundary
 
-All **16 migration SQL files** and the real Prisma seed succeeded on a fresh PGlite
-database. The seed produced 13 templates, 224 fields, 20 participant roles and an
-active printer. PGlite's socket bridge cannot execute Prisma's schema engine, so
-this does not prove `prisma migrate deploy` on the target PostgreSQL service.
-
-The complete integrated UX matrix also remains pending on real PostgreSQL: the
-PGlite bridge can mix prepared statements when a document page performs parallel
-queries. This emulator limitation must not be reported as production evidence.
+All **16 migration SQL files**, `prisma migrate deploy`, the real Prisma seed twice,
+`check:data` and `prisma migrate status` succeeded against the workflow's
+PostgreSQL 17 service. The data report found one active assigned owner, valid
+active-template prices/sources/contracts, no unsafe packaged asset and no orphan or
+duplicate fixture data.
 
 ## 4) Release assessment
 
-Local code and document-smoke gates are green, but the release remains **NO-GO**
-until the current tree is committed, reviewed, pushed and covered by remote CI,
-and until the target PostgreSQL, container, durable storage, backup/restore,
-monitoring, privacy policy and legal/template approvals have named evidence.
+Code, PostgreSQL, browser and production-container CI gates are green. The release
+remains **NO-GO** until the immutable container is deployed with durable database
+and document storage and backup/restore, rollback, monitoring, privacy policy,
+manual acceptance and legal/template approvals have named evidence.

@@ -29,8 +29,8 @@ Unbounded `latest` specifiers were removed from direct dependencies; Next.js,
   symlink rejection and exclusive writes.
 - Activity logs have an admin-only, minimized, paginated and filterable API and
   a responsive FR/AR administration UI with complete loading/error/empty states.
-- FR/AR and RTL/LTR are covered by the translation audit and targeted responsive
-  checks. The full desktop/mobile Axe matrix must be rerun on target PostgreSQL.
+- FR/AR and RTL/LTR are covered by the translation audit and a 32/32 integrated
+  UX/accessibility matrix on PostgreSQL 17.
 - Post-build gzip budgets protect seven user-facing routes.
 - CI and local quality gates include tests, dependency audit, dual secret scans,
   contracts, i18n, build, performance budgets and critical browser smoke.
@@ -39,10 +39,10 @@ Unbounded `latest` specifiers were removed from direct dependencies; Next.js,
 
 ## Known Limitations and Release Conditions
 
-- Container targets still require a witnessed green CI build.
-- The current working tree is not committed, reviewed or covered by remote CI.
-- `prisma migrate deploy`, `check:data` and the complete E2E/UX matrix remain to
-  run on target PostgreSQL; PGlite evidence does not replace this gate.
+- PR #13 is mergeable and all five required checks pass; both production container
+  targets build successfully.
+- `prisma migrate deploy`, double seed, `check:data` and the complete E2E/UX matrix
+  pass on PostgreSQL 17 in CI.
 - Backup/restore and image rollback must be exercised in the target environment.
 - PII and activity-log retention/export/deletion policy requires product/legal approval.
 - Complex `.docx`, multi-copy payment arithmetic and no-CIN identity matching

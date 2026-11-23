@@ -6,8 +6,8 @@ silently dropping security, schema, deployment or documentation changes.
 
 ## 1. Authorization boundary
 
-- [ ] Repository owner explicitly authorizes staging, commit and push.
-- [ ] The exact destination branch and PR are confirmed.
+- [x] Repository owner explicitly authorizes staging, commit and push.
+- [x] The exact destination branch and PR are confirmed.
 - [ ] No merge, tag, deployment or repository-setting change is inferred from
   commit/push authorization.
 
@@ -63,6 +63,6 @@ pnpm run security:gitleaks
 - [ ] Commit message describes the release-hardening scope.
 - [ ] Commit SHA is recorded in the evidence document.
 - [ ] Push targets only `release/v1.0.0-candidate`.
-- [ ] A new release PR into `dev` points to that exact SHA; historical PR #12 is merged.
-- [ ] All five current required checks pass on the exact SHA.
+- [x] PR #13 into `dev` points to the release branch; historical PR #12 is merged.
+- [x] All five current required checks pass on the audited release SHA `7b94375`.
 - [ ] No merge or tag occurs before approval, operations proof and final GO.

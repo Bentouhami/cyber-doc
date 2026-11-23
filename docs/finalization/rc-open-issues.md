@@ -9,19 +9,6 @@ The automated baseline and independent code review are green. Production release
 remains blocked by the following operational and governance conditions; there is
 no unresolved critical/high code finding in the reviewed working tree.
 
-### RC-007 — Container artifact not yet built in CI
-
-- Severity: Blocker for release, not an application defect
-- Area: deployment
-- Current state: Docker is unavailable locally. PR #12 was merged into `dev` at
-  `93b3264` with green production-container and database/critical-E2E checks, but
-  that historical SHA predates every current uncommitted hardening change. No open
-  PR or remote CI run covers the current working tree. Both required CI secret names exist.
-- Exit criterion: green required `Production container targets` check for the release commit.
-- Owner: DevOps / release owner
-
-Evidence: `evidence/2026-11-23-github-governance-audit.md`.
-
 ### RC-008 — Restore and rollback exercise pending
 
 - Severity: Blocker for release
@@ -113,6 +100,8 @@ Evidence: `evidence/2026-10-31-vercel-target-audit.md`.
 
 ## Resolved Historical Items
 
+- RC-007 container CI: PR #13 builds both production targets and passes all five
+  required checks on the release revision.
 - auth/session lifecycle and inactive-user revocation;
 - protected UI/API role boundaries;
 - security headers, strict preview isolation and template sanitization;

@@ -33,9 +33,10 @@ fail, and restoring it returned the suite to green.
 The cumulative-copy bound received the same mutation check: inverting the boundary
 made its focused unit test fail before the correct comparison was restored.
 
-## Boundary of this evidence
+## Remote confirmation and boundary
 
-This is a local dirty-working-tree gate, not a reviewed commit or remote CI result.
-It does not prove migrations, data quality, browser E2E, container execution,
-backup/restore or monitoring on real PostgreSQL/staging. Those release conditions
-remain open in `tasks/todo.md` and `docs/finalization/rc-open-issues.md`.
+PR #13 repeated the static/build, container and PostgreSQL/browser gates on release
+head `7b94375`. Runs `45204054894` and `45204065750` are green. This evidence does
+not prove deployment, durable storage, backup/restore, monitoring or approved
+operations on the supported production target; those conditions remain open in
+`tasks/todo.md` and `docs/finalization/rc-open-issues.md`.
