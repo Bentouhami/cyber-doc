@@ -686,6 +686,15 @@ async function runTemplateCrudAndImport(adminRequest) {
     contentCss: "body { font-family: Arial, sans-serif; }",
     basePrice: 25,
     metadata: { basePrice: 25 },
+    fields: [
+      {
+        fieldName: "client.fullName",
+        fieldLabel: "Client full name",
+        fieldLabelAr: "اسم العميل",
+        fieldType: "text",
+        isRequired: true,
+      },
+    ],
     documentType: {
       name: `SMOKE_IMPORT_TYPE_${unique}`,
       nameAr: "نوع استيراد",
