@@ -113,7 +113,6 @@ export const auth = betterAuth({
             activityTypeId: activityType.id,
             resourceType: "Session",
             resourceId: context.context.newSession.session.id,
-            userAgent: context.context.newSession.session.userAgent,
           },
         });
       } catch (error) {

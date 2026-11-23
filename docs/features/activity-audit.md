@@ -51,6 +51,7 @@ Les libellés et dates sont disponibles en français et arabe, avec direction RT
 ## Permissions et sécurité
 
 L’écriture utilise l’identité de session, jamais un auteur fourni par le client.
+La connexion ne copie pas le user-agent de la session dans le journal d’activité.
 La consultation est réservée aux administrateurs et minimise la réponse : aucun
 user-agent, e-mail, payload, secret, hash ou jeton n’est retourné.
 
@@ -83,6 +84,7 @@ mesures d'usage réelles.
 
 ## Historique
 
+- 2026-11-23 — Suppression de la collecte du user-agent lors de l’écriture des événements `LOGIN`.
 - 2026-11-23 — Connexions réussies liées à leur employé et session dans le journal.
 - 2026-10-24 — Interface admin FR/AR, responsive, filtrable et paginée ajoutée avec preuves E2E/UX.
 - 2026-10-24 — Index de tri et filtres exacts justifiés sur 250 000 lignes synthétiques.
