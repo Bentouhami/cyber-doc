@@ -115,8 +115,11 @@ PostgreSQL.
 - Assertions de migration réussies : anciens administrateurs convertis en
   `owner`/`responsible`, usernames uniques générés et modèle sans prix désactivé.
 - Scan de secrets et gitleaks : aucun secret trouvé.
-- Audit dépendances : **0 haute/critique**, 1 modérée, limitée à `minimatch` dans la
-  chaîne ESLint de développement et absente du runtime applicatif.
+- Audit dépendances : **0 haute/critique**, 1 modérée (`GHSA-g3hv-75wg-m249`),
+  limitée à `minimatch 10.2.6` dans la chaîne ESLint de développement et absente
+  du runtime applicatif. Le parent exige `^10.2.2`, tandis que la correction est
+  en `11.0.1`; aucun override majeur incompatible n'est forcé. Révision au plus
+  tard le 2026-12-23 ou dès qu'`@typescript-eslint` accepte la version corrigée.
 - Budgets Webpack : **7/7 routes réussies**; lecteur de manifestes couvert pour
   Turbopack et Webpack, plafonds éditeurs recalibrés avec moins de 6 % de marge.
 - `git diff --check` : aucune erreur de whitespace.
