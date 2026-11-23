@@ -24,7 +24,7 @@ Current evidence:
 
 - [x] Frozen pnpm install succeeds
 - [x] ESLint and TypeScript pass
-- [x] Unit tests pass: 104/104
+- [x] Unit tests pass: 106/106
 - [x] Production build passes: 29 pages
 - [x] API contracts and FR/AR i18n audit pass
 - [x] Dependency and dual secret scans have no high/critical finding

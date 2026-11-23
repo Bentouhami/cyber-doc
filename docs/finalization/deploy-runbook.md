@@ -112,6 +112,11 @@ PowerShell shortcut:
 ./scripts/release/post-deploy-smoke.ps1 -BaseUrl "https://<your-domain>"
 ```
 
+The PowerShell launcher accepts only an exact HTTP(S) origin, requires HTTPS for
+every non-loopback target and checks `/api/health` without credentials before it
+starts authenticated smoke flows. Paths, query strings, fragments, embedded
+credentials and non-HTTP schemes fail closed.
+
 ## 5) Rollback Procedure
 
 When to rollback:
