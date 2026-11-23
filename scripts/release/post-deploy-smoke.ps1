@@ -1,7 +1,6 @@
 param(
   [Parameter(Mandatory = $true)]
   [string]$BaseUrl,
-  [switch]$AllowEpermSkip,
   [switch]$ValidateOnly
 )
 
@@ -46,11 +45,7 @@ if ($health.status -ne "ok") {
 }
 
 $env:SMOKE_BASE_URL = $normalizedBaseUrl
-if ($AllowEpermSkip) {
-  $env:SMOKE_ALLOW_EPERM_SKIP = "1"
-}
-
-Write-Host "[release] Post-deploy critical smoke on $normalizedBaseUrl" -ForegroundColor Cyan
-pnpm run release:smoke:critical
+Write-Host "[release] Post-deploy read-only smoke on $normalizedBaseUrl" -ForegroundColor Cyan
+pnpm run release:smoke:postdeploy
 
 Write-Host "[release] Post-deploy smoke completed." -ForegroundColor Green

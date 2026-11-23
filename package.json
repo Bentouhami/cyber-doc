@@ -25,6 +25,7 @@
     "quality:prepush": "pnpm run release:preflight && pnpm run test:e2e:critical",
     "hooks:install": "node scripts/quality/install-git-hooks.mjs",
     "release:preflight": "pnpm run quality:verify && pnpm exec prisma migrate status",
+    "release:smoke:postdeploy": "node scripts/post-deploy-smoke-runner.mjs",
     "release:freeze-audit": "powershell -ExecutionPolicy Bypass -File ./scripts/release/freeze-audit.ps1",
     "release:github-protection": "node scripts/release/github-protection-check.mjs",
     "release:github-protection:plan": "node scripts/release/github-protection-sync.mjs",

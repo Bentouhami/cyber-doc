@@ -100,10 +100,16 @@ Health check:
 
 ## 4) Post-Deploy Smoke
 
-Run critical checks against deployed base URL:
+Run the dedicated read-only smoke against the deployed base URL with a named
+Owner/Responsible smoke account. Supply credentials through the environment;
+inject their values from the deployment secret manager and never store them in
+the command history or repository:
 
 ```bash
-SMOKE_BASE_URL=https://<your-domain> pnpm run release:smoke:critical
+SMOKE_BASE_URL=https://<your-domain> \
+SMOKE_ADMIN_EMAIL=<secret-manager-reference> \
+SMOKE_ADMIN_PASSWORD=<secret-manager-reference> \
+pnpm run release:smoke:postdeploy
 ```
 
 PowerShell shortcut:
@@ -116,6 +122,11 @@ The PowerShell launcher accepts only an exact HTTP(S) origin, requires HTTPS for
 every non-loopback target and checks `/api/health` without credentials before it
 starts authenticated smoke flows. Paths, query strings, fragments, embedded
 credentials and non-HTTP schemes fail closed.
+
+The remote suite performs login, bounded reads of the current profile, documents,
+templates and activity log, then logout. It never runs employee/template/document
+CRUD against production. The full mutating critical E2E suite remains a pre-release
+CI/staging gate and must not be pointed at production.
 
 ## 5) Rollback Procedure
 

@@ -241,7 +241,7 @@
 
 - [x] `pnpm install --frozen-lockfile --ignore-scripts` succeeds under the documented policy.
 - [x] `pnpm run quality:prepush` passes without skipped suites.
-  - Evidence: 106/106 unit tests and the production build pass; PostgreSQL 17 CI
+  - Evidence: 108/108 unit tests and the production build pass; PostgreSQL 17 CI
     records permissions 50/50, documents 46/46, admin 45/45, UX 32/32 and critical
     E2E 4/4, all without failure or skip.
 - [x] Independent correctness, architecture, security and performance code review is approved.

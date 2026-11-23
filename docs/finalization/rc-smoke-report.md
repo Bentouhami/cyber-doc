@@ -16,7 +16,7 @@ Canonical detailed evidence:
 ## 1) Current quality evidence
 
 - ESLint and TypeScript: PASS;
-- unit tests: **106/106 PASS**, zero skip;
+- unit tests: **108/108 PASS**, zero skip;
 - API contracts: **4/4 self-tests and 20/20 handlers PASS**;
 - FR/AR audit: **555 used keys**, zero missing key and zero raw server message in UI;
 - Next.js 16.4.6 Webpack production build: **29 pages PASS**;
