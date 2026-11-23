@@ -3,7 +3,7 @@ id: ADM-001
 title: Gestion des employés
 status: production-candidate
 owners: product/fullstack
-last-reviewed: 2026-10-24
+last-reviewed: 2026-11-23
 ---
 
 # Gestion des employés
@@ -20,7 +20,10 @@ de création et la modification des informations, rôles et mots de passe.
 
 ## Règles métier
 
-- E-mail, prénom, nom, mot de passe initial et rôles sont requis à la création.
+- Nom d’utilisateur, e-mail, prénom, nom, mot de passe initial et rôle sont requis
+  à la création.
+- Le nom d’utilisateur est normalisé en minuscules, unique et limité aux lettres,
+  chiffres, points et underscores sur 3–30 caractères.
 - L’e-mail est normalisé en minuscules, limité à 254 caractères et unique sans
   distinction de casse.
 - Les noms sont nettoyés, bornés à 100 caractères et refusent les caractères de
@@ -31,7 +34,10 @@ de création et la modification des informations, rôles et mots de passe.
 - La mise à jour d’un mot de passe remplace les hashes applicatif et Better Auth.
 - La désactivation, la suppression logique et le changement de mot de passe
   révoquent toutes les sessions du compte dans la même transaction.
-- La suppression ne peut pas retirer le compte administrateur courant.
+- Le propriétaire peut créer des employés et désigner un responsable délégué.
+- Un responsable délégué ne peut créer et gérer que des employés.
+- Le compte propriétaire ne peut être modifié par un responsable, désactivé,
+  supprimé ou privé de son rôle.
 
 ## Architecture et données
 
@@ -43,19 +49,21 @@ UI dans `app/admin/employees` et `components/admin/employee-form.tsx`; API dans
 `GET|POST /api/users` et `GET|PATCH|DELETE /api/users/[userId]`. Les deux mutations
 JSON utilisent les schémas stricts centralisés de `lib/user-validation.ts` : les
 champs inconnus, types ambigus, payloads vides et mots de passe faibles sont rejetés.
-Création réussie : `201`; doublon : `409`; entrée invalide : `400`; accès
-insuffisant : `401/403`.
+Création réussie : `201`; e-mail ou nom d’utilisateur dupliqué : `409`; entrée
+invalide : `400`; accès insuffisant : `401/403`.
 
 ## Permissions et sécurité
 
-Toutes les mutations sont admin-only. Les réponses excluent `passwordHash` et le
+Toutes les mutations exigent `owner` ou `responsible`, puis appliquent la hiérarchie
+des rôles à la cible et aux rôles demandés. Les réponses excluent `passwordHash` et le
 hash du compte credential. L’identité de l’administrateur courant provient du
 provider de profil partagé, notamment pour les protections contre l’auto-suppression
 et l’auto-désactivation.
 
 ## Erreurs et cas limites
 
-Rôle inconnu, e-mail dupliqué, suppression de soi-même et mise à jour concurrente
+Rôle inconnu, attribution owner interdite, modification du propriétaire par un
+responsable, e-mail ou nom d’utilisateur dupliqué, suppression de soi-même et mise à jour concurrente
 doivent échouer sans compte partiellement configuré. Les erreurs publiques utilisent
 des codes stables et ne reproduisent jamais une valeur de mot de passe ni une erreur
 ORM interne.
@@ -76,6 +84,10 @@ employee de test de manière idempotente.
 
 ## Historique
 
+- 2026-11-23 — Ajout des rôles propriétaire/responsable et des protections de
+  délégation dans l’API et l’interface bilingue.
+- 2026-11-23 — Ajout du nom d’utilisateur unique dans le CRUD, les DTOs et la
+  migration des comptes existants.
 - 2026-10-24 — Réutilisation du profil partagé dans la gestion des employés.
 - 2026-10-24 — Correction de l’invariant Better Auth lors de la création.
 - 2026-10-24 — Révocation transactionnelle des sessions lors des mutations sensibles.

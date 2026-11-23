@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Download, Printer, Wallet } from "lucide-react";
+import Link from "next/link";
+import { Download, Edit3, History, Printer, Wallet } from "lucide-react";
 
 import { useLocale } from "@/hooks/use-locale";
 import { useUserProfile } from "@/components/providers/user-profile-provider";
@@ -36,6 +37,15 @@ export type DocumentDetailData = {
   changeGiven?: string | null;
   currency: string;
   totalCopies: number;
+  versionNumber: number;
+  isCurrentVersion: boolean;
+  versionHistory: {
+    id: string;
+    versionNumber: number;
+    createdAt: string;
+    createdByName: string;
+    isCurrent: boolean;
+  }[];
   paymentStatus?: string | null;
   paidAt?: string | null;
   fieldValues: {
@@ -67,7 +77,7 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
   const isCashier = useMemo(
     () =>
       user?.roles?.some(
-        (role) => role.name === "employee" || role.name === "admin",
+        (role) => ["employee", "owner", "responsible", "admin"].includes(role.name),
       ),
     [user?.roles],
   );
@@ -75,17 +85,13 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
   const [paymentStatus, setPaymentStatus] = useState(
     document.paymentStatus ?? "UNPAID",
   );
-  const [unitPrice, setUnitPrice] = useState(
-    document.unitPrice ?? document.chargedTotal ?? "",
-  );
   const [amountPaid, setAmountPaid] = useState(document.amountPaid ?? "");
   const [changeGiven, setChangeGiven] = useState(document.changeGiven ?? "");
   const [chargedTotal, setChargedTotal] = useState(
     document.chargedTotal ?? "",
   );
-  const [copies, setCopies] = useState(
-    String(Math.max(1, document.totalCopies)),
-  );
+  const [totalCopies, setTotalCopies] = useState(document.totalCopies);
+  const [copies, setCopies] = useState("1");
   const [isPaying, setIsPaying] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const canRenderPdf = document.templateHasHtml;
@@ -111,14 +117,12 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          unitPrice: unitPrice === "" ? undefined : Number(unitPrice),
-          amountPaid: amountPaid === "" ? undefined : Number(amountPaid),
+          amountPaid: Number(amountPaid),
         }),
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || "Payment update failed");
+        throw new Error(t("common.requestFailed"));
       }
 
       const data = await response.json();
@@ -156,7 +160,7 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
       toast({
         title: t("documents.detail.paymentError"),
         description:
-          error instanceof Error ? error.message : "Payment update failed",
+          error instanceof Error ? error.message : t("common.requestFailed"),
         variant: "destructive",
       });
     } finally {
@@ -176,15 +180,31 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || "Print failed");
+        throw new Error(t("common.requestFailed"));
       }
+
+      const data = await response.json();
+      if (
+        !data ||
+        typeof data !== "object" ||
+        !Number.isSafeInteger(data.totalCopies) ||
+        data.totalCopies < 1 ||
+        typeof data.paymentStatus !== "string"
+      ) {
+        throw new Error(t("common.requestFailed"));
+      }
+      setTotalCopies(data.totalCopies);
+      setChargedTotal(typeof data.chargedTotal === "string" ? data.chargedTotal : "");
+      setAmountPaid(typeof data.amountPaid === "string" ? data.amountPaid : "");
+      setChangeGiven(typeof data.changeGiven === "string" ? data.changeGiven : "");
+      setPaymentStatus(data.paymentStatus);
+      setCopies("1");
 
       toast({ title: t("documents.detail.printQueued") });
     } catch (error) {
       toast({
         title: t("documents.detail.printError"),
-        description: error instanceof Error ? error.message : "Print failed",
+        description: error instanceof Error ? error.message : t("common.requestFailed"),
         variant: "destructive",
       });
     } finally {
@@ -227,8 +247,19 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
             {document.currency}
           </Badge>
           <Badge variant="outline">
-            {t("documents.detail.copies")}: {document.totalCopies}
+            {t("documents.detail.copies")}: {totalCopies}
           </Badge>
+          <Badge variant="outline">
+            {t("documents.detail.version")}: {document.versionNumber}
+          </Badge>
+          {document.isCurrentVersion ? (
+            <Button asChild variant="outline">
+              <Link href={`/documents/create?documentId=${document.id}&entryMode=existing`}>
+                <Edit3 className="mr-2 h-4 w-4" />
+                {t("documents.actions.newVersion")}
+              </Link>
+            </Button>
+          ) : null}
           <Button
             asChild
             variant="outline"
@@ -253,6 +284,39 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
               {t("documents.detail.printView")}
             </a>
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            {t("documents.detail.versionHistory")}
+          </CardTitle>
+          <CardDescription>{t("documents.detail.versionHistoryDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {document.versionHistory.map((version) => (
+            <Link
+              key={version.id}
+              href={`/documents/${version.id}`}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 hover:bg-muted/50"
+            >
+              <span className="font-medium">
+                {t("documents.detail.version")} {version.versionNumber}
+              </span>
+              <span className="text-sm text-muted-foreground">{version.createdByName}</span>
+              <span className="text-sm text-muted-foreground">
+                {new Date(version.createdAt).toLocaleString(uiLocale, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </span>
+              {version.isCurrent ? (
+                <Badge variant="secondary">{t("documents.detail.currentVersion")}</Badge>
+              ) : null}
+            </Link>
+          ))}
         </CardContent>
       </Card>
 
@@ -372,18 +436,7 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
                   </span>
                 </div>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  max={99_999_999.99}
-                  step="0.01"
-                  aria-label={t("documents.detail.unitPrice")}
-                  value={unitPrice}
-                  onChange={(event) => setUnitPrice(event.target.value)}
-                  placeholder={t("documents.detail.unitPrice")}
-                />
+              <div className="grid gap-3">
                 <Input
                   type="number"
                   inputMode="decimal"

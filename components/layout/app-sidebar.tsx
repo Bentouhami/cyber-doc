@@ -10,6 +10,7 @@ import {
   History,
   LayoutDashboard,
   Layers,
+  Link2,
   Sparkles,
   UploadCloud,
   Users,
@@ -64,6 +65,7 @@ export function AppSidebar({ variant }: AppSidebarProps) {
       label: t("navigation.admin.activity"),
       icon: History,
     },
+    { href: "/documents/shortcuts", label: t("shortcuts.title"), icon: Link2 },
   ];
 
   const employeeItems: NavItem[] = [
@@ -77,6 +79,7 @@ export function AppSidebar({ variant }: AppSidebarProps) {
       label: t("documents.newDocument"),
       icon: FilePlus2,
     },
+    { href: "/documents/shortcuts", label: t("shortcuts.title"), icon: Link2 },
   ];
 
   const items = variant === "admin" ? adminItems : employeeItems;
@@ -86,7 +89,7 @@ export function AppSidebar({ variant }: AppSidebarProps) {
       : t("navigation.employee.documents");
 
   return (
-    <aside className="hidden w-72 shrink-0 border-r border-border/70 bg-background/70 p-4 backdrop-blur xl:block">
+    <aside className="hidden w-72 shrink-0 border-border/70 bg-background/70 p-4 backdrop-blur ltr:border-r rtl:border-l xl:block">
       <div className="sticky top-20 space-y-4">
         <div className="rounded-2xl border border-border/70 bg-gradient-to-br from-slate-900 via-sky-900 to-teal-800 p-4 text-white shadow-lg shadow-slate-900/15 dark:from-slate-800 dark:via-sky-900 dark:to-teal-900">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold">

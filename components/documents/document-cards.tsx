@@ -145,25 +145,27 @@ export function DocumentCards({ data }: DocumentCardsProps) {
                   {t("documents.cards.reference", { id: row.id.slice(0, 8) })}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        aria-label={t("documents.actions.newVersion")}
-                        asChild
-                      >
-                        <Link
-                          href={`/documents/create?documentId=${row.id}&entryMode=existing`}
+                  {row.isCurrentVersion ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          aria-label={t("documents.actions.newVersion")}
+                          asChild
                         >
-                          <Edit3 className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {t("documents.actions.newVersion")}
-                    </TooltipContent>
-                  </Tooltip>
+                          <Link
+                            href={`/documents/create?documentId=${row.id}&entryMode=existing`}
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {t("documents.actions.newVersion")}
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : null}
 
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -182,26 +184,13 @@ export function DocumentCards({ data }: DocumentCardsProps) {
                               },
                             );
                             if (!response.ok) {
-                              let message = "Duplicate failed";
-                              try {
-                                const text = await response.text();
-                                if (text) {
-                                  const data = JSON.parse(text);
-                                  message = data.message || message;
-                                }
-                              } catch (parseError) {
-                                console.error(
-                                  "Duplicate error payload:",
-                                  parseError,
-                                );
-                              }
-                              throw new Error(message);
+                              throw new Error(t("documents.actions.duplicateError"));
                             }
                             const data = await response.json();
                             toast({
                               title: t("documents.actions.duplicateSuccess"),
                             });
-                            router.push(`/documents/${data.documentId}`);
+                            router.push(`/documents/create?documentId=${data.documentId}&entryMode=existing`);
                           } catch (error) {
                             toast({
                               title: t("documents.actions.duplicateError"),

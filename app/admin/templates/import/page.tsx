@@ -1,9 +1,10 @@
-import { Metadata } from "next"
+import type { Metadata } from "next"
 
 import { TemplateImportForm } from "@/components/admin/templates/template-import-form"
+import { getServerLocale } from "@/lib/server-locale"
 
-export const metadata: Metadata = {
-  title: "Importer un modèle",
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getServerLocale()) === "ar" ? "استيراد قالب" : "Importer un modèle" }
 }
 
 export default function TemplateImportPage() {

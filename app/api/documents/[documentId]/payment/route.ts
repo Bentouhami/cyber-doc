@@ -5,8 +5,8 @@ import { getAuthenticatedUser } from "@/lib/admin-auth";
 import { internalServerError, logApiError } from "@/lib/api-error";
 import {
   calculatePaymentState,
-  paymentUpdateSchema,
-  type PaymentUpdate,
+  cashPaymentUpdateSchema,
+  type CashPaymentUpdate,
 } from "@/lib/payment-policy";
 import { hasAnyRole } from "@/lib/permissions";
 import { lockDocumentForUpdate } from "@/lib/document-transaction-lock";
@@ -27,10 +27,10 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  let data: PaymentUpdate;
+  let data: CashPaymentUpdate;
   try {
     const body = await request.json();
-    const parsed = paymentUpdateSchema.safeParse(body);
+    const parsed = cashPaymentUpdateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         { message: "Invalid payload", issues: parsed.error.flatten() },

@@ -1,13 +1,12 @@
 # Branch Protection Policy (`dev` / `main`)
 
-Date: 2026-10-31
-Scope: Enforce PR-only merge and minimum quality gates.
+Date: 2026-11-23
+Scope: Enforce PR-only merge and automated quality gates for a single maintainer.
 
 ## Required for `dev`
 
 - Require pull request before merging.
-- Require at least 1 approval.
-- Dismiss stale approvals on new commits.
+- Do not require another approving reviewer while the Cyber Owner is the sole maintainer.
 - Require conversation resolution before merge.
 - Require status checks to pass:
   - `Static, security and build gates`
@@ -21,7 +20,7 @@ Scope: Enforce PR-only merge and minimum quality gates.
 ## Required for `main`
 
 - Require pull request before merging.
-- Require at least 1 approval (recommended: 2 when available).
+- Do not require another approving reviewer while the Cyber Owner is the sole maintainer.
 - Require status checks to pass:
   - the same five checks required for `dev`.
 - Restrict who can push directly (maintainers only).
@@ -36,24 +35,25 @@ Scope: Enforce PR-only merge and minimum quality gates.
   - updated docs/evidence,
   - green CI checks.
 - A reviewed `CONSTRAINTS.md` change requires the maintainer-only
-  `quality-contract-change-approved` label; removing or self-approving the guard
-  is forbidden.
+  `quality-contract-change-approved` label as an explicit owner decision record.
 
-The label must exist at repository level and be applied to PR #12 by an
-authorized maintainer only after reviewing the constraints diff. Verify both
-conditions without mutation using `pnpm run release:github-label`.
+The label must exist at repository level and be applied to any release PR that
+changes `CONSTRAINTS.md`, by an authorized maintainer only after reviewing that
+diff. Verify both conditions without mutation using `pnpm run release:github-label`.
 
 ## Validation Checklist
 
-- [x] Branch rules exist in GitHub for `dev` and `main` and enforce one approval,
-  admins, no force-push and no deletion. (read-only verification 2026-10-30)
-- [ ] Replace obsolete required contexts `Frontend CI` and `Backend CI` on both
-  branches with the five exact current job names above. The legacy backend
-  workflow belongs to another project and has been removed from this repository.
-  `pnpm run release:github-protection` currently reproduces 14 blocking findings
-  (five missing and two obsolete contexts on each branch).
+- [x] Branch rules exist for `dev` and `main`; admins are enforced, strict checks,
+  linear history and conversation resolution are required, and force-push/deletion
+  are disabled. (read-only verification 2026-11-23)
+- [x] Both branches require the five exact current job names above; no obsolete
+  `Frontend CI` or `Backend CI` context remains.
+- [x] Required CI secret names `CI_DB_PASSWORD` and `CI_BETTER_AUTH_SECRET` exist;
+  values were not read.
+- [x] `required_approving_review_count` remains `0` by explicit Cyber Owner decision
+  on 2026-11-23 because this is a single-maintainer repository. The protection
+  checker and synchronizer validate only the five required CI contexts.
 - [ ] Test direct push to protected branch is rejected.
-- [ ] Test merge without approvals is rejected.
 - [ ] Test merge with failing checks is rejected.
 
 ## Safe reconciliation procedure
@@ -65,6 +65,10 @@ pnpm run release:github-protection:plan
 pnpm run release:github-secrets
 pnpm run release:github-label
 ```
+
+The label check resolves the pull request for the current branch and fails when
+there is no matching PR. To audit a specific pull request explicitly, run
+`pnpm run release:github-label -- --pr <number>`; no historical PR is hard-coded.
 
 An authorized repository owner may then apply the plan. The command requires
 both the exact repository identity and an explicit environment confirmation, and

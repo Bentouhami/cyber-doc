@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/admin-auth";
 import { internalServerError } from "@/lib/api-error";
 import { hasAnyRole } from "@/lib/permissions";
-import { parseIntegerQueryParam } from "@/lib/query-params";
+import {
+  MAX_DATABASE_INTEGER,
+  parseIntegerQueryParam,
+} from "@/lib/query-params";
 
 export async function GET(
   request: Request,
@@ -39,10 +43,27 @@ export async function GET(
     min: 1,
     max: 100,
   });
-  if (!pageResult.success || !pageSizeResult.success) {
+  const documentTypeIdResult = parseIntegerQueryParam(
+    url.searchParams,
+    "documentTypeId",
+    { defaultValue: 0, min: 1, max: MAX_DATABASE_INTEGER },
+  );
+  const categoryIdResult = parseIntegerQueryParam(url.searchParams, "categoryId", {
+    defaultValue: 0,
+    min: 1,
+    max: MAX_DATABASE_INTEGER,
+  });
+  if (
+    !pageResult.success ||
+    !pageSizeResult.success ||
+    !documentTypeIdResult.success ||
+    !categoryIdResult.success
+  ) {
     const issues = [
       ...(!pageResult.success ? pageResult.error.issues : []),
       ...(!pageSizeResult.success ? pageSizeResult.error.issues : []),
+      ...(!documentTypeIdResult.success ? documentTypeIdResult.error.issues : []),
+      ...(!categoryIdResult.success ? categoryIdResult.error.issues : []),
     ];
     return NextResponse.json(
       { message: "Invalid query parameter", issues },
@@ -72,7 +93,23 @@ export async function GET(
       );
     }
 
-    const where = { personaId };
+    const where: Prisma.DocumentParticipantWhereInput = {
+      personaId,
+      ...(documentTypeIdResult.value || categoryIdResult.value
+        ? {
+            document: {
+              template: {
+                ...(documentTypeIdResult.value
+                  ? { documentTypeId: documentTypeIdResult.value }
+                  : {}),
+                ...(categoryIdResult.value
+                  ? { categoryId: categoryIdResult.value }
+                  : {}),
+              },
+            },
+          }
+        : {}),
+    };
 
     const [participants, total] = await prisma.$transaction([
       prisma.documentParticipant.findMany({

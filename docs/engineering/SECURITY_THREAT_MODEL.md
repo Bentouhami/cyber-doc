@@ -1,6 +1,6 @@
 # CyberDoc security threat model
 
-Last reviewed: 2026-10-31
+Last reviewed: 2026-11-23
 
 ## Scope and assets
 
@@ -29,6 +29,7 @@ events and deployment secrets.
 | Elevation | Public user self-registers outside the employee administration flow | Resolved: Better Auth public signup disabled and tested |
 | Tampering/DoS | Malformed employee payload or oversized password reaches hashing/Prisma | Resolved: strict centralized Zod schemas, 8–128 password bound, normalized email/names/roles and contract tests |
 | Spoofing/CSRF | A production auth request or redirect is accepted from an unintended localhost or malformed origin | Resolved: canonical production URL required, no hardcoded production localhost origins, exact optional origins and fail-closed URL validation |
+| Spoofing/DoS | Login attempts bypass an instance-local counter with a supplied forwarded IP, or one shared fallback bucket locks all office users | Open release blocker: Better Auth production defaults apply 3 attempts/10 seconds but use memory and `x-forwarded-for`; production needs the existing PostgreSQL `rate_limits` store, an approved longer login window and exact trusted-proxy CIDRs before the origin is exposed |
 | Tampering/injection | Invalid paging values reach Prisma as `NaN` or negative limits | Resolved: bounded integer parsing and structured `400`; critical smoke coverage |
 | Information disclosure | Internal ORM/path errors leak through API bodies or raw server logs | Resolved for application API handlers: generic public 500 responses and structured logs limited to route, operation and coarse error type |
 | Tampering/XSS | Imported or requested template HTML executes in a same-origin preview | Resolved: server allowlist at every persistence boundary and render boundary, strict preview CSP, and sandboxed iframes |
@@ -47,6 +48,14 @@ Changes to authentication, uploads, CORS, rate limiting or collection of new
 personal data remain security-sensitive changes requiring explicit review and
 abuse-case tests. A future move to object storage must preserve resource ownership,
 non-guessable object identifiers and the same generic-error contract.
+
+The current authentication limiter is Better Auth's production default: sign-in
+paths use 3 attempts per 10 seconds, counters live in process memory, and client
+identity is derived from `x-forwarded-for` or a shared fallback bucket. The Prisma
+schema already contains `rate_limits`, so no new service is required to move the
+counter to PostgreSQL. The remaining decision is operational: approve the login
+window and name the exact proxy IP/CIDR allowed to supply forwarded addresses;
+trusting a broad private range or exposing port 3000 directly would preserve spoofing.
 
 ## API error and filesystem policy
 

@@ -4,6 +4,9 @@
     "french": "Français",
     "arabic": "العربية"
   },
+  "accessibility": {
+    "closeDialog": "Fermer la fenêtre"
+  },
   "navigation": {
     "brand": "CyberDoc",
     "admin": {
@@ -31,13 +34,58 @@
   },
   "roles": {
     "labels": {
-      "admin": "Administrateur",
+      "admin": "Administration",
+      "owner": "Propriétaire",
+      "responsible": "Responsable délégué",
       "employee": "Employé"
     }
+  },
+  "auth": {
+    "login": {
+      "title": "Connexion",
+      "description": "Accédez à votre espace CyberDoc",
+      "identifier": "Nom d’utilisateur ou adresse e-mail",
+      "identifierPlaceholder": "utilisateur ou vous@exemple.com",
+      "password": "Mot de passe",
+      "passwordPlaceholder": "Votre mot de passe",
+      "showPassword": "Afficher le mot de passe",
+      "hidePassword": "Masquer le mot de passe",
+      "rememberMe": "Se souvenir de moi",
+      "submit": "Se connecter",
+      "pending": "Connexion en cours…",
+      "validation": {
+        "identifierRequired": "Le nom d’utilisateur ou l’adresse e-mail est obligatoire.",
+        "identifierMax": "L’identifiant est trop long.",
+        "passwordRequired": "Le mot de passe est obligatoire."
+      },
+      "errors": {
+        "title": "Connexion impossible",
+        "invalidCredentials": "Nom d’utilisateur, adresse e-mail ou mot de passe incorrect.",
+        "generic": "Une erreur est survenue pendant la connexion. Réessayez."
+      }
+    },
+    "hero": {
+      "title": "Gérez vos documents juridiques avec confiance et simplicité",
+      "description": "Une plateforme sécurisée pour créer, gérer et suivre tous vos documents juridiques.",
+      "documentsTitle": "Créez des documents professionnels",
+      "documentsDescription": "Des modèles juridiques adaptés à votre activité et à vos clients.",
+      "securityTitle": "Sécurité et confidentialité",
+      "securityDescription": "Accès contrôlé et protection des données sensibles."
+    },
+    "session": {
+      "verifyError": "Impossible de vérifier votre session.",
+      "retry": "Réessayer",
+      "loading": "Chargement…"
+    }
+  },
+  "theme": {
+    "light": "Activer le thème clair",
+    "dark": "Activer le thème sombre"
   },
   "common": {
     "success": "Succès",
     "error": "Erreur",
+    "requestFailed": "La demande n’a pas pu être traitée. Veuillez réessayer.",
     "cancel": "Annuler",
     "all": "Tous",
     "required": "Obligatoire"
@@ -53,6 +101,7 @@
       "firstName": "Prénom",
       "lastName": "Nom",
       "email": "Email",
+      "identity": "E-mail et nom d’utilisateur",
       "roles": "Rôles",
       "status": "Statut",
       "actions": "Actions"
@@ -83,15 +132,15 @@
       "total": "Total employés",
       "active": "Comptes actifs",
       "inactive": "Comptes inactifs",
-      "admins": "Comptes admin"
+      "admins": "Comptes de gestion"
     },
     "audit": {
-      "title": "Inventaire des comptes administrateurs",
-      "riskSingleAdmin": "Risque: un seul admin actif",
-      "safeAdminCount": "{{count}} admins actifs"
+      "title": "Propriétaire et responsables délégués",
+      "riskSingleAdmin": "Aucun remplaçant actif",
+      "safeAdminCount": "{{count}} comptes de gestion actifs"
     },
     "filters": {
-      "search": "Rechercher par nom ou email...",
+      "search": "Rechercher par nom, e-mail ou nom d’utilisateur…",
       "status": "Filtrer par statut",
       "all": "Tous les statuts",
       "active": "Actifs",
@@ -172,13 +221,15 @@
     "genericError": "Impossible de mettre à jour le statut du compte.",
     "selfDeactivateBlocked": "Vous ne pouvez pas désactiver votre propre compte.",
     "selfDeleteBlocked": "Vous ne pouvez pas supprimer votre propre compte.",
-    "selfRoleBlocked": "Vous ne pouvez pas retirer votre propre rôle administrateur."
+    "selfRoleBlocked": "Le rôle Propriétaire ne peut pas être retiré.",
+    "protectedAccount": "Ce compte protégé ne peut pas être modifié avec vos autorisations."
   },
   "employeeForm": {
     "labels": {
       "firstName": "Prénom",
       "lastName": "Nom",
       "email": "Email",
+      "username": "Nom d’utilisateur",
       "password": "Mot de passe",
       "passwordOptional": "(optionnel)",
       "role": "Rôle"
@@ -187,15 +238,19 @@
       "firstName": "Jean",
       "lastName": "Dupont",
       "email": "jean.dupont@example.com",
+      "username": "jean.dupont",
       "password": "••••••••",
       "passwordEdit": "Laisser vide pour conserver",
       "role": "Sélectionner un rôle"
     },
     "errors": {
       "invalidRole": "Rôle invalide sélectionné",
+      "forbiddenRole": "Vous n’êtes pas autorisé à attribuer ce rôle ou à modifier ce compte.",
       "generic": "Une erreur est survenue",
       "passwordRequired": "Le mot de passe est requis",
       "emailAlreadyUsed": "Cette adresse e-mail est déjà utilisée.",
+      "usernameAlreadyUsed": "Ce nom d’utilisateur est déjà utilisé.",
+      "identityAlreadyUsed": "Cette adresse e-mail ou ce nom d’utilisateur est déjà utilisé.",
       "missingFields": "Veuillez remplir tous les champs obligatoires.",
       "noUpdates": "Aucune modification à enregistrer.",
       "userNotFound": "Employé introuvable."
@@ -204,6 +259,9 @@
       "firstNameMin": "Le prénom doit contenir au moins 2 caractères",
       "lastNameMin": "Le nom doit contenir au moins 2 caractères",
       "email": "Veuillez entrer une adresse email valide",
+      "usernameMin": "Le nom d’utilisateur doit contenir au moins 3 caractères",
+      "usernameMax": "Le nom d’utilisateur ne peut pas dépasser 30 caractères",
+      "usernameFormat": "Utilisez uniquement des lettres, chiffres, points et underscores",
       "passwordMin": "Le mot de passe doit contenir au moins 8 caractères",
       "passwordUppercase": "Le mot de passe doit contenir au moins une majuscule",
       "passwordLowercase": "Le mot de passe doit contenir au moins une minuscule",
@@ -572,7 +630,39 @@
       "issueValue": "Valeur détectée"
     }
   },
+  "shortcuts": {
+    "title": "Sites utiles",
+    "subtitle": "Ouvrez rapidement les portails externes utilisés au quotidien.",
+    "viewMode": "Mode d’affichage",
+    "cardsView": "Vue en cartes",
+    "listView": "Vue en liste",
+    "add": "Ajouter un raccourci",
+    "edit": "Modifier le raccourci",
+    "titleFr": "Titre en français",
+    "titleAr": "Titre en arabe",
+    "descriptionFr": "Description en français",
+    "descriptionAr": "Description en arabe",
+    "url": "Adresse du site",
+    "order": "Ordre d’affichage",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "cancel": "Annuler",
+    "saved": "Raccourci enregistré.",
+    "saveError": "Impossible d’enregistrer le raccourci.",
+    "loadError": "Impossible de charger les raccourcis.",
+    "loading": "Chargement des raccourcis…",
+    "empty": "Aucun site utile n’est encore configuré.",
+    "open": "Ouvrir",
+    "archive": "Désactiver",
+    "archiveConfirm": "Désactiver ce raccourci ?",
+    "inactive": "Inactif"
+  },
   "documents": {
+    "create": {
+      "title": "Génération de document",
+      "versionTitle": "Nouvelle version du document",
+      "description": "Sélectionnez un modèle juridique, complétez les informations requises, puis générez une version prête à prévisualiser, imprimer et télécharger."
+    },
     "title": "Documents générés",
     "subtitle": "Recherchez, filtrez et suivez les documents créés pour vos clients.",
     "loading": "Chargement des documents...",
@@ -581,6 +671,8 @@
     "searchPlaceholder": "Rechercher par modèle, employé ou référence…",
     "statusFilter": "Statut",
     "templateFilter": "Modèle",
+    "documentTypeFilter": "Type de document",
+    "categoryFilter": "Catégorie",
     "creatorFilter": "Créé par",
     "dateFrom": "Date de début",
     "dateTo": "Date de fin",
@@ -667,6 +759,10 @@
       "createdBy": "Créé par",
       "amount": "Montant",
       "copies": "Copies",
+      "version": "Version",
+      "versionHistory": "Historique des versions",
+      "versionHistoryDescription": "Les anciennes versions restent disponibles et ne sont jamais écrasées.",
+      "currentVersion": "Version actuelle",
       "download": "Télécharger",
       "printView": "Impression",
       "fieldsTitle": "Champs",
@@ -688,7 +784,7 @@
       "paymentSaved": "Paiement enregistré.",
       "paymentError": "Erreur de paiement.",
       "printTitle": "Impression",
-      "printDescription": "Déclencher une impression du document.",
+      "printDescription": "Ajouter et enregistrer des copies supplémentaires.",
       "printAction": "Imprimer",
       "printing": "Impression...",
       "printQueued": "Impression lancée.",

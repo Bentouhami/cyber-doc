@@ -3,7 +3,7 @@ id: AUD-001
 title: Journal d’activité
 status: partial
 owners: product/fullstack
-last-reviewed: 2026-10-24
+last-reviewed: 2026-11-23
 ---
 
 # Journal d’activité
@@ -22,6 +22,8 @@ l’export et la politique de conservation restent hors du périmètre actuel.
 ## Règles métier
 
 - Une activité possède un type, un auteur, une ressource et une date.
+- Une connexion réussie par e-mail ou nom d'utilisateur écrit `LOGIN` pour la
+  session créée; une tentative refusée n'écrit aucun faux succès.
 - Les mutations critiques créent l’activité dans la même opération logique.
 - Les logs ne contiennent ni secret, ni hash, ni contenu personnel complet.
 
@@ -64,7 +66,8 @@ Les smokes admin et documents exercent plusieurs chemins producteurs.
 minimisation, le filtre de type et le rejet des bornes invalides. Le benchmark
 temporaire `pnpm exec tsx scripts/performance/activity-log-query-benchmark.ts`
 mesure les plans avant/après sur 250 000 lignes sans modifier les tables produit.
-`smoke:admin` prouve le rendu, la recherche vide et le passage à la page suivante.
+`smoke:admin` prouve aussi le journal de connexion réussie, le rendu, la recherche
+vide et le passage à la page suivante.
 Le smoke UX exécute la route en français/arabe et desktop/mobile, y compris RTL,
 clavier, débordement horizontal et violations Axe critiques/sérieuses.
 
@@ -80,6 +83,7 @@ mesures d'usage réelles.
 
 ## Historique
 
+- 2026-11-23 — Connexions réussies liées à leur employé et session dans le journal.
 - 2026-10-24 — Interface admin FR/AR, responsive, filtrable et paginée ajoutée avec preuves E2E/UX.
 - 2026-10-24 — Index de tri et filtres exacts justifiés sur 250 000 lignes synthétiques.
 - 2026-10-24 — API admin paginée, filtrable et minimisée ajoutée avec preuves de permissions.

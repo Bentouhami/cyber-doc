@@ -8,9 +8,10 @@ import {
 } from "@/services/storageSecurity";
 
 const PERSISTENT_PREFIXES = ["template-assets/", "template-requests/"];
-const LEGACY_TEMPLATE_ASSETS_ROOT = path.join(
+const PACKAGED_TEMPLATE_ASSETS_ROOT = path.join(
   /* turbopackIgnore: true */ process.cwd(),
   "templates_docs",
+  "sanitized",
 );
 
 export function isPersistentTemplateAssetPath(storedPath: string) {
@@ -37,8 +38,8 @@ export function resolveTemplateAssetFile(storedPath: string) {
     });
   }
   return resolveOwnedStoredFile({
-    root: LEGACY_TEMPLATE_ASSETS_ROOT,
+    root: PACKAGED_TEMPLATE_ASSETS_ROOT,
     storedPath,
-    legacyPrefixes: ["templates_docs"],
+    legacyPrefixes: ["templates_docs/sanitized"],
   });
 }

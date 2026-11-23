@@ -39,6 +39,8 @@ export type DocumentTableRow = {
   chargedTotal?: string | null;
   currency: string;
   totalCopies: number;
+  versionNumber: number;
+  isCurrentVersion: boolean;
   filePath?: string | null;
 };
 
@@ -51,11 +53,15 @@ type DocumentsTableProps = {
   data: DocumentTableRow[];
   statusOptions: FilterOption[];
   templateOptions: FilterOption[];
+  documentTypeOptions: FilterOption[];
+  categoryOptions: FilterOption[];
   creatorOptions: FilterOption[];
   filters: {
     search: string;
     status: string;
     template: string;
+    documentType: string;
+    category: string;
     dateFrom: string;
     dateTo: string;
     createdBy: string;
@@ -70,6 +76,8 @@ export function DocumentsTable({
   data,
   statusOptions,
   templateOptions,
+  documentTypeOptions,
+  categoryOptions,
   creatorOptions,
   filters,
   total,
@@ -113,7 +121,7 @@ export function DocumentsTable({
           <Filter className="h-4 w-4 text-primary" />
           {t("documents.applyFilters")}
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
           <div className="space-y-2">
             <label className="text-sm font-medium">
               {t("documents.searchLabel")}
@@ -165,6 +173,50 @@ export function DocumentsTable({
               <SelectContent>
                 <SelectItem value="all">{t("common.all") ?? "Tous"}</SelectItem>
                 {templateOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              {t("documents.documentTypeFilter")}
+            </label>
+            <Select
+              value={filters.documentType}
+              onValueChange={(value) =>
+                onFiltersChange({ documentType: value, category: "all" })
+              }
+            >
+              <SelectTrigger aria-label={t("documents.documentTypeFilter")}>
+                <SelectValue placeholder={t("documents.documentTypeFilter")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("common.all") ?? "Tous"}</SelectItem>
+                {documentTypeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              {t("documents.categoryFilter")}
+            </label>
+            <Select
+              value={filters.category}
+              onValueChange={(value) => onFiltersChange({ category: value })}
+            >
+              <SelectTrigger aria-label={t("documents.categoryFilter")}>
+                <SelectValue placeholder={t("documents.categoryFilter")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("common.all") ?? "Tous"}</SelectItem>
+                {categoryOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -227,7 +279,7 @@ export function DocumentsTable({
               />
             </div>
           </div>
-          <div className="flex items-end gap-2 md:col-span-2 lg:col-span-5">
+          <div className="flex items-end gap-2 md:col-span-2 lg:col-span-7">
             <Button variant="default" onClick={onApplyFilters}>
               {t("documents.applyFilters")}
             </Button>
@@ -282,14 +334,16 @@ export function DocumentsTable({
                   <TableCell>{row.totalCopies}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link
-                          href={`/documents/create?documentId=${row.id}&entryMode=existing`}
-                        >
-                          <Edit3 className="mr-1 h-4 w-4" />
-                          {t("documents.actions.newVersion")}
-                        </Link>
-                      </Button>
+                      {row.isCurrentVersion ? (
+                        <Button variant="outline" size="sm" asChild>
+                          <Link
+                            href={`/documents/create?documentId=${row.id}&entryMode=existing`}
+                          >
+                            <Edit3 className="mr-1 h-4 w-4" />
+                            {t("documents.actions.newVersion")}
+                          </Link>
+                        </Button>
+                      ) : null}
                       <Button
                         variant="outline"
                         size="sm"
@@ -323,7 +377,7 @@ export function DocumentsTable({
                             toast({
                               title: t("documents.actions.duplicateSuccess"),
                             });
-                            router.push(`/documents/${payload.documentId}`);
+                            router.push(`/documents/create?documentId=${payload.documentId}&entryMode=existing`);
                           } catch (error) {
                             toast({
                               title: t("documents.actions.duplicateError"),

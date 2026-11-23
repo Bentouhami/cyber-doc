@@ -12,7 +12,7 @@ PDF generation also launches Chromium.
 
 The linked Vercel project currently has a historical production deployment, but
 its standard serverless filesystem is not CyberDoc's durable document store and
-the deployed revision predates the pnpm, Next.js 16.4.3 and security-hardening
+the deployed revision predates the pnpm, Next.js 16.4.6 and security-hardening
 work.
 
 ## Decision

@@ -1,6 +1,81 @@
 # CyberDoc production-readiness checklist
 
+## Product completion programme — 2026-11-23
+
+- [ ] **TPL-003 — Homologate the historical document catalogue**
+  - Acceptance: all 13 DOCX sources are catalogued exactly once; no historical PII
+    is published; every active template has approved clauses, tokens and owner price.
+  - Progress: 13/13 sources are mapped with anonymised HTML and generated DOCX assets;
+    only the sanitized directory is packaged. Ten remain inactive pending legal review
+    and owner pricing. Retention or purge of the raw source files remains a privacy decision.
+  - Verify: `pnpm run check:template-sources`, seed on staging PostgreSQL and manual
+    owner/legal approval of each activated template.
+  - Automated data gate: `check:data` now fails on active unpriced templates,
+    missing render sources, invalid placeholder contracts and unsafe packaged assets.
+
+- [ ] **PROD-001 — Owner and delegated-responsible hierarchy**
+  - Acceptance: the migrated owner is unique in normal application operation;
+    only the owner designates responsible users; responsible users CRUD employees
+    but cannot mutate the owner or another responsible.
+  - Progress: role migration, server policy, bilingual UI and adverse unit tests
+    are implemented; the full migration chain and representative role conversion
+    fixtures pass on a disposable PostgreSQL-compatible database. Permission smoke
+    passes 50/50 on the disposable database; confirmation on real PostgreSQL remains pending.
+    `check:data` also enforces exactly one assigned and active owner.
+- [ ] **I18N-002 — Arabic-first bilingual interface**
+  - Acceptance: Arabic is used on first visit, while an explicit Arabic/French
+    preference remains persisted.
+  - Verify: `pnpm run i18n:audit` and critical FR/AR browser checks.
+  - Progress: translation audit passes with 555 keys, no missing locale and no
+    raw API message exposed by UI components; dialog accessibility text and the
+    RTL sidebar edge are localized. The server locale policy now proves Arabic on
+    first render and preserves explicit FR/AR preferences. The Webpack production
+    build passes all 29 pages on the patched Next.js 16.4.6 runtime; the critical
+    browser run still needs real PostgreSQL.
+- [ ] **AUTH-002 — Username or email login**
+  - Acceptance: employees authenticate with either unique username or email and
+    the same password without disclosing which identifier exists.
+  - Progress: schema migration, employee CRUD, Better Auth username plugin,
+    bilingual login and smoke scenario are implemented; admin smoke passes 45/45.
+    The framework security upgrade is complete; critical E2E still needs the staging database.
+- [ ] **AUTH-003 — Production login throttling**
+  - Acceptance: sign-in counters survive restarts/replicas, forwarded client IPs
+    come only through named trusted proxies, and approved thresholds return `429`
+    without revealing account existence.
+  - Progress: Better Auth's default 3 attempts/10 seconds limiter is active only in
+    production, but currently uses process memory and `x-forwarded-for`/shared
+    fallback behavior. The existing `rate_limits` PostgreSQL model can provide the
+    shared store; threshold and proxy CIDRs require explicit security/operations approval.
+- [ ] **DOC-002 — Safe document replacement and version history**
+  - Acceptance: copy, new-version and replace-current flows never destroy an
+    earlier document; every relationship and actor is auditable.
+  - Progress: immutable version chain, current-version guard, actor audit,
+    bilingual history UI, migration and smoke scenarios are implemented; document
+    smoke passes 46/46, while the full real-PostgreSQL critical E2E remains pending.
+- [ ] **ADM-002 — Managed external shortcuts**
+  - Acceptance: owner/responsible CRUD shared shortcuts; employees use accessible
+    card/list views.
+  - Progress: data model, guarded CRUD API, bilingual page, card/list toggle and
+    adversarial URL tests are implemented; admin browser smoke passes and the full
+    staging browser matrix remains pending.
+- [ ] **PAY-002 — Central service and print pricing**
+  - Acceptance: owner/responsible manage prices; document totals and customer
+    change are derived server-side from the active price and print quantity.
+  - Progress: template prices are validated and managed in the guarded back-office;
+    employee price overrides are rejected and cash/change/copies remain server-derived.
+    The migration is replay-tested and deactivates an unpriced active template;
+    the seed preserves owner-managed prices and cannot reactivate an unpriced template.
+
 ## Phase 1 — Evidence and blocking risks
+
+- [x] **CLEAN-001 — Remove superseded mock contract prototypes**
+  - Acceptance: no orphan in-memory template/archive/generator UI or unvalidated
+    mock legal clause remains in production source.
+  - Evidence: repository-wide reference search finds no caller for
+    `components/contract-template-manager.tsx`, `contract-generator.tsx` or
+    `contract-archive.tsx`; the real Prisma/API-backed pages replace all three.
+  - Evidence: the Cyber Owner approved deletion on 2026-11-23; the three tracked
+    prototypes were removed after a repository-wide caller search found no import.
 
 - [x] **PR-001 — Reconcile product capability evidence**
 
@@ -88,7 +163,7 @@
   - Acceptance: each proven gap has a regression test and canonical doc update.
   - Verify: focused tests, contracts, i18n and E2E.
   - Dependencies: PR-001, QA-001.
-  - Progress: the contract auditor passes 4/4 self-tests and inspects 17/17
+  - Progress: the contract auditor passes 4/4 self-tests and inspects 20/20
     request handlers; invalid pagination returns structured `400` responses;
     the browser suites prove guest/employee/admin denials, lifecycle revocation,
     duplicate/language guards, preview/CSP, download, duplication, immutability,
@@ -101,7 +176,9 @@
 ## Checkpoint B
 
 - [ ] Every v1 catalogue capability is complete with automated evidence.
-- [x] Build, schema status, contracts, i18n and critical E2E pass.
+- [ ] Build, schema status, contracts, i18n and critical E2E pass.
+  - Progress: build, schema validation, contracts and i18n pass on the current
+    change with Next.js 16.4.6; critical E2E still needs staging PostgreSQL.
 - [x] No behavior change lacks a `docs/features` update.
 
 ## Phase 3 — Measured performance and operations
@@ -137,6 +214,18 @@
     required-check contexts remain open. ADR 0007 identifies the persistent
     container topology as the supported v1 production target; the historical
     Vercel deployment is preview-only and is not release evidence.
+    The standalone readiness endpoint now proves database and document-storage
+    availability; its 200/503 behavior is locally verified and wired to Docker health.
+    The recovery procedure now treats PostgreSQL and `documents_data` as one
+    quiesced, hashed recovery point and requires a disposable restore before any
+    destructive rollback. The witnessed target-environment exercise remains pending.
+    The monitored rollout contract now defines external readiness probes, safe
+    structured-error queries, relative 5xx/p95 thresholds, first-hour gates and
+    48-hour evidence. Provider dashboards and alert delivery still require the target environment.
+    GitHub is reachable and PR #12's historical five gates were green at `93b3264`;
+    no remote run covers the current worktree. Required CI secret names exist.
+    `main` and `dev` enforce the five current checks. Zero approving reviews is the
+    explicit Cyber Owner policy for this single-maintainer repository.
 
 - [ ] **PRIV-001 — Define PII retention and subject-request operations**
   - Acceptance: data classes, purposes, retention owners and deletion/export paths are documented.
@@ -151,6 +240,10 @@
 ## Final checkpoint
 
 - [x] `pnpm install --frozen-lockfile --ignore-scripts` succeeds under the documented policy.
-- [x] `pnpm run quality:prepush` passes without skipped suites.
+- [ ] `pnpm run quality:prepush` passes without skipped suites.
+  - Progress: 103/103 unit tests and the production build pass; permissions 50/50,
+    documents 46/46 and admin 45/45 pass on disposable PGlite. The integrated UX
+    run still requires real PostgreSQL because PGlite socket prepared statements
+    fail under parallel page queries.
 - [x] Independent correctness, architecture, security and performance code review is approved.
 - [x] Release evidence, known limitations and rollback instructions are current.

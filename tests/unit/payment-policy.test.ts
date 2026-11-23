@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { calculatePaymentState, paymentUpdateSchema } from "../../lib/payment-policy";
+import {
+  calculatePaymentState,
+  canAddDocumentCopies,
+  cashPaymentUpdateSchema,
+  catalogPriceSchema,
+  documentCopiesSchema,
+  MAX_DOCUMENT_COPIES,
+  paymentUpdateSchema,
+  resolveCatalogPrice,
+} from "../../lib/payment-policy";
 
 const existing = {
   totalCopies: 2,
@@ -16,6 +25,12 @@ const existing = {
 };
 
 describe("payment boundary policy", () => {
+  it("preserves a managed catalog price and falls back only when absent", () => {
+    assert.equal(resolveCatalogPrice(35, 20), 35);
+    assert.equal(resolveCatalogPrice(undefined, 20), 20);
+    assert.equal(resolveCatalogPrice(-1, undefined), null);
+  });
+
   it("rejects client outputs, negative money, excess precision and other currencies", () => {
     for (const payload of [
       { amountPaid: -1 },
@@ -26,6 +41,21 @@ describe("payment boundary policy", () => {
       { amountPaid: 10, paidAt: "2026-10-30T12:00:00.000Z" },
       { amountPaid: 10, currency: "EUR" },
     ]) assert.equal(paymentUpdateSchema.safeParse(payload).success, false);
+  });
+
+  it("allows cashiers to submit only the received amount and bounds catalog prices", () => {
+    assert.equal(cashPaymentUpdateSchema.safeParse({ amountPaid: 60 }).success, true);
+    assert.equal(cashPaymentUpdateSchema.safeParse({ amountPaid: 60, unitPrice: 1 }).success, false);
+    assert.equal(catalogPriceSchema.safeParse(10.25).success, true);
+    assert.equal(catalogPriceSchema.safeParse(-1).success, false);
+    assert.equal(catalogPriceSchema.safeParse(10.001).success, false);
+  });
+
+  it("bounds document copies to the PostgreSQL integer range", () => {
+    assert.equal(documentCopiesSchema.safeParse(MAX_DOCUMENT_COPIES).success, true);
+    assert.equal(documentCopiesSchema.safeParse(MAX_DOCUMENT_COPIES + 1).success, false);
+    assert.equal(canAddDocumentCopies(MAX_DOCUMENT_COPIES - 1, 1), true);
+    assert.equal(canAddDocumentCopies(MAX_DOCUMENT_COPIES, 1), false);
   });
 
   it("derives total, status, change and paid timestamp on the server", () => {

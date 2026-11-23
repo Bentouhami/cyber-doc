@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   collectRouteAssetPaths,
   evaluateRouteBudgets,
+  parseClientReferenceManifest,
   type RouteAssetBudget,
 } from "../../scripts/performance/budget-policy";
 
@@ -28,6 +29,13 @@ test("collectRouteAssetPaths counts shared assets only once", () => {
 
   assert.deepEqual(assets.javascript, ["static/chunks/page.js", "static/chunks/shared.js"]);
   assert.deepEqual(assets.css, ["static/chunks/app.css"]);
+});
+
+test("parses compact Webpack manifests and collects their JavaScript chunks", () => {
+  const manifest = parseClientReferenceManifest(
+    'globalThis.__RSC_MANIFEST=(globalThis.__RSC_MANIFEST||{});globalThis.__RSC_MANIFEST["/admin/templates/[slug]/page"]={"clientModules":{"a":{"chunks":["1","static/chunks/app.js"]}},"entryCSSFiles":{}};',
+  );
+  assert.deepEqual(collectRouteAssetPaths(manifest).javascript, ["static/chunks/app.js"]);
 });
 
 test("evaluateRouteBudgets accepts measurements exactly at their limits", () => {

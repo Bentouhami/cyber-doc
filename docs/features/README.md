@@ -11,6 +11,7 @@ modification de comportement dans `app/`, `components/`, `hooks/`, `lib/`,
 | Identité       | [Authentification et sessions](authentication-and-sessions.md)                          | Production candidate |
 | Sécurité       | [Autorisations et rôles](authorization-and-roles.md)                                    | Production candidate |
 | Administration | [Gestion des employés](employee-management.md)                                          | Production candidate |
+| Administration | [Raccourcis vers les sites externes](external-shortcuts.md)                             | Production candidate |
 | Modèles        | [Catalogue et cycle de vie des modèles](template-management.md)                         | Production candidate |
 | Documents      | [Création et génération des documents](document-generation.md)                          | Production candidate |
 | Documents      | [Historique, aperçu et délivrance](document-delivery-and-history.md)                    | Production candidate |

@@ -336,15 +336,7 @@ export function TemplateList({ templates }: TemplateListProps) {
       });
 
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        const message =
-          (data &&
-            typeof data === "object" &&
-            "message" in data &&
-            typeof data.message === "string" &&
-            data.message) ||
-          t("templates.review.actionError");
-        throw new Error(message);
+        throw new Error(t("templates.review.actionError"));
       }
 
       toast({
@@ -381,15 +373,7 @@ export function TemplateList({ templates }: TemplateListProps) {
       });
 
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        const message =
-          (data &&
-            typeof data === "object" &&
-            "message" in data &&
-            typeof data.message === "string" &&
-            data.message) ||
-          t("templates.archive.actionError");
-        throw new Error(message);
+        throw new Error(t("templates.archive.actionError"));
       }
 
       toast({
@@ -695,10 +679,10 @@ export function TemplateList({ templates }: TemplateListProps) {
       </Card>
       <div className="grid gap-4 lg:grid-cols-2">
         {filteredTemplates.map((template) => (
-          <Card key={template.id} className="flex h-full flex-col">
+          <Card key={template.id} className="flex h-full min-w-0 flex-col overflow-hidden">
             <CardHeader className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="flex items-center gap-2 text-xl">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="flex min-w-0 flex-wrap items-center gap-2 text-xl">
                   <Checkbox
                     checked={selectedIds.includes(template.id)}
                     onCheckedChange={(checked) =>
@@ -709,7 +693,7 @@ export function TemplateList({ templates }: TemplateListProps) {
                     })}
                   />
                   <FolderKanban className="h-5 w-5 text-primary" />
-                  <span>{template.titleAr || template.title}</span>
+                  <span className="min-w-0 break-words">{template.titleAr || template.title}</span>
                 </CardTitle>
                 <Badge variant={template.isActive ? "default" : "secondary"}>
                   {template.isActive
@@ -836,7 +820,7 @@ export function TemplateList({ templates }: TemplateListProps) {
                 </div>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <Badge variant="outline" className="font-normal">
+                <Badge variant="outline" className="max-w-full whitespace-normal break-all font-normal">
                   {t("templates.slug")}: {template.slug}
                 </Badge>
                 <div className="flex flex-wrap items-center gap-2 sm:justify-end">

@@ -623,7 +623,7 @@ ${simpleGeneratedHtml}
     }
 
     if (!response.ok) {
-      throw new Error(data.message || "Create failed");
+      throw new Error(tt("common.requestFailed", "La demande n’a pas pu être traitée."));
     }
 
     return data as { slug: string };
@@ -704,7 +704,7 @@ ${simpleGeneratedHtml}
     } catch (error) {
       toast({
         title: t("templates.createError"),
-        description: error instanceof Error ? error.message : "Create failed",
+        description: error instanceof Error ? error.message : tt("common.requestFailed", "La demande n’a pas pu être traitée."),
         variant: "destructive",
       });
     } finally {
@@ -730,7 +730,7 @@ ${simpleGeneratedHtml}
     } catch (error) {
       toast({
         title: t("templates.createError"),
-        description: error instanceof Error ? error.message : "Create failed",
+        description: error instanceof Error ? error.message : tt("common.requestFailed", "La demande n’a pas pu être traitée."),
         variant: "destructive",
       });
     } finally {

@@ -1,13 +1,13 @@
 # Release Notes — v1.0.0 RC
 
-Date: 2026-10-30
+Date: 2026-11-23
 Status: release candidate; production NO-GO pending operational and governance evidence
 
 ## Runtime Baseline
 
 - Node.js: `>=22.13.0 <25`
 - package manager: pnpm 12.15.0
-- Next.js: 16.4.3 (exact direct dependency)
+- Next.js: 16.4.6 (exact direct dependency, security-patched stable release)
 - React: 19.3.1-compatible range
 - Prisma: 7.10.1-compatible range
 
@@ -29,8 +29,8 @@ Unbounded `latest` specifiers were removed from direct dependencies; Next.js,
   symlink rejection and exclusive writes.
 - Activity logs have an admin-only, minimized, paginated and filterable API and
   a responsive FR/AR administration UI with complete loading/error/empty states.
-- FR/AR, RTL/LTR, desktop/mobile, overflow and automated Axe checks cover the
-  critical route matrix.
+- FR/AR and RTL/LTR are covered by the translation audit and targeted responsive
+  checks. The full desktop/mobile Axe matrix must be rerun on target PostgreSQL.
 - Post-build gzip budgets protect seven user-facing routes.
 - CI and local quality gates include tests, dependency audit, dual secret scans,
   contracts, i18n, build, performance budgets and critical browser smoke.
@@ -40,6 +40,9 @@ Unbounded `latest` specifiers were removed from direct dependencies; Next.js,
 ## Known Limitations and Release Conditions
 
 - Container targets still require a witnessed green CI build.
+- The current working tree is not committed, reviewed or covered by remote CI.
+- `prisma migrate deploy`, `check:data` and the complete E2E/UX matrix remain to
+  run on target PostgreSQL; PGlite evidence does not replace this gate.
 - Backup/restore and image rollback must be exercised in the target environment.
 - PII and activity-log retention/export/deletion policy requires product/legal approval.
 - Complex `.docx`, multi-copy payment arithmetic and no-CIN identity matching

@@ -4,7 +4,7 @@
 
 - Application web de gestion de contrats pour centres CyberDoc/سايبر صيدا.
 - Interface en arabe avec tableaux de bord, génération, gestion et archivage de contrats.
-- Public cible : administrateurs (gestion de modèles) et utilisateurs standards (création et suivi des contrats).
+- Public cible : propriétaire Cyber, responsable délégué et employés chargés de créer et suivre les documents.
 - Périmètre MVP détaillé dans `docs/analysis/mvp.md`.
 
 ## Architecture technique
@@ -23,11 +23,12 @@
 - Back-office admin pour gérer modèles, employés et rôles.
 - Archivage/traçabilité (ActivityLog, PrintHistory, DailyStats).
 
-## Pistes d'analyse complémentaire
+## Travaux restant avant production
 
-1. Définir le parcours utilisateur précis (création, validation, archivage) et les règles de gestion associées.
-2. Stabiliser le mapping DOCX -> TemplateAsset + TemplateField (tokenisation et versionning).
-3. Clarifier le workflow de paiement/encaissement (Document pricing + cashier).
-4. Anticiper les intégrations externes (génération PDF, signature électronique, stockage sécurisé).
+1. Faire homologuer juridiquement et tarifer les dix brouillons de modèles encore inactifs.
+2. Anonymiser ou confiner les DOCX historiques contenant des données personnelles.
+3. Rejouer migrations, seed, contrôles de données et parcours critiques sur PostgreSQL de recette.
+4. Mettre à niveau Next.js, puis valider sauvegarde/restauration, stockage et supervision.
 
-Complétez les sections ci-dessus à mesure que l'analyse avance : ajoutez des scénarios métiers, diagrammes, flux techniques et décisions d'architecture.
+Le rapport courant et le backlog priorisé sont dans
+`docs/finalization/2026-11-23-project-analysis-and-production-plan.md` et `tasks/todo.md`.

@@ -311,8 +311,7 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
     try {
       const validation = await fetch(`/api/templates/${template.slug}/validate`)
       if (!validation.ok) {
-        const data = await validation.json()
-        throw new Error(data.message || "Validation failed")
+        throw new Error(t("common.requestFailed"))
       }
       const result = await validation.json()
       setValidationResult(result)
@@ -333,15 +332,14 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
         }),
       })
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.message || "Publish failed")
+        throw new Error(t("common.requestFailed"))
       }
       toast({ title: t("templates.publishSuccess") })
       window.location.reload()
     } catch (error) {
       toast({
         title: t("templates.publishError"),
-        description: error instanceof Error ? error.message : "Publish failed",
+        description: error instanceof Error ? error.message : t("common.requestFailed"),
         variant: "destructive",
       })
     } finally {
@@ -413,15 +411,14 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
                   method: "DELETE",
                 })
                 if (!response.ok) {
-                  const data = await response.json()
-                  throw new Error(data.message || "Delete failed")
+                  throw new Error(t("common.requestFailed"))
                 }
                 toast({ title: t("templates.deleteSuccess") })
                 router.push("/admin/templates")
               } catch (error) {
                 toast({
                   title: t("templates.deleteError") ,
-                  description: error instanceof Error ? error.message : "Delete failed",
+                  description: error instanceof Error ? error.message : t("common.requestFailed"),
                   variant: "destructive",
                 })
               } finally {
@@ -587,8 +584,7 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
                     method: "POST",
                   })
                   if (!response.ok) {
-                    const data = await response.json()
-                    throw new Error(data.message || "Render failed")
+                    throw new Error(t("common.requestFailed"))
                   }
                   const blob = await response.blob()
                   const url = window.URL.createObjectURL(blob)
@@ -597,7 +593,7 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
                 } catch (error) {
                   toast({
                     title: t("templates.previewError"),
-                    description: error instanceof Error ? error.message : "Render failed",
+                    description: error instanceof Error ? error.message : t("common.requestFailed"),
                     variant: "destructive",
                   })
                 }
@@ -637,15 +633,13 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
                   }),
                 })
                   if (!response.ok) {
-                    const data = await response.json()
-                    throw new Error(data.message || "Update failed")
+                    throw new Error(t("common.requestFailed"))
                   }
                   const preview = await fetch(`/api/templates/${template.slug}/render-test`, {
                     method: "POST",
                   })
                   if (!preview.ok) {
-                    const data = await preview.json()
-                    throw new Error(data.message || "Render failed")
+                    throw new Error(t("common.requestFailed"))
                   }
                   const blob = await preview.blob()
                   const url = window.URL.createObjectURL(blob)
@@ -654,7 +648,7 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
                 } catch (error) {
                   toast({
                     title: t("templates.previewError"),
-                    description: error instanceof Error ? error.message : "Render failed",
+                    description: error instanceof Error ? error.message : t("common.requestFailed"),
                     variant: "destructive",
                   })
                 } finally {
@@ -693,8 +687,7 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
                   try {
                     const response = await fetch(`/api/templates/${template.slug}/validate`)
                     if (!response.ok) {
-                      const data = await response.json()
-                      throw new Error(data.message || "Validation failed")
+                      throw new Error(t("common.requestFailed"))
                     }
                     const data = await response.json()
                     setValidationResult(data)
@@ -702,7 +695,7 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
                   } catch (error) {
                     toast({
                       title: t("templates.validationError"),
-                      description: error instanceof Error ? error.message : "Validation failed",
+                      description: error instanceof Error ? error.message : t("common.requestFailed"),
                       variant: "destructive",
                     })
                   } finally {
@@ -737,15 +730,14 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
                       }),
                     })
                     if (!response.ok) {
-                      const data = await response.json()
-                      throw new Error(data.message || "Unpublish failed")
+                      throw new Error(t("common.requestFailed"))
                     }
                     toast({ title: t("templates.unpublishSuccess") })
                     window.location.reload()
                   } catch (error) {
                     toast({
                       title: t("templates.unpublishError"),
-                      description: error instanceof Error ? error.message : "Unpublish failed",
+                      description: error instanceof Error ? error.message : t("common.requestFailed"),
                       variant: "destructive",
                     })
                   } finally {
@@ -847,14 +839,13 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
                   }),
                 })
                 if (!response.ok) {
-                  const data = await response.json()
-                  throw new Error(data.message || "Update failed")
+                  throw new Error(t("common.requestFailed"))
                 }
                 toast({ title: t("templates.editSuccess") })
               } catch (error) {
                 toast({
                   title: t("templates.editError"),
-                  description: error instanceof Error ? error.message : "Update failed",
+                  description: error instanceof Error ? error.message : t("common.requestFailed"),
                   variant: "destructive",
                 })
               } finally {
@@ -903,14 +894,13 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
                   }),
                 })
                 if (!response.ok) {
-                  const data = await response.json()
-                  throw new Error(data.message || "Update failed")
+                  throw new Error(t("common.requestFailed"))
                 }
                 toast({ title: t("templates.editFieldsSuccess") })
               } catch (error) {
                 toast({
                   title: t("templates.editFieldsError"),
-                  description: error instanceof Error ? error.message : "Update failed",
+                  description: error instanceof Error ? error.message : t("common.requestFailed"),
                   variant: "destructive",
                 })
               } finally {
@@ -950,14 +940,13 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
                   }),
                 })
                 if (!response.ok) {
-                  const data = await response.json()
-                  throw new Error(data.message || "Update failed")
+                  throw new Error(t("common.requestFailed"))
                 }
                 toast({ title: t("templates.editRolesSuccess") })
               } catch (error) {
                 toast({
                   title: t("templates.editRolesError"),
-                  description: error instanceof Error ? error.message : "Update failed",
+                  description: error instanceof Error ? error.message : t("common.requestFailed"),
                   variant: "destructive",
                 })
               } finally {

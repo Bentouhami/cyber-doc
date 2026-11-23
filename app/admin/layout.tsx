@@ -9,7 +9,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-background to-slate-100/70 dark:from-slate-950 dark:via-background dark:to-slate-900">
       <AdminHeader />
-      <RouteGuard allowRoles={["admin"]} redirectUnauthorizedTo="/" redirectTo="/documents">
+      <RouteGuard allowRoles={["owner", "responsible", "admin"]} redirectUnauthorizedTo="/" redirectTo="/documents">
         <main className="flex-1 py-6">
           <div className="mx-auto flex w-full max-w-[1440px] gap-6 px-4 sm:px-6 lg:px-8">
             <AppSidebar variant="admin" />

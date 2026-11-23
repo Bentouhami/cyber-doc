@@ -24,8 +24,8 @@ All measured routes are below the provisional 200 KiB initial-JavaScript budget.
 
 ## Enforced deterministic budgets
 
-`pnpm run performance:budgets` reads the client-reference manifests produced by
-`next build`, deduplicates the route assets and compresses their bytes locally at
+`pnpm run performance:budgets` reads the Turbopack or Webpack client-reference
+manifests produced by `next build`, deduplicates the route assets and compresses their bytes locally at
 gzip level 6. It performs no HTTP request and starts no server. `quality:verify`
 runs it immediately after the production build, so missing manifests or chunks
 fail closed in local preflight and CI.
@@ -37,11 +37,15 @@ fail closed in local preflight and CI.
 | `/documents/create` | 195 KiB | 25 KiB | 14.1% JS |
 | `/admin/employees` | 175 KiB | 25 KiB | 16.5% JS |
 | `/admin/templates` | 116 KiB | 25 KiB | 15.2% JS |
-| `/admin/templates/new` | 125 KiB | 25 KiB | 15.3% JS |
-| `/admin/templates/[slug]` | 123 KiB | 25 KiB | 15.0% JS |
+| `/admin/templates/new` | 135 KiB | 25 KiB | 4.7% JS on Webpack |
+| `/admin/templates/[slug]` | 135 KiB | 25 KiB | 5.1% JS on Webpack |
 
-The roughly 14–17% JS headroom is deliberate: it catches meaningful route growth
-while avoiding false failures from small compiler or compression differences.
+Most JS budgets retain roughly 14–17% headroom. On 2026-11-23, the two template
+editor limits were recalibrated after the production build switched to Webpack
+because Next 16.4.3 Turbopack crashed before emitting assets. Their measured sizes
+are 128.9 KiB and 128.1 KiB; the 135 KiB limits retain less than 6% headroom rather
+than disabling the gate. This catches meaningful route growth while avoiding false
+failures caused solely by the bundler’s different chunk layout.
 The CSS ceiling leaves about 22% above the 20.4 KiB baseline. CI pins Node and
 pnpm; a toolchain upgrade must rebuild the baseline before changing a threshold.
 Threshold increases require evidence explaining the user value and why splitting

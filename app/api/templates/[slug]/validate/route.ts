@@ -2,21 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 import prisma from "@/lib/prisma";
 import { ensureAdminUser } from "@/lib/admin-auth";
+import { analyzeTemplatePlaceholders } from "@/lib/template-placeholder-policy";
 
 export const runtime = "nodejs";
 
 type RouteContext = {
   params: Promise<{ slug: string }>;
 };
-
-function extractPlaceholders(html: string) {
-  const matches = html.matchAll(/{{\s*([\w.]+)\s*}}/g);
-  const values = new Set<string>();
-  for (const match of matches) {
-    if (match[1]) values.add(match[1]);
-  }
-  return [...values];
-}
 
 export async function GET(request: NextRequest, { params }: RouteContext) {
   const adminCheck = await ensureAdminUser(request.headers);
@@ -58,7 +50,8 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     );
   }
 
-  const placeholders = extractPlaceholders(template.content);
+  const validation = analyzeTemplatePlaceholders(template.content, template.fields);
+  const { placeholders } = validation;
   const fieldMap = new Map<string, { label: string; required: boolean }>();
   for (const field of template.fields) {
     fieldMap.set(field.fieldName, {
@@ -67,13 +60,13 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     });
   }
 
-  const missingRequired = template.fields
-    .filter((field) => field.isRequired && !placeholders.includes(field.fieldName))
-    .map((field) => ({
-      fieldName: field.fieldName,
-      label: field.fieldLabelAr || field.fieldLabel,
-    }));
-
+  const missingRequired = validation.missingRequired.map((fieldName) => {
+    const field = fieldMap.get(fieldName)!;
+    return {
+      fieldName,
+      label: field.label,
+    };
+  });
   const unusedFields = template.fields
     .filter((field) => !placeholders.includes(field.fieldName))
     .map((field) => ({
@@ -81,15 +74,10 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       label: field.fieldLabelAr || field.fieldLabel,
       required: field.isRequired,
     }));
-
-  const unknownPlaceholders = placeholders
-    .filter((placeholder) => !fieldMap.has(placeholder))
-    .map((placeholder) => ({
-      fieldName: placeholder,
-    }));
+  const unknownPlaceholders = validation.unknownPlaceholders.map((fieldName) => ({ fieldName }));
 
   return NextResponse.json({
-    ok: missingRequired.length === 0,
+    ok: missingRequired.length === 0 && unknownPlaceholders.length === 0,
     placeholders,
     missingRequired,
     unusedFields,

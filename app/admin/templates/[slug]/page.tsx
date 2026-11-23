@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 
 import { TemplateDetail, TemplateDetailData } from "@/components/admin/templates/template-detail"
 import prisma from "@/lib/prisma"
+import { getServerLocale } from "@/lib/server-locale"
 
 type PageProps = {
   params: Promise<{
@@ -12,6 +13,7 @@ type PageProps = {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
+  const lang = await getServerLocale()
   const prismaAny = prisma as any
   const template = await prismaAny.documentTemplate.findUnique({
     where: { slug },
@@ -19,11 +21,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   })
 
   if (!template) {
-    return { title: "Modèle introuvable" }
+    return { title: lang === "ar" ? "القالب غير موجود" : "Modèle introuvable" }
   }
 
   return {
-    title: template.titleAr || template.title,
+    title: lang === "ar" ? template.titleAr || template.title : template.title || template.titleAr,
   }
 }
 

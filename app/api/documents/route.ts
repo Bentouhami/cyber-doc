@@ -3,7 +3,11 @@ import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/admin-auth";
 import { internalServerError } from "@/lib/api-error";
 import { hasAnyRole } from "@/lib/permissions";
-import { parseIntegerQueryParam } from "@/lib/query-params";
+import {
+  MAX_DATABASE_INTEGER,
+  parseDateOnlyQueryParam,
+  parseIntegerQueryParam,
+} from "@/lib/query-params";
 
 export async function GET(request: Request) {
   const authResult = await getAuthenticatedUser(request.headers);
@@ -15,11 +19,12 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
-  const statusId = url.searchParams.get("statusId");
   const templateId = url.searchParams.get("templateId");
   const search = url.searchParams.get("q")?.trim();
-  const dateFrom = url.searchParams.get("from");
-  const dateTo = url.searchParams.get("to");
+  const dateFromResult = parseDateOnlyQueryParam(url.searchParams, "from");
+  const dateToResult = parseDateOnlyQueryParam(url.searchParams, "to", {
+    nextDay: true,
+  });
   const createdById = url.searchParams.get("createdById");
   const pageResult = parseIntegerQueryParam(url.searchParams, "page", {
     defaultValue: 1,
@@ -31,10 +36,38 @@ export async function GET(request: Request) {
     min: 1,
     max: 100,
   });
-  if (!pageResult.success || !pageSizeResult.success) {
+  const statusIdResult = parseIntegerQueryParam(url.searchParams, "statusId", {
+    defaultValue: 0,
+    min: 1,
+    max: MAX_DATABASE_INTEGER,
+  });
+  const documentTypeIdResult = parseIntegerQueryParam(
+    url.searchParams,
+    "documentTypeId",
+    { defaultValue: 0, min: 1, max: MAX_DATABASE_INTEGER },
+  );
+  const categoryIdResult = parseIntegerQueryParam(url.searchParams, "categoryId", {
+    defaultValue: 0,
+    min: 1,
+    max: MAX_DATABASE_INTEGER,
+  });
+  if (
+    !pageResult.success ||
+    !pageSizeResult.success ||
+    !dateFromResult.success ||
+    !dateToResult.success ||
+    !statusIdResult.success ||
+    !documentTypeIdResult.success ||
+    !categoryIdResult.success
+  ) {
     const issues = [
       ...(!pageResult.success ? pageResult.error.issues : []),
       ...(!pageSizeResult.success ? pageSizeResult.error.issues : []),
+      ...(!dateFromResult.success ? dateFromResult.error.issues : []),
+      ...(!dateToResult.success ? dateToResult.error.issues : []),
+      ...(!statusIdResult.success ? statusIdResult.error.issues : []),
+      ...(!documentTypeIdResult.success ? documentTypeIdResult.error.issues : []),
+      ...(!categoryIdResult.success ? categoryIdResult.error.issues : []),
     ];
     return NextResponse.json(
       { message: "Invalid query parameter", issues },
@@ -46,20 +79,28 @@ export async function GET(request: Request) {
 
   const where: Record<string, unknown> = {};
 
-  if (statusId) {
-    where.statusId = Number(statusId);
+  if (statusIdResult.value) {
+    where.statusId = statusIdResult.value;
   }
   if (templateId) {
     where.templateId = templateId;
   }
-  if (dateFrom || dateTo) {
+  if (dateFromResult.value || dateToResult.value) {
     where.createdAt = {
-      ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
-      ...(dateTo ? { lte: new Date(dateTo) } : {}),
+      ...(dateFromResult.value ? { gte: dateFromResult.value } : {}),
+      ...(dateToResult.value ? { lt: dateToResult.value } : {}),
     };
   }
   if (createdById) {
     where.createdById = createdById;
+  }
+  if (documentTypeIdResult.value || categoryIdResult.value) {
+    where.template = {
+      ...(documentTypeIdResult.value
+        ? { documentTypeId: documentTypeIdResult.value }
+        : {}),
+      ...(categoryIdResult.value ? { categoryId: categoryIdResult.value } : {}),
+    };
   }
   if (search) {
     where.OR = [
@@ -107,6 +148,8 @@ export async function GET(request: Request) {
           : null,
         currency: document.currency || "MAD",
         totalCopies: document.totalCopies,
+        versionNumber: document.versionNumber,
+        isCurrentVersion: !document.supersededAt,
         filePath: document.filePath,
       })),
       page,

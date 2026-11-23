@@ -6,6 +6,7 @@ import { hashPassword as betterAuthHashPassword } from "better-auth/crypto";
 import { ensureAdminUser } from "@/lib/admin-auth";
 import { internalServerError, logApiError } from "@/lib/api-error";
 import prisma from "@/lib/prisma";
+import { canAssignManagedRoles } from "@/lib/management-role-policy";
 import { createUserSchema, userValidationIssues } from "@/lib/user-validation";
 import { mapUserToEmployeeDTO } from "@/mappers/EmployeeMapper";
 
@@ -60,17 +61,32 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { email, password, firstName, lastName, roleNames } = parsed.data;
+  const { email, username, password, firstName, lastName, roleNames } = parsed.data;
+
+  const actorRoleNames = currentUser.roles.map((role) => role.role.name);
+  if (!canAssignManagedRoles(actorRoleNames, roleNames)) {
+    return NextResponse.json(
+      { message: "You cannot assign these roles", code: "ROLE_ASSIGNMENT_FORBIDDEN" },
+      { status: 403 },
+    );
+  }
 
   try {
     const existingUser = await prisma.user.findFirst({
-      where: { email: { equals: email, mode: "insensitive" } },
-      select: { id: true },
+      where: {
+        OR: [
+          { email: { equals: email, mode: "insensitive" } },
+          { username },
+        ],
+      },
+      select: { email: true, username: true },
     });
 
     if (existingUser) {
       return NextResponse.json(
-        { message: "User already exists", code: "USER_ALREADY_EXISTS" },
+        existingUser.username === username
+          ? { message: "Username already in use", code: "USERNAME_ALREADY_IN_USE" }
+          : { message: "Email already in use", code: "EMAIL_ALREADY_IN_USE" },
         { status: 409 },
       );
     }
@@ -94,6 +110,7 @@ export async function POST(req: Request) {
       const createdUser = await tx.user.create({
         data: {
           email,
+          username,
           passwordHash,
           firstName,
           lastName,
@@ -153,7 +170,7 @@ export async function POST(req: Request) {
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json(
-        { message: "User already exists", code: "USER_ALREADY_EXISTS" },
+        { message: "Email or username already in use", code: "IDENTITY_ALREADY_IN_USE" },
         { status: 409 },
       );
     }

@@ -104,6 +104,10 @@ After changing workflow job names or repository rules, run
 - Authentication library upgrades can change stored-data semantics. Better Auth 1.7 credential accounts require `Account.accountId` to match the owning user ID.
 - Any semantic data-model change requires both code changes and a forward migration for existing rows.
 - Seed data must be idempotent and must use the same invariants as production CRUD routes.
+- Seed updates must not rewrite an existing user's profile, credentials, lifecycle
+  state or sessions; CI executes the seed twice before checking data invariants.
+- The PostgreSQL critical-smoke job must run `check:data` after seeding and before
+  browser tests; owner, pricing, template-contract and packaged-asset failures block release.
 - Compilation cannot validate authentication. Test guest, employee, and admin flows against a real database.
 
 ### Next.js and runtime behavior

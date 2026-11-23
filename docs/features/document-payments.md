@@ -3,7 +3,7 @@ id: PAY-001
 title: Paiements des documents
 status: production-candidate
 owners: product/fullstack
-last-reviewed: 2026-10-31
+last-reviewed: 2026-11-23
 ---
 
 # Paiements des documents
@@ -26,6 +26,15 @@ La caisse est intégrée à `/documents/[documentId]` pour les utilisateurs auto
   montants bornés par la précision `Decimal(10,2)` du schéma.
 - Une impression supplémentaire augmente le nombre de copies et déclenche le
   recalcul serveur du total facturé, du statut, de la monnaie et de `paidAt`.
+  Le formulaire propose une copie supplémentaire par défaut et actualise aussitôt
+  le total de copies et l'état financier renvoyés par le serveur.
+- La génération et l'impression refusent un compteur qui dépasserait la capacité
+  entière PostgreSQL; l'impression vérifie aussi le cumul sous verrou de ligne.
+- Le prix unitaire est la valeur du modèle au moment de la génération et ne peut
+  être géré que dans le back-office par le propriétaire ou son responsable.
+  L'employé de caisse saisit uniquement le montant reçu.
+- Une nouvelle version reprend le contenu métier, pas l’ancien encaissement : elle
+  recommence à une copie et sans montant payé prérempli.
 
 ## Architecture et données
 
@@ -34,10 +43,13 @@ Composant `document-detail`, route
 
 ## API et contrats
 
-Le client peut envoyer prix standard/négocié/unitaire, remise, supplément et
-montant reçu. `chargedTotal`, `changeGiven`, `paymentStatus` et `paidAt` sont des
-sorties interdites dans le payload: le serveur les dérive en centimes entiers et
-renvoie l’état financier recalculé du document.
+La route de caisse accepte uniquement `amountPaid`. Les prix et toutes les sorties
+calculées sont interdits dans ce payload. `chargedTotal`, `changeGiven`,
+`paymentStatus` et `paidAt` sont dérivés en centimes entiers et renvoyés avec l’état
+financier recalculé du document. Le prix catalogue du modèle est borné, positif et
+limité à deux décimales par le contrat partagé du back-office. Le seed conserve un
+prix déjà géré dans le back-office; un modèle de démonstration sans prix reste
+inactif au lieu d’être republié avec un montant inventé.
 
 ## Permissions et sécurité
 
@@ -52,13 +64,16 @@ concurrents et empêcher les incréments perdus.
 
 ## Erreurs et cas limites
 
-Valeur non numérique/négative, plus de deux décimales, devise autre que MAD,
-sortie calculée fournie par le client, total négatif, document absent ou mise à
+Valeur non numérique/négative, plus de deux décimales, nombre de copies excessif,
+devise autre que MAD,
+tentative de remplacement du prix par l'employé, sortie calculée fournie par le client,
+total négatif, document absent ou mise à
 jour concurrente retournent une erreur contrôlée ou un état recalculé cohérent.
 
 ## Tests et preuves
 
-Les tests unitaires couvrent dérivation, limites, précision et payloads
+Les tests unitaires couvrent dérivation, limites monétaires et de copies, précision, conservation du prix
+géré et payloads
 contradictoires. `smoke:documents` lance deux impressions concurrentes, vérifie
 le nouveau total sans incrément perdu puis un paiement serveur `PAID`, le montant reçu, la monnaie, et
 le refus d’un montant négatif, d’un statut injecté et d’une devise non supportée.
@@ -70,6 +85,13 @@ d’arrondi exige une décision documentée et une migration si les données cha
 
 ## Historique
 
+- 2026-11-23 — Le nombre initial et le cumul des copies sont bornés à la capacité
+  du champ PostgreSQL; régressions unitaire, mutation et smoke ajoutées.
+- 2026-11-23 — Les nouvelles versions ne recopient plus le paiement ni la quantité
+  de l’ancienne prestation.
+- 2026-11-23 — Le seed préserve les prix administrés et laisse inactifs les
+  modèles sans tarif; régression unitaire ajoutée.
+- 2026-11-23 — Prix verrouillé au back-office; la caisse ne transmet plus que le montant reçu.
 - 2026-10-31 — Repricing et audit d’impression rendus atomiques avec le nombre
   de copies; régression smoke ajoutée.
 - 2026-10-30 — État financier dérivé serveur, payload strict MAD, audit atomique

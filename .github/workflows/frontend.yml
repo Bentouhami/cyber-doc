@@ -42,6 +42,7 @@ jobs:
     timeout-minutes: 15
     env:
       GITLEAKS_ALREADY_RUN: "1"
+      BETTER_AUTH_SECRET: ${{ secrets.CI_BETTER_AUTH_SECRET }}
       BETTER_AUTH_URL: https://ci.cyberdoc.invalid
       NEXT_PUBLIC_APP_URL: https://ci.cyberdoc.invalid
 
@@ -176,6 +177,12 @@ jobs:
       - name: Seed isolated test database
         run: pnpm run db:seed
 
+      - name: Re-run seed to prove idempotence
+        run: pnpm run db:seed
+
+      - name: Verify seeded data invariants
+        run: pnpm run check:data
+
       - name: Verify migration state
         run: pnpm exec prisma migrate status
 
@@ -196,4 +203,5 @@ jobs:
             tmp/documents-smoke/results.json
             tmp/ux-check/results.json
             tmp/e2e-critical/results.json
+            tmp/data-quality/results.json
           if-no-files-found: warn

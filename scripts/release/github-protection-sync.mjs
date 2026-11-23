@@ -1,13 +1,11 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
-
-const REQUIRED_CHECKS = [
-  "Static, security and build gates",
-  "Gitleaks secret scan",
-  "Dependency review",
-  "Production container targets",
-  "Database and critical E2E gates",
-];
+import {
+  REQUIRED_CHECKS,
+  contextsFrom,
+  evaluateProtection,
+  hasRequiredContexts,
+} from "./github-protection-policy.mjs";
 const DEFAULT_BRANCHES = ["dev", "main"];
 const APPLY_CONFIRMATION = "I_UNDERSTAND";
 
@@ -62,17 +60,6 @@ function protection(repository, branch) {
   );
 }
 
-function contextsFrom(protectionState) {
-  return protectionState.required_status_checks?.contexts ?? [];
-}
-
-function sameContexts(actual) {
-  return (
-    actual.length === REQUIRED_CHECKS.length &&
-    REQUIRED_CHECKS.every((check) => actual.includes(check))
-  );
-}
-
 const options = parseArgs(process.argv.slice(2));
 const repository = currentRepository();
 const branches = options.branches.length > 0 ? options.branches : DEFAULT_BRANCHES;
@@ -96,34 +83,37 @@ if (options.apply) {
 
 let changed = 0;
 for (const branch of branches) {
-  const before = contextsFrom(protection(repository, branch));
-  const needsChange = !sameContexts(before);
+  const beforeState = protection(repository, branch);
+  const beforeContexts = contextsFrom(beforeState);
+  const { needsChange, needsContextChange } = evaluateProtection(beforeState);
   console.log(`${branch}: ${needsChange ? "CHANGE REQUIRED" : "already compliant"}`);
-  console.log(`  before: ${before.join(", ") || "(none)"}`);
-  console.log(`  after:  ${REQUIRED_CHECKS.join(", ")}`);
+  console.log(`  checks before:    ${beforeContexts.join(", ") || "(none)"}`);
+  console.log(`  checks after:     ${REQUIRED_CHECKS.join(", ")}`);
 
   if (!needsChange || !options.apply) continue;
 
-  gh(
-    [
-      "api",
-      "--method",
-      "PUT",
-      "-H",
-      "Accept: application/vnd.github+json",
-      `repos/${repository}/branches/${branch}/protection/required_status_checks/contexts`,
-      "--input",
-      "-",
-    ],
-    JSON.stringify(REQUIRED_CHECKS),
-  );
+  if (needsContextChange) {
+    gh(
+      [
+        "api",
+        "--method",
+        "PUT",
+        "-H",
+        "Accept: application/vnd.github+json",
+        `repos/${repository}/branches/${branch}/protection/required_status_checks/contexts`,
+        "--input",
+        "-",
+      ],
+      JSON.stringify(REQUIRED_CHECKS),
+    );
+  }
 
-  const after = contextsFrom(protection(repository, branch));
-  if (!sameContexts(after)) {
+  const after = protection(repository, branch);
+  if (!hasRequiredContexts(after)) {
     throw new Error(`${branch}: post-apply verification failed`);
   }
   changed += 1;
-  console.log(`  verified: ${branch} now requires the five current checks`);
+  console.log(`  verified: ${branch} now requires the five checks`);
 }
 
 if (options.apply) {

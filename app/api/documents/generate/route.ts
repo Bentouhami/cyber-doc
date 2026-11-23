@@ -23,7 +23,12 @@ import {
   hasParticipantIdentity,
   validateParticipantSubmission,
 } from "@/lib/document-generation-policy"
-import { calculatePaymentState, paymentUpdateSchema } from "@/lib/payment-policy"
+import {
+  calculatePaymentState,
+  documentCopiesSchema,
+  paymentUpdateSchema,
+} from "@/lib/payment-policy"
+import { lockDocumentForUpdate } from "@/lib/document-transaction-lock"
 
 export const runtime = "nodejs"
 
@@ -33,7 +38,7 @@ const requestSchema = z.object({
   locale: z.string().min(2, "locale is required"),
   sourceDocumentId: z.string().optional(),
   payload: z.record(z.string(), z.json()).default({}),
-  copies: z.number().int().min(1).optional(),
+  copies: documentCopiesSchema.optional(),
   amountPaid: z.number().finite().nonnegative().optional(),
   languageOverrideConfirmed: z.boolean().optional(),
   participants: z
@@ -373,6 +378,36 @@ export async function POST(request: Request) {
     )
   }
 
+  const sourceDocument = sourceDocumentId
+    ? await prisma.document.findUnique({
+        where: { id: sourceDocumentId },
+        select: {
+          id: true,
+          templateId: true,
+          supersededAt: true,
+        },
+      })
+    : null
+
+  if (sourceDocumentId && !sourceDocument) {
+    return NextResponse.json(
+      { message: "Source document not found", code: "VERSION_SOURCE_NOT_FOUND" },
+      { status: 404 },
+    )
+  }
+  if (sourceDocument && sourceDocument.templateId !== template.id) {
+    return NextResponse.json(
+      { message: "A new version must use the same template", code: "VERSION_TEMPLATE_MISMATCH" },
+      { status: 409 },
+    )
+  }
+  if (sourceDocument?.supersededAt) {
+    return NextResponse.json(
+      { message: "A newer version already exists", code: "VERSION_SOURCE_SUPERSEDED" },
+      { status: 409 },
+    )
+  }
+
   const preparedParticipants = participants.map((participant) => ({
     ...participant,
     persona: mergePersonaInput(
@@ -502,13 +537,16 @@ export async function POST(request: Request) {
     )
   }
 
-  const [readyStatus, pdfFormat, createDocumentActivity] = await Promise.all([
+  const [readyStatus, pdfFormat, createDocumentActivity, updateDocumentActivity] = await Promise.all([
     prisma.documentStatus.findFirst({ where: { name: "READY" } }),
     prisma.fileFormat.findFirst({ where: { name: "PDF" } }),
     prisma.activityType.findFirst({ where: { name: "CREATE_DOCUMENT" } }),
+    sourceDocumentId
+      ? prisma.activityType.findFirst({ where: { name: "UPDATE_DOCUMENT" } })
+      : Promise.resolve(null),
   ])
 
-  if (!readyStatus || !pdfFormat || !createDocumentActivity) {
+  if (!readyStatus || !pdfFormat || !createDocumentActivity || (sourceDocumentId && !updateDocumentActivity)) {
     return internalServerError(
       { route: "/api/documents/generate", operation: "load_document_defaults" },
       new Error("Document defaults unavailable"),
@@ -600,8 +638,42 @@ export async function POST(request: Request) {
     document = await prisma.$transaction(async (tx) => {
       const payment = paymentCalculation?.success ? paymentCalculation.value : null
 
+      let versionGroupId: string | null = null
+      let versionNumber = 1
+      if (sourceDocumentId) {
+        if (!(await lockDocumentForUpdate(tx, sourceDocumentId))) {
+          throw new Error("VERSION_SOURCE_NOT_FOUND")
+        }
+        const source = await tx.document.findUnique({
+          where: { id: sourceDocumentId },
+          select: {
+            id: true,
+            templateId: true,
+            versionGroupId: true,
+            versionNumber: true,
+            supersededAt: true,
+          },
+        })
+        if (!source) throw new Error("VERSION_SOURCE_NOT_FOUND")
+        if (source.templateId !== template.id) throw new Error("VERSION_TEMPLATE_MISMATCH")
+        if (source.supersededAt) throw new Error("VERSION_SOURCE_SUPERSEDED")
+
+        versionGroupId = source.versionGroupId ?? source.id
+        versionNumber = source.versionNumber + 1
+        await tx.document.update({
+          where: { id: source.id },
+          data: {
+            versionGroupId,
+            supersededAt: new Date(),
+          },
+        })
+      }
+
       const created = await tx.document.create({
         data: {
+          versionGroupId,
+          versionNumber,
+          previousVersionId: sourceDocumentId ?? null,
           templateId: template.id,
           createdById: currentUser.id,
           statusId: readyStatus.id,
@@ -799,6 +871,17 @@ export async function POST(request: Request) {
         },
       })
 
+      if (sourceDocumentId && updateDocumentActivity) {
+        await tx.activityLog.create({
+          data: {
+            userId: currentUser.id,
+            activityTypeId: updateDocumentActivity.id,
+            resourceType: "Document",
+            resourceId: sourceDocumentId,
+          },
+        })
+      }
+
       await incrementDailyStats(tx, new Date(), {
         documentsCreated: 1,
         topDocumentType: template.documentType.name,
@@ -817,6 +900,21 @@ export async function POST(request: Request) {
       )
     }
     const message = error instanceof Error ? error.message : "Document creation failed"
+    if (message.startsWith("VERSION_")) {
+      const status = message === "VERSION_SOURCE_NOT_FOUND" ? 404 : 409
+      return NextResponse.json(
+        {
+          message:
+            message === "VERSION_SOURCE_NOT_FOUND"
+              ? "Source document not found"
+              : message === "VERSION_TEMPLATE_MISMATCH"
+                ? "A new version must use the same template"
+                : "A newer version already exists",
+          code: message,
+        },
+        { status },
+      )
+    }
     const isClientError =
       message.startsWith("Persona not found") ||
       message.startsWith("Participant persona data is required") ||
@@ -850,6 +948,7 @@ export async function POST(request: Request) {
       templateId: template.id,
       statusId: document.statusId,
       status: document.status.name,
+      versionNumber: document.versionNumber,
       createdAt: document.createdAt.toISOString(),
       locale,
       fileName,

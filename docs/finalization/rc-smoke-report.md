@@ -1,73 +1,56 @@
 # RC Smoke Report
 
-Date: 2026-10-31
+Date: 2026-11-23
+
 Branch: `release/v1.0.0-candidate`
-Scope: production-hardening baseline and critical regression suite
+
+Scope: current dirty working tree; not a remote-CI release revision
 
 Canonical detailed evidence:
-`docs/finalization/evidence/2026-10-31-integrated-gate.md`.
 
-## 1) Verified Quality Gates
+- `evidence/2026-11-23-quality-verify.md`;
+- `evidence/2026-11-23-documents-smoke-current.md`;
+- `evidence/2026-11-23-github-governance-audit.md`.
 
-The following command completed successfully on Windows with Node.js 24.15.0
-and pnpm 12.15.0:
+## 1) Current quality evidence
 
-```powershell
-$env:QUALITY_ALLOW_CONSTRAINT_CHANGE = "1"
-pnpm run quality:prepush
-```
+- ESLint and TypeScript: PASS;
+- unit tests: **103/103 PASS**, zero skip;
+- API contracts: **4/4 self-tests and 20/20 handlers PASS**;
+- FR/AR audit: **555 used keys**, zero missing key and zero raw server message in UI;
+- Next.js 16.4.6 Webpack production build: **29 pages PASS**;
+- standalone assets: **13/13 sanitized DOCX**, zero raw historical DOCX;
+- performance budgets: **7/7 routes PASS**;
+- secret scans: no finding;
+- dependency audit: zero high/critical finding.
 
-Results:
+## 2) Current functional smoke evidence
 
-- lint, TypeScript, feature-document contract and repository floor: PASS;
-- unit tests: 66/66 PASS;
-- API contract self-tests: 4/4 PASS, 17/17 handlers inspected;
-- FR/AR i18n audit: 486 used keys, no missing key;
-- production build and seven deterministic gzip budgets: PASS;
-- Prisma migration status: 11 migrations applied and schema current;
-- dependency audit: no known high-severity vulnerability;
-- internal secret scan and Gitleaks scan: PASS;
-- critical E2E aggregate: 4/4 suites PASS, no skip.
+- permissions smoke: **50/50 PASS** on disposable PGlite;
+- administration smoke: **45/45 PASS** on disposable PGlite;
+- documents smoke: **46/46 PASS** on a fresh disposable PGlite database and
+  standalone build, including real PDF generation through installed Chrome;
+- isolated template-list responsive check: FR/LTR and AR/RTL at 390 px, zero overflow.
 
-`QUALITY_ALLOW_CONSTRAINT_CHANGE=1` is required in this working tree because the
-performance limits in `CONSTRAINTS.md` were deliberately updated and measured.
-It does not bypass lint, tests, dependency, secret, build, budget, migration or
-browser checks.
+The current document smoke covers request-boundary failures, new/existing clients,
+history and type/category filters, preview/download/print, immutable duplication,
+concurrent copy accounting, payment/change, price-override refusal, versioning and
+language override. Its machine report is `tmp/documents-smoke/results.json`.
 
-## 2) Critical Browser Evidence
+## 3) Database and runtime boundary
 
-Latest generated reports under `tmp/`:
+All **16 migration SQL files** and the real Prisma seed succeeded on a fresh PGlite
+database. The seed produced 13 templates, 224 fields, 20 participant roles and an
+active printer. PGlite's socket bridge cannot execute Prisma's schema engine, so
+this does not prove `prisma migrate deploy` on the target PostgreSQL service.
 
-- permissions smoke: 50 PASS, 0 FAIL;
-- admin smoke: 39 PASS, 0 FAIL;
-- documents smoke: 31 PASS, 0 FAIL;
-- UX/accessibility route checks: 32 PASS, 0 FAIL;
-- Axe serious/critical violations: 0 across the tested FR/AR desktop/mobile matrix;
-- horizontal overflow failures: 0.
+The complete integrated UX matrix also remains pending on real PostgreSQL: the
+PGlite bridge can mix prepared statements when a document page performs parallel
+queries. This emulator limitation must not be reported as production evidence.
 
-The reports intentionally avoid storing secrets, form values and personal data.
+## 4) Release assessment
 
-## 3) Runtime and Deployment Evidence
-
-- `pnpm install --frozen-lockfile --ignore-scripts`: PASS.
-- Next.js standalone production server: root and a generated static CSS asset
-  returned HTTP 200 after a production build.
-- Compose configuration defines separate one-shot migration and minimal runtime
-  services, health checks, required secrets and non-public database networking.
-- Container image build: **not yet proven** because Docker is unavailable in the
-  local verification environment. CI builds the `migrator` and `runner` targets
-  and now launches Chromium inside the built runner to create a real PDF; that
-  exact-revision job still needs to be observed green.
-- Backup/restore exercise and deployed-environment post-deploy smoke: **pending**.
-
-## 4) Current Release Assessment
-
-The locally executable engineering gates are green, but this is not sufficient
-for a production GO. Release remains conditional on:
-
-1. a green container-build CI job;
-2. a witnessed database backup/restore and rollback exercise;
-3. product/legal decisions for PII and activity-log retention/export/deletion;
-4. target configuration validation, including trusted origins, durable storage
-   and an active printer where printing is enabled;
-5. named product, QA, security/privacy and operations sign-off.
+Local code and document-smoke gates are green, but the release remains **NO-GO**
+until the current tree is committed, reviewed, pushed and covered by remote CI,
+and until the target PostgreSQL, container, durable storage, backup/restore,
+monitoring, privacy policy and legal/template approvals have named evidence.

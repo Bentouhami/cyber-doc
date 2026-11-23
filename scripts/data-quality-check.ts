@@ -2,6 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { loadEnvConfig } from "@next/env";
 
+import { catalogPriceSchema } from "../lib/payment-policy";
+import { analyzeTemplatePublication } from "../lib/template-placeholder-policy";
+
 function normalizeText(value: unknown) {
   return (value ?? "")
     .toString()
@@ -23,6 +26,12 @@ async function run() {
       likelyDuplicatePersonas: 0,
       personasWithoutCoreIdentity: 0,
       orphanParticipantLinks: 0,
+      ownerAssignments: 0,
+      activeOwners: 0,
+      activeTemplatesWithoutValidPrice: 0,
+      templatesWithoutRenderableSource: 0,
+      templatesWithInvalidPlaceholderContract: 0,
+      unsafePackagedTemplateAssets: 0,
     },
     findings: {
       likelyDuplicatePersonas: [] as Array<{
@@ -48,10 +57,21 @@ async function run() {
         roleKey: string;
         roleLabel: string | null;
       }>,
+      activeTemplatesWithoutValidPrice: [] as string[],
+      templatesWithoutRenderableSource: [] as string[],
+      templatesWithInvalidPlaceholderContract: [] as Array<{
+        slug: string;
+        missingRequired: string[];
+        unknownPlaceholders: string[];
+      }>,
+      unsafePackagedTemplateAssets: [] as Array<{
+        slug: string;
+        filePath: string;
+      }>,
     },
   };
 
-  const [personas, participants, docsWithParticipants] = await Promise.all([
+  const [personas, participants, docsWithParticipants, owners, templates] = await Promise.all([
     prisma.persona.findMany({
       select: {
         id: true,
@@ -81,11 +101,89 @@ async function run() {
         },
       },
     }),
+    prisma.userRole.findMany({
+      where: { role: { name: "owner" } },
+      select: {
+        user: {
+          select: {
+            activatedAt: true,
+            deactivatedAt: true,
+            deletedAt: true,
+          },
+        },
+      },
+    }),
+    prisma.documentTemplate.findMany({
+      select: {
+        slug: true,
+        isActive: true,
+        metadata: true,
+        content: true,
+        asset: { select: { filePath: true } },
+        fields: {
+          where: { isActive: true },
+          select: { fieldName: true, isRequired: true },
+        },
+      },
+      orderBy: { slug: "asc" },
+    }),
   ]);
 
   report.summary.personasTotal = personas.length;
   report.summary.participantsTotal = participants.length;
   report.summary.documentsWithParticipants = docsWithParticipants;
+  report.summary.ownerAssignments = owners.length;
+  report.summary.activeOwners = owners.filter(
+    ({ user }) => user.activatedAt && !user.deactivatedAt && !user.deletedAt,
+  ).length;
+
+  for (const template of templates) {
+    const metadata =
+      template.metadata && typeof template.metadata === "object" && !Array.isArray(template.metadata)
+        ? template.metadata
+        : {};
+    if (template.isActive && !catalogPriceSchema.safeParse(metadata.basePrice).success) {
+      report.findings.activeTemplatesWithoutValidPrice.push(template.slug);
+    }
+    if (template.isActive && !template.content?.trim()) {
+      report.findings.templatesWithoutRenderableSource.push(template.slug);
+    }
+    if (template.isActive && template.content) {
+      const placeholderContract = analyzeTemplatePublication(
+        true,
+        template.content,
+        template.fields,
+      );
+      if (
+        placeholderContract.missingRequired.length ||
+        placeholderContract.unknownPlaceholders.length
+      ) {
+        report.findings.templatesWithInvalidPlaceholderContract.push({
+          slug: template.slug,
+          missingRequired: placeholderContract.missingRequired,
+          unknownPlaceholders: placeholderContract.unknownPlaceholders,
+        });
+      }
+    }
+    const assetPath = template.asset?.filePath.replaceAll("\\", "/");
+    if (
+      assetPath?.startsWith("templates_docs/") &&
+      !assetPath.startsWith("templates_docs/sanitized/")
+    ) {
+      report.findings.unsafePackagedTemplateAssets.push({
+        slug: template.slug,
+        filePath: assetPath,
+      });
+    }
+  }
+  report.summary.activeTemplatesWithoutValidPrice =
+    report.findings.activeTemplatesWithoutValidPrice.length;
+  report.summary.templatesWithoutRenderableSource =
+    report.findings.templatesWithoutRenderableSource.length;
+  report.summary.templatesWithInvalidPlaceholderContract =
+    report.findings.templatesWithInvalidPlaceholderContract.length;
+  report.summary.unsafePackagedTemplateAssets =
+    report.findings.unsafePackagedTemplateAssets.length;
 
   const personasWithoutCoreIdentity = personas.filter((persona) => {
     const hasCore =
@@ -148,8 +246,17 @@ async function run() {
     JSON.stringify(report, null, 2),
     "utf8",
   );
+  console.log("data-quality-check:", JSON.stringify(report.summary));
 
-  if (report.summary.orphanParticipantLinks > 0) {
+  if (
+    report.summary.orphanParticipantLinks > 0 ||
+    report.summary.ownerAssignments !== 1 ||
+    report.summary.activeOwners !== 1 ||
+    report.summary.activeTemplatesWithoutValidPrice > 0 ||
+    report.summary.templatesWithoutRenderableSource > 0 ||
+    report.summary.templatesWithInvalidPlaceholderContract > 0 ||
+    report.summary.unsafePackagedTemplateAssets > 0
+  ) {
     process.exitCode = 1;
   }
 

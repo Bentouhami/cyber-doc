@@ -19,6 +19,14 @@ const emailSchema = z
   .email()
   .transform((value) => value.toLowerCase());
 
+export const usernameSchema = z
+  .string()
+  .trim()
+  .min(3)
+  .max(30)
+  .regex(/^[a-zA-Z0-9_.]+$/, "Username contains unsupported characters")
+  .transform((value) => value.toLowerCase());
+
 export const employeePasswordSchema = z
   .string()
   .min(PASSWORD_POLICY.minLength)
@@ -48,6 +56,7 @@ const optionalPasswordSchema = z.preprocess(
 export const createUserSchema = z
   .object({
     email: emailSchema,
+    username: usernameSchema,
     password: employeePasswordSchema,
     firstName: personNameSchema,
     lastName: personNameSchema,
@@ -58,6 +67,7 @@ export const createUserSchema = z
 export const updateUserSchema = z
   .object({
     email: emailSchema.optional(),
+    username: usernameSchema.optional(),
     password: optionalPasswordSchema,
     firstName: personNameSchema.optional(),
     lastName: personNameSchema.optional(),

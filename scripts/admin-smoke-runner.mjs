@@ -24,8 +24,18 @@ function safeErrorSummary(error) {
     .slice(0, 500);
 }
 
+async function gotoWithAbortRetry(page, url, options) {
+  try {
+    return await page.goto(url, options);
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes("net::ERR_ABORTED")) throw error;
+    await page.waitForTimeout(250);
+    return page.goto(url, options);
+  }
+}
+
 async function ensureRouteOk(page, routePath, name) {
-  const response = await page.goto(`${baseURL}${routePath}`, {
+  const response = await gotoWithAbortRetry(page, `${baseURL}${routePath}`, {
     waitUntil: "domcontentloaded",
   });
   const status = response?.status() ?? 0;
@@ -69,7 +79,7 @@ async function loginAsAdmin(page) {
           const me = await meRes.json().catch(() => null);
           const isAdmin =
             Array.isArray(me?.roles) &&
-            me.roles.some((role) => role?.name === "admin");
+            me.roles.some((role) => ["owner", "responsible"].includes(role?.name));
           if (isAdmin) {
             pushResult(
               "Admin login + redirect",
@@ -86,8 +96,8 @@ async function loginAsAdmin(page) {
   }
 
   // Fallback to UI login flow if API login did not succeed.
-  await page.goto(`${baseURL}/`, { waitUntil: "domcontentloaded" });
-  await page.fill('input[name="email"]', adminEmail);
+  await gotoWithAbortRetry(page, `${baseURL}/`, { waitUntil: "domcontentloaded" });
+  await page.fill('input[name="identifier"]', adminEmail);
   await page.fill('input[name="password"]', adminPassword);
   await page.click('button[type="submit"]');
   await page
@@ -107,7 +117,7 @@ async function loginAsAdmin(page) {
     const me = await meRes.json().catch(() => null);
     const isAdmin =
       Array.isArray(me?.roles) &&
-      me.roles.some((role) => role?.name === "admin");
+      me.roles.some((role) => ["owner", "responsible"].includes(role?.name));
     if (isAdmin) {
       const current = new URL(page.url());
       pushResult(
@@ -134,6 +144,7 @@ async function runEmployeesCrud(adminRequest) {
     firstName: "Smoke",
     lastName: `Employee-${unique}`,
     email: `smoke.employee.${unique}@cyberdoc.local`,
+    username: `smoke_${unique}`,
     password: "Aa123456",
     roleNames: ["employee"],
   };
@@ -173,7 +184,7 @@ async function runEmployeesCrud(adminRequest) {
 }
 
 async function runActivityLogUi(page) {
-  const response = await page.goto(`${baseURL}/admin/activity?pageSize=1`, {
+  const response = await gotoWithAbortRetry(page, `${baseURL}/admin/activity?pageSize=1`, {
     waitUntil: "domcontentloaded",
   });
   await page.getByTestId("activity-log-page").waitFor({ state: "visible" });
@@ -181,6 +192,17 @@ async function runActivityLogUi(page) {
     `${baseURL}/api/activity-logs?page=1&pageSize=1`,
   );
   const initialBody = await initialApi.json().catch(() => null);
+  const loginApi = await page.request.get(
+    `${baseURL}/api/activity-logs?page=1&pageSize=1&activityType=LOGIN`,
+  );
+  const loginBody = await loginApi.json().catch(() => null);
+  pushResult(
+    "Activity audit - successful login recorded",
+    loginApi.status() === 200 &&
+      loginBody?.data?.[0]?.activityType === "LOGIN" &&
+      loginBody?.data?.[0]?.resource?.type === "Session",
+    `HTTP ${loginApi.status()} total=${loginBody?.total ?? "n/a"}`,
+  );
   const rendered =
     response?.status() === 200 &&
     initialApi.status() === 200 &&
@@ -218,7 +240,7 @@ async function runActivityLogUi(page) {
     return;
   }
 
-  await page.goto(`${baseURL}/admin/activity?pageSize=1`, {
+  await gotoWithAbortRetry(page, `${baseURL}/admin/activity?pageSize=1`, {
     waitUntil: "domcontentloaded",
   });
   const nextButton = page.getByRole("button", { name: "Suivant" });
@@ -230,6 +252,39 @@ async function runActivityLogUi(page) {
     true,
     "Next page is reflected in the URL",
   );
+}
+
+async function runShortcutCrud(adminRequest) {
+  const unique = Date.now().toString(36);
+  const create = await adminRequest.post(`${baseURL}/api/shortcuts`, {
+    data: {
+      title: `Smoke shortcut ${unique}`,
+      titleAr: `اختصار اختبار ${unique}`,
+      url: "https://example.com/",
+      displayOrder: 1,
+    },
+  });
+  const created = await create.json().catch(() => ({}));
+  const shortcutId = created?.id;
+  pushResult(
+    "External shortcuts CRUD - create",
+    create.status() === 201 && typeof shortcutId === "string",
+    `HTTP ${create.status()}`,
+  );
+  if (!shortcutId) return;
+
+  const update = await adminRequest.patch(`${baseURL}/api/shortcuts/${shortcutId}`, {
+    data: { title: `Smoke shortcut updated ${unique}` },
+  });
+  pushResult("External shortcuts CRUD - update", update.status() === 200, `HTTP ${update.status()}`);
+
+  const unsafe = await adminRequest.post(`${baseURL}/api/shortcuts`, {
+    data: { title: "Unsafe", titleAr: "غير آمن", url: "javascript:alert(1)" },
+  });
+  pushResult("External shortcuts URL guard", unsafe.status() === 400, `HTTP ${unsafe.status()}`);
+
+  const archive = await adminRequest.delete(`${baseURL}/api/shortcuts/${shortcutId}`);
+  pushResult("External shortcuts CRUD - archive", archive.status() === 200, `HTTP ${archive.status()}`);
 }
 
 async function runTemplateRequestEscaping(adminRequest) {
@@ -437,6 +492,7 @@ async function runTemplateDuplicateGuard(adminRequest) {
       name: detail.category?.name ?? "custom_client_request",
       nameAr: detail.category?.nameAr ?? "طلب عميل خاص",
     },
+    basePrice: detail.basePrice ?? 25,
     contentHtml: "<p>{{client.fullName}}</p>",
   };
 
@@ -456,6 +512,7 @@ async function runTemplateDuplicateGuard(adminRequest) {
     ...createPayload,
     slug: `${uniqueSlug}-import`,
     language: detail.language ?? "fr",
+    metadata: { basePrice: detail.basePrice ?? 25 },
   };
 
   const importRes = await adminRequest.post(`${baseURL}/api/templates/import`, {
@@ -484,6 +541,8 @@ async function runTemplateCrudAndImport(adminRequest) {
     language: "ar",
     contentHtml: "<p>{{client.fullName}}</p>",
     contentCss: "body { font-family: Arial, sans-serif; }",
+    metadata: { basePrice: 25 },
+    basePrice: 25,
     documentType: {
       name: `SMOKE_TYPE_${unique}`,
       nameAr: "نوع اختبار",
@@ -607,6 +666,8 @@ async function runTemplateCrudAndImport(adminRequest) {
     language: "fr",
     contentHtml: "<p>{{client.fullName}}</p>",
     contentCss: "body { font-family: Arial, sans-serif; }",
+    basePrice: 25,
+    metadata: { basePrice: 25 },
     documentType: {
       name: `SMOKE_IMPORT_TYPE_${unique}`,
       nameAr: "نوع استيراد",
@@ -700,6 +761,17 @@ async function run() {
     const page = await context.newPage();
 
     await loginAsAdmin(page);
+    await context.addCookies([
+      {
+        name: "cyberdoc_lang",
+        value: "fr",
+        domain: "127.0.0.1",
+        path: "/",
+        httpOnly: false,
+        secure: false,
+        sameSite: "Lax",
+      },
+    ]);
     await ensureRouteOk(page, "/admin", "Admin home renders");
     await ensureRouteOk(
       page,
@@ -731,9 +803,13 @@ async function run() {
       "/admin/activity",
       "Admin activity audit renders",
     );
+    await ensureRouteOk(page, "/documents/shortcuts", "External shortcuts page renders");
 
     await runEmployeesCrud(page.request);
-    await runActivityLogUi(page);
+    await runShortcutCrud(page.request);
+    const activityPage = await context.newPage();
+    await runActivityLogUi(activityPage);
+    await activityPage.close();
     await runTemplateDuplicateGuard(page.request);
     await runTemplateCrudAndImport(page.request);
     await runTemplateRequestEscaping(page.request);

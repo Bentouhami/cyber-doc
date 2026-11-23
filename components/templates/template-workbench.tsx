@@ -182,8 +182,7 @@ export function TemplateWorkbench({
       })
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.message || "Template request failed")
+        throw new Error(t("common.requestFailed"))
       }
 
       const data = await response.json()
@@ -198,7 +197,7 @@ export function TemplateWorkbench({
     } catch (error) {
       toast({
         title: t("templates.gap.requestError"),
-        description: error instanceof Error ? error.message : "Request failed",
+        description: error instanceof Error ? error.message : t("common.requestFailed"),
         variant: "destructive",
       })
     } finally {
@@ -239,8 +238,7 @@ export function TemplateWorkbench({
       })
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.message || "Import failed")
+        throw new Error(t("common.requestFailed"))
       }
 
       const data = await response.json()
@@ -256,7 +254,7 @@ export function TemplateWorkbench({
     } catch (error) {
       toast({
         title: t("templates.gap.importError"),
-        description: error instanceof Error ? error.message : "Import failed",
+        description: error instanceof Error ? error.message : t("common.requestFailed"),
         variant: "destructive",
       })
     } finally {

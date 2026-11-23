@@ -1,9 +1,10 @@
-import { Metadata } from "next"
+import type { Metadata } from "next"
 
 import { TemplateCreateForm } from "@/components/admin/templates/template-create-form"
+import { getServerLocale } from "@/lib/server-locale"
 
-export const metadata: Metadata = {
-  title: "Nouveau modèle",
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getServerLocale()) === "ar" ? "قالب جديد" : "Nouveau modèle" }
 }
 
 export default function TemplateCreatePage() {

@@ -131,7 +131,7 @@ async function loginAsAdmin(page) {
       const body = await me.json().catch(() => null);
       const isAdmin =
         Array.isArray(body?.roles) &&
-        body.roles.some((role) => role?.name === "admin");
+        body.roles.some((role) => ["owner", "responsible"].includes(role?.name));
       if (isAdmin) {
         return { ok: true, details: `Authenticated via ${endpoint}` };
       }
@@ -143,7 +143,7 @@ async function loginAsAdmin(page) {
   // UI fallback
   try {
     await page.goto(`${baseURL}/`, { waitUntil: "domcontentloaded" });
-    await page.fill('input[name="email"]', adminEmail);
+    await page.fill('input[name="identifier"]', adminEmail);
     await page.fill('input[name="password"]', adminPassword);
     await page.click('button[type="submit"]');
     await page
@@ -164,7 +164,7 @@ async function loginAsAdmin(page) {
       const body = await meRes.json().catch(() => null);
       const isAdmin =
         Array.isArray(body?.roles) &&
-        body.roles.some((role) => role?.name === "admin");
+        body.roles.some((role) => ["owner", "responsible"].includes(role?.name));
       if (isAdmin) {
         const current = new URL(page.url());
         return { ok: true, details: `UI login, current ${current.pathname}` };
@@ -336,25 +336,15 @@ async function run() {
   const checks = [];
 
   try {
-    const checksByLanguage = await Promise.all(languageProfiles.map(async (language) => {
+    const context = await browser.newContext();
+    const bootstrapPage = await context.newPage();
+    const bootstrapAuth = await loginAsAdmin(bootstrapPage);
+    if (!bootstrapAuth.ok) throw new Error(bootstrapAuth.details);
+    await bootstrapPage.close();
+
+    for (const language of languageProfiles) {
       const languageChecks = [];
       for (const viewport of viewportProfiles) {
-        const context = await browser.newContext({
-          viewport: { width: viewport.width, height: viewport.height },
-        });
-
-        const page = await context.newPage();
-        const auth = await loginAsAdmin(page);
-        languageChecks.push({
-          profile: `${language.id}-${viewport.id}`,
-          route: "auth",
-          ok: auth.ok,
-          details: auth.details,
-        });
-        if (!auth.ok) {
-          await context.close();
-          continue;
-        }
         await context.addCookies([
           {
             name: "cyberdoc_lang",
@@ -366,8 +356,22 @@ async function run() {
             sameSite: "Lax",
           },
         ]);
-
-        const sampleDocumentId = await getSampleDocumentId(page);
+        const setupPage = await context.newPage();
+        await setupPage.setViewportSize({ width: viewport.width, height: viewport.height });
+        const authResponse = await setupPage.request.get(`${baseURL}/api/users/me`);
+        const authOk = authResponse.ok();
+        languageChecks.push({
+          profile: `${language.id}-${viewport.id}`,
+          route: "auth",
+          ok: authOk,
+          details: authOk ? "Authenticated with shared smoke session" : `HTTP ${authResponse.status()}`,
+        });
+        if (!authOk) {
+          await setupPage.close();
+          continue;
+        }
+        const sampleDocumentId = await getSampleDocumentId(setupPage);
+        await setupPage.close();
         const routes = [
           "/admin/employees",
           "/admin/activity",
@@ -379,92 +383,98 @@ async function run() {
         ];
 
         for (const route of routes) {
-          const response = await page.goto(`${baseURL}${route}`, {
-            waitUntil: "domcontentloaded",
-          });
-          // Give App Router hydration a bounded window. Individual DOM checks
-          // retry once if hydration replaces their execution context.
-          await page.waitForTimeout(250);
-          if (route.startsWith("/admin/activity")) {
-            // Wait for hydration to mount the screen before observing its busy
-            // state; otherwise a fast "detached" check can complete before the
-            // client inserts the loading card on a slower CI runner.
-            await page
-              .getByTestId("activity-log-page")
-              .waitFor({ state: "visible", timeout: 10000 });
-            await page
-              .locator('[data-testid="activity-log-page"] [aria-busy="true"]')
-              .waitFor({ state: "detached", timeout: 10000 });
-          }
-          const status = response?.status() ?? 0;
-          const pageText =
-            (await withNavigationRetry(page, () => page.textContent("body"))) ??
-            "";
-          const rawKeys = Array.from(new Set(pageText.match(RAW_KEY_RE) ?? []));
-          const hasRuntimeError =
-            /application error|runtime error|failed to compile|module not found/i.test(
-              pageText,
+          const page = await context.newPage();
+          try {
+            await page.setViewportSize({ width: viewport.width, height: viewport.height });
+            const response = await page.goto(`${baseURL}${route}`, {
+              waitUntil: "domcontentloaded",
+            });
+            // Give App Router hydration a bounded window. Individual DOM checks
+            // retry once if hydration replaces their execution context.
+            await page.waitForTimeout(250);
+            if (route.startsWith("/admin/activity")) {
+              // Wait for hydration to mount the screen before observing its busy
+              // state; otherwise a fast "detached" check can complete before the
+              // client inserts the loading card on a slower CI runner.
+              await page
+                .getByTestId("activity-log-page")
+                .waitFor({ state: "visible", timeout: 10000 });
+              await page
+                .locator('[data-testid="activity-log-page"] [aria-busy="true"]')
+                .waitFor({ state: "detached", timeout: 10000 });
+            }
+            const status = response?.status() ?? 0;
+            const pathOk = new URL(page.url()).pathname === new URL(route, baseURL).pathname;
+            const pageText =
+              (await withNavigationRetry(page, () => page.textContent("body"))) ??
+              "";
+            const rawKeys = Array.from(new Set(pageText.match(RAW_KEY_RE) ?? []));
+            const hasRuntimeError =
+              /application error|runtime error|failed to compile|module not found/i.test(
+                pageText,
+              );
+            const htmlDir = await withNavigationRetry(page, () =>
+              page.evaluate(
+                () => document.documentElement.getAttribute("dir") || "",
+              ),
             );
-          const htmlDir = await withNavigationRetry(page, () =>
-            page.evaluate(
-              () => document.documentElement.getAttribute("dir") || "",
-            ),
-          );
-          const overflow = await withNavigationRetry(page, () =>
-            page.evaluate(
-              () =>
-                document.documentElement.scrollWidth -
-                document.documentElement.clientWidth,
-            ),
-          );
-          const fieldQuality = await withNavigationRetry(page, () =>
-            evaluateFieldQuality(page),
-          );
-          const keyboardFlow = await withNavigationRetry(page, () =>
-            evaluateKeyboardFocusFlow(page),
-          );
-          const accessibility = await withNavigationRetry(page, () =>
-            evaluateAccessibility(page),
-          );
-          const overflowSources =
-            overflow > 2
-              ? await withNavigationRetry(page, () =>
-                  evaluateOverflowSources(page),
-                )
-              : [];
+            const overflow = await withNavigationRetry(page, () =>
+              page.evaluate(
+                () =>
+                  document.documentElement.scrollWidth -
+                  document.documentElement.clientWidth,
+              ),
+            );
+            const fieldQuality = await withNavigationRetry(page, () =>
+              evaluateFieldQuality(page),
+            );
+            const keyboardFlow = await withNavigationRetry(page, () =>
+              evaluateKeyboardFocusFlow(page),
+            );
+            const accessibility = await withNavigationRetry(page, () =>
+              evaluateAccessibility(page),
+            );
+            const overflowSources =
+              overflow > 2
+                ? await withNavigationRetry(page, () =>
+                    evaluateOverflowSources(page),
+                  )
+                : [];
 
-          const expectDir = language.id === "ar" ? "rtl" : "ltr";
-          const dirOk = htmlDir === expectDir;
-          const overflowOk = overflow <= 2;
-          const keysOk = rawKeys.length === 0;
-          const fieldWarning =
-            fieldQuality.important > 0 && fieldQuality.lacking > 0;
-          const ok =
-            status < 400 &&
-            dirOk &&
-            overflowOk &&
-            keysOk &&
-            !hasRuntimeError &&
-            keyboardFlow.ok &&
-            accessibility.ok;
+            const expectDir = language.id === "ar" ? "rtl" : "ltr";
+            const dirOk = htmlDir === expectDir;
+            const overflowOk = overflow <= 2;
+            const keysOk = rawKeys.length === 0;
+            const fieldWarning =
+              fieldQuality.important > 0 && fieldQuality.lacking > 0;
+            const ok =
+              status < 400 &&
+              pathOk &&
+              dirOk &&
+              overflowOk &&
+              keysOk &&
+              !hasRuntimeError &&
+              keyboardFlow.ok &&
+              accessibility.ok;
 
-          languageChecks.push({
-            profile: `${language.id}-${viewport.id}`,
-            route,
-            ok,
-            details: `status=${status} dir=${htmlDir} overflow=${overflow} rawKeys=${rawKeys.length} runtimeError=${hasRuntimeError} fields=${fieldQuality.important} lacking=${fieldQuality.lacking} fieldWarning=${fieldWarning} keyboardOk=${keyboardFlow.ok} focusable=${keyboardFlow.focusableCount} axeBlocking=${accessibility.violationCount}`,
-            rawKeys,
-            keyboardFlow,
-            accessibility,
-            overflowSources,
-          });
+            languageChecks.push({
+              profile: `${language.id}-${viewport.id}`,
+              route,
+              ok,
+              details: `status=${status} pathOk=${pathOk} dir=${htmlDir} overflow=${overflow} rawKeys=${rawKeys.length} runtimeError=${hasRuntimeError} fields=${fieldQuality.important} lacking=${fieldQuality.lacking} fieldWarning=${fieldWarning} keyboardOk=${keyboardFlow.ok} focusable=${keyboardFlow.focusableCount} axeBlocking=${accessibility.violationCount}`,
+              rawKeys,
+              keyboardFlow,
+              accessibility,
+              overflowSources,
+            });
+          } finally {
+            await page.close();
+          }
         }
-
-        await context.close();
       }
-      return languageChecks;
-    }));
-    checks.push(...checksByLanguage.flat());
+      checks.push(...languageChecks);
+    }
+    await context.close();
   } finally {
     await browser.close();
   }

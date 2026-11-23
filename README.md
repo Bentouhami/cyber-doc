@@ -22,14 +22,15 @@ Deliver a stable MVP where:
 
 ## Current Reality
 
-The release candidate is on Next.js 16.4.3 and uses pnpm 12.15.0. Its enforced
+The release candidate is on Next.js 16.4.6 and uses pnpm 12.15.0. Its enforced
 local pipeline covers secrets, lint, types, dependency audit, contracts,
-translations, production build, migrations and critical E2E flows.
+translations, production build and performance budgets. Target-PostgreSQL
+migrations and the complete critical E2E/UX matrix remain release gates.
 
 Production status is currently **NO-GO pending external evidence**: the exact
-release commit still needs green container CI, corrected GitHub required-check
-contexts, a witnessed backup/restore rollback, and approved privacy/retention
-decisions. See the authoritative Go/No-Go document below.
+release commit still needs green container CI, target-PostgreSQL evidence, a
+witnessed backup/restore rollback, and
+approved privacy/retention decisions. See the authoritative Go/No-Go document below.
 
 The supported v1 production target is the immutable container deployment with
 persistent PostgreSQL and document volumes. Vercel is preview-only because the

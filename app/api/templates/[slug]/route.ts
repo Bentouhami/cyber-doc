@@ -6,6 +6,8 @@ import prisma from "@/lib/prisma";
 import { ensureAdminUser, getAuthenticatedUser } from "@/lib/admin-auth";
 import { internalServerError, logApiError } from "@/lib/api-error";
 import { hasAnyRole } from "@/lib/permissions";
+import { catalogPriceSchema } from "@/lib/payment-policy";
+import { analyzeTemplatePublication } from "@/lib/template-placeholder-policy";
 import {
   sanitizeTemplateContent,
   sanitizeTemplateCss,
@@ -65,7 +67,7 @@ const templateUpdateSchema = z.object({
   assetId: z.string().nullable().optional(),
   contentHtml: z.string().max(TEMPLATE_CONTENT_LIMITS.html).nullable().optional(),
   contentCss: z.string().max(TEMPLATE_CONTENT_LIMITS.css).nullable().optional(),
-  basePrice: z.number().nullable().optional(),
+  basePrice: catalogPriceSchema.nullable().optional(),
   pdfOptions: z
     .object({
       format: z.string().optional(),
@@ -96,15 +98,6 @@ const templateUpdateSchema = z.object({
   participantRoles: z.array(participantRoleSchema).optional(),
   replaceParticipantRoles: z.boolean().optional(),
 });
-
-function extractPlaceholders(html: string) {
-  const matches = html.matchAll(/{{\s*([\w.]+)\s*}}/g);
-  const values = new Set<string>();
-  for (const match of matches) {
-    if (match[1]) values.add(match[1]);
-  }
-  return [...values];
-}
 
 type RouteContext = {
   params: Promise<{ slug: string }>;
@@ -262,6 +255,29 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       return new NextResponse("Template not found", { status: 404 });
     }
 
+    const storedMetadata =
+      template.metadata && typeof template.metadata === "object" && !Array.isArray(template.metadata)
+        ? (template.metadata as Record<string, unknown>)
+        : {};
+    const incomingMetadataPrice = data.metadata?.basePrice;
+    const effectivePrice =
+      data.basePrice !== undefined
+        ? data.basePrice
+        : incomingMetadataPrice !== undefined
+          ? incomingMetadataPrice
+          : storedMetadata.basePrice;
+    if (
+      ((data.isActive ?? template.isActive) && !catalogPriceSchema.safeParse(effectivePrice).success) ||
+      (effectivePrice !== undefined &&
+        effectivePrice !== null &&
+        !catalogPriceSchema.safeParse(effectivePrice).success)
+    ) {
+      return NextResponse.json(
+        { message: "An active template requires a valid base price", code: "PRICE_REQUIRED" },
+        { status: 400 },
+      );
+    }
+
     const sanitizedContent = sanitizeTemplateContent(data.contentHtml, data.contentCss);
 
     const nextContent =
@@ -271,27 +287,36 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
           : template.content
         : sanitizedContent.contentHtml;
     const shouldValidate =
-      data.isActive === true || (template.isActive && data.contentHtml !== undefined);
+      data.isActive === true ||
+      (template.isActive && (data.contentHtml !== undefined || data.fields !== undefined));
+
+    const incomingFields = (data.fields ?? []).map((field) => ({
+      fieldName: field.fieldName,
+      isRequired: field.isRequired ?? false,
+    }));
+    const nextFields = data.replaceFields && data.fields !== undefined
+      ? incomingFields
+      : [
+          ...new Map(
+            [...template.fields, ...incomingFields].map((field) => [field.fieldName, field]),
+          ).values(),
+        ];
 
     if (shouldValidate) {
-      if (!nextContent) {
-        return NextResponse.json(
-          { message: "HTML template is required to publish." },
-          { status: 400 },
-        );
-      }
-      const placeholders = extractPlaceholders(nextContent);
-      const missingRequired = template.fields
-        .filter((field) => field.isRequired && !placeholders.includes(field.fieldName))
-        .map((field) => ({
-          fieldName: field.fieldName,
-          label: field.fieldLabelAr || field.fieldLabel,
-        }));
-      if (missingRequired.length) {
+      const validation = analyzeTemplatePublication(true, nextContent, nextFields);
+      if (
+        validation.missingContent ||
+        validation.missingRequired.length ||
+        validation.unknownPlaceholders.length
+      ) {
         return NextResponse.json(
           {
-            message: "Missing required placeholders.",
-            missingRequired,
+            message: "An active template requires valid HTML content and placeholders",
+            code: validation.missingContent
+              ? "TEMPLATE_CONTENT_REQUIRED"
+              : "INVALID_TEMPLATE_PLACEHOLDERS",
+            missingRequired: validation.missingRequired,
+            unknownPlaceholders: validation.unknownPlaceholders,
           },
           { status: 400 },
         );
@@ -408,7 +433,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         },
       });
 
-      if (data.fields?.length) {
+      if (data.fields) {
         if (data.replaceFields) {
           await tx.templateField.deleteMany({ where: { templateId: template.id } });
         }

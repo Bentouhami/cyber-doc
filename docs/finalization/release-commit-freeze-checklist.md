@@ -63,6 +63,6 @@ pnpm run security:gitleaks
 - [ ] Commit message describes the release-hardening scope.
 - [ ] Commit SHA is recorded in the evidence document.
 - [ ] Push targets only `release/v1.0.0-candidate`.
-- [ ] PR #12 points to that SHA.
+- [ ] A new release PR into `dev` points to that exact SHA; historical PR #12 is merged.
 - [ ] All five current required checks pass on the exact SHA.
 - [ ] No merge or tag occurs before approval, operations proof and final GO.

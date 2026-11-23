@@ -40,7 +40,12 @@ async function loginAsAdmin(api) {
       });
       if (!response.ok()) continue;
       const me = await requestJson(api, "GET", "/api/users/me");
-      const isPrivileged = me.response.ok() && Array.isArray(me.body?.roles) && me.body.roles.some((role) => role?.name === "admin" || role?.name === "employee");
+      const isPrivileged =
+        me.response.ok() &&
+        Array.isArray(me.body?.roles) &&
+        me.body.roles.some((role) =>
+          ["owner", "responsible", "employee"].includes(role?.name),
+        );
       if (isPrivileged) {
         pushResult("Auth login", true, `Authenticated via ${endpoint}`);
         return true;
@@ -141,7 +146,11 @@ async function chooseTemplate(api) {
     const hasContent = typeof detail.body?.contentHtml === "string" && detail.body.contentHtml.trim().length > 0;
     if (detail.response.ok() && hasContent && fields.length > 0 && roles.length > 0) {
       pushResult("Template choose", true, `slug=${candidate.slug} locale=${detail.body.locale} roles=${roles.length} fields=${fields.length}`);
-      return detail.body;
+      return {
+        ...detail.body,
+        documentType: { ...detail.body.documentType, id: candidate.documentType?.id },
+        category: { ...detail.body.category, id: candidate.category?.id },
+      };
     }
   }
 
@@ -384,9 +393,71 @@ async function runExistingClientFlow(api, template) {
   const hasHistory = history.response.ok() && Array.isArray(history.body?.data) && history.body.data.length > 0;
   pushResult("Documents existing-client history link", Boolean(hasHistory), hasHistory ? `count=${history.body.data.length}` : `HTTP ${history.response.status()}`);
 
+  for (const [name, parameter, value] of [
+    ["type", "documentTypeId", template.documentType?.id],
+    ["category", "categoryId", template.category?.id],
+  ]) {
+    const filteredHistory = await requestJson(
+      api,
+      "GET",
+      `/api/personas/${seedPersonaId}/documents?${parameter}=${value}&page=1&pageSize=10`,
+    );
+    const found =
+      Number.isSafeInteger(value) &&
+      filteredHistory.response.ok() &&
+      filteredHistory.body?.data?.some(
+        (entry) => entry.documentId === generate.body?.document?.id,
+      );
+    pushResult(
+      `Documents existing-client history ${name} filter`,
+      Boolean(found),
+      `HTTP ${filteredHistory.response.status()} found=${Boolean(found)}`,
+    );
+  }
+
   return {
     documentId: generate.body?.document?.id,
+    payload,
+    participants,
   };
+}
+
+async function runVersionHistoryChecks(api, template, flow) {
+  if (!flow?.documentId || !flow.payload || !flow.participants) {
+    pushResult("Documents version history", false, "Missing source flow data");
+    return;
+  }
+
+  const versionPayload = {
+    templateId: template.id,
+    slug: template.slug,
+    locale: template.locale,
+    sourceDocumentId: flow.documentId,
+    payload: flow.payload,
+    participants: flow.participants,
+    copies: 1,
+    languageOverrideConfirmed: true,
+  };
+  const nextVersion = await requestJson(api, "POST", "/api/documents/generate", versionPayload);
+  const nextVersionId = nextVersion.body?.document?.id;
+  const versionOk =
+    nextVersion.response.ok() &&
+    nextVersionId !== flow.documentId &&
+    nextVersion.body?.document?.versionNumber === 2;
+  if (versionOk) testArtifacts.documentIds.add(nextVersionId);
+  pushResult(
+    "Documents version history",
+    versionOk,
+    `HTTP ${nextVersion.response.status()} version=${nextVersion.body?.document?.versionNumber ?? "n/a"}`,
+  );
+
+  const staleReplacement = await requestJson(api, "POST", "/api/documents/generate", versionPayload);
+  pushResult(
+    "Documents superseded version guard",
+    staleReplacement.response.status() === 409 &&
+      staleReplacement.body?.code === "VERSION_SOURCE_SUPERSEDED",
+    `HTTP ${staleReplacement.response.status()} code=${staleReplacement.body?.code ?? "n/a"}`,
+  );
 }
 
 async function runDeliveryChecks(api, documentId) {
@@ -473,8 +544,13 @@ async function runDeliveryChecks(api, documentId) {
     (print) =>
       print.response.ok() &&
       print.body?.documentId === documentId &&
-      typeof print.body?.printHistoryId === "string",
+      typeof print.body?.printHistoryId === "string" &&
+      Number.isSafeInteger(print.body?.totalCopies) &&
+      typeof print.body?.paymentStatus === "string" &&
+      Number.isFinite(Number(print.body?.chargedTotal)),
   );
+  const observedCopyTotals = prints.map((print) => print.body?.totalCopies).sort();
+  const serializedTotals = new Set(observedCopyTotals).size === prints.length;
   for (const print of prints) {
     if (typeof print.body?.printHistoryId === "string") {
       testArtifacts.printHistoryIds.add(print.body.printHistoryId);
@@ -482,8 +558,8 @@ async function runDeliveryChecks(api, documentId) {
   }
   pushResult(
     "Documents concurrent print mutations",
-    printOk,
-    `HTTP ${prints.map((print) => print.response.status()).join(",")} histories=${prints.filter((print) => print.body?.printHistoryId).length}`,
+    printOk && serializedTotals,
+    `HTTP ${prints.map((print) => print.response.status()).join(",")} histories=${prints.filter((print) => print.body?.printHistoryId).length} totals=${observedCopyTotals.join(",")}`,
   );
 
   const missingId = `missing-${Date.now().toString(36)}`;
@@ -511,13 +587,30 @@ async function runDeliveryChecks(api, documentId) {
     invalidPrinter.response.status() === 400 && invalidPrinter.body?.code === "INVALID_PRINTER",
     `HTTP ${invalidPrinter.response.status()} code=${invalidPrinter.body?.code ?? "n/a"}`,
   );
+
+  const excessiveCopies = await requestJson(api, "POST", `/api/documents/${documentId}/print`, {
+    copies: 2_147_483_647,
+  });
+  pushResult(
+    "Documents excessive copy count rejected",
+    excessiveCopies.response.status() === 400 &&
+      excessiveCopies.body?.code === "INVALID_COPIES",
+    `HTTP ${excessiveCopies.response.status()} code=${excessiveCopies.body?.code ?? "n/a"}`,
+  );
 }
 
 async function runInvalidPaginationChecks(api) {
   const cases = [
     ["documents page", "/api/documents?page=abc"],
+    ["documents status", "/api/documents?statusId=abc"],
+    ["documents type", "/api/documents?documentTypeId=0"],
+    ["documents oversized category", "/api/documents?categoryId=2147483648"],
+    ["documents from date", "/api/documents?from=2026-02-30"],
+    ["documents to date", "/api/documents?to=not-a-date"],
     ["personas limit", "/api/personas?limit=-1"],
     ["persona history pageSize", "/api/personas/not-a-persona/documents?pageSize=zero"],
+    ["persona history type", "/api/personas/not-a-persona/documents?documentTypeId=0"],
+    ["persona history category", "/api/personas/not-a-persona/documents?categoryId=abc"],
     ["document creators limit", "/api/document-creators?limit=abc"],
   ];
 
@@ -528,6 +621,33 @@ async function runInvalidPaginationChecks(api) {
   }
 }
 
+async function runDocumentTaxonomyFilterChecks(api, template, documentId) {
+  const filters = [
+    ["type", "documentTypeId", template.documentType?.id],
+    ["category", "categoryId", template.category?.id],
+  ];
+
+  for (const [name, parameter, value] of filters) {
+    if (!Number.isSafeInteger(value) || !documentId) {
+      pushResult(`Documents ${name} filter`, false, "Missing taxonomy or document fixture");
+      continue;
+    }
+    const result = await requestJson(
+      api,
+      "GET",
+      `/api/documents?${parameter}=${value}&page=1&pageSize=100`,
+    );
+    const found = result.response.ok() && result.body?.data?.some(
+      (document) => document.id === documentId,
+    );
+    pushResult(
+      `Documents ${name} filter`,
+      Boolean(found),
+      `HTTP ${result.response.status()} found=${Boolean(found)}`,
+    );
+  }
+}
+
 async function runPaymentUpdateCheck(api, documentId) {
   if (!documentId) {
     pushResult("Documents payment update", false, "No documentId to test");
@@ -535,16 +655,16 @@ async function runPaymentUpdateCheck(api, documentId) {
   }
 
   const payment = await requestJson(api, "PATCH", `/api/documents/${documentId}/payment`, {
-    unitPrice: 25,
-    amountPaid: 100,
+    amountPaid: 99_999_999.99,
   });
 
+  const chargedTotal = Number(payment.body?.chargedTotal);
+  const expectedChange = 99_999_999.99 - chargedTotal;
   const paymentOk =
     payment.response.ok() &&
     payment.body?.paymentStatus === "PAID" &&
-    payment.body?.chargedTotal === "75" &&
-    payment.body?.amountPaid === "100" &&
-    payment.body?.changeGiven === "25";
+    Number(payment.body?.amountPaid) === 99_999_999.99 &&
+    Math.abs(Number(payment.body?.changeGiven) - expectedChange) < 0.001;
   pushResult(
     "Documents payment update",
     paymentOk,
@@ -555,6 +675,7 @@ async function runPaymentUpdateCheck(api, documentId) {
     ["negative amount", { amountPaid: -1 }],
     ["client-derived status", { amountPaid: 30, paymentStatus: "PAID" }],
     ["unsupported currency", { amountPaid: 30, currency: "EUR" }],
+    ["employee price override", { amountPaid: 30, unitPrice: 1 }],
   ]) {
     const rejected = await requestJson(
       api,
@@ -662,8 +783,10 @@ async function run() {
     const existingFlow = await runExistingClientFlow(api, template);
 
     const deliveryDocId = existingFlow?.documentId ?? newFlow?.documentId;
+    await runDocumentTaxonomyFilterChecks(api, template, deliveryDocId);
     await runDeliveryChecks(api, deliveryDocId);
     await runPaymentUpdateCheck(api, deliveryDocId);
+    await runVersionHistoryChecks(api, template, existingFlow);
     await runLanguageOverrideFlow(api, template);
   } finally {
     await api.dispose();

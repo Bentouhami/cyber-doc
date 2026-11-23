@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useMemo, useState, useTransition } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
@@ -13,49 +13,55 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { useToast } from "@/hooks/use-toast"
+import { useLocale } from "@/hooks/use-locale"
 import { signIn } from "@/lib/auth-client"
+import { safeInternalRedirect } from "@/lib/safe-redirect"
 
-const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, "L'adresse e-mail est obligatoire.")
-    .email("Veuillez saisir une adresse e-mail valide."),
-  password: z.string().min(1, "Le mot de passe est obligatoire."),
-  rememberMe: z.boolean().optional(),
-})
-
-type LoginValues = z.infer<typeof loginSchema>
+type LoginValues = {
+  identifier: string
+  password: string
+  rememberMe?: boolean
+}
 
 type LoginFormProps = {
   callbackUrl?: string
   onSuccess?: () => void
 }
 
-const AUTH_ERROR_MESSAGES: Record<string, string> = {
-  CredentialsSignin: "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
-  "Invalid credentials.": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
-  Configuration: "خطأ في إعدادات المصادقة. تأكد من تكوين الخادم بشكل صحيح.",
-}
-
 export function LoginForm({ callbackUrl, onSuccess }: LoginFormProps = {}) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
+  const { t, dir } = useLocale()
   const [formError, setFormError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [showPassword, setShowPassword] = useState(false)
 
-  const resolvedCallback =
+  const resolvedCallback = safeInternalRedirect(
     callbackUrl ??
-    searchParams?.get("callbackUrl") ??
-    searchParams?.get("redirectTo") ??
-    searchParams?.get("from") ??
-    "/documents"
+      searchParams?.get("callbackUrl") ??
+      searchParams?.get("redirectTo") ??
+      searchParams?.get("from"),
+  )
+
+  const loginSchema = useMemo(
+    () =>
+      z.object({
+        identifier: z
+          .string()
+          .trim()
+          .min(1, t("auth.login.validation.identifierRequired"))
+          .max(254, t("auth.login.validation.identifierMax")),
+        password: z.string().min(1, t("auth.login.validation.passwordRequired")),
+        rememberMe: z.boolean().optional(),
+      }),
+    [t],
+  )
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
+      identifier: "",
       password: "",
       rememberMe: false,
     },
@@ -65,57 +71,53 @@ export function LoginForm({ callbackUrl, onSuccess }: LoginFormProps = {}) {
     setFormError(null)
     startTransition(async () => {
       try {
-        const { data, error } = await signIn.email({
-          email: values.email,
+        const credentials = {
           password: values.password,
           rememberMe: !!values.rememberMe,
-        })
+        }
+        const { data, error } = values.identifier.includes("@")
+          ? await signIn.email({ email: values.identifier.toLowerCase(), ...credentials })
+          : await signIn.username({ username: values.identifier.toLowerCase(), ...credentials })
 
         if (error) {
-          const message =
-            (error.code && AUTH_ERROR_MESSAGES[error.code as keyof typeof AUTH_ERROR_MESSAGES]) ??
-            error.message ??
-            "تعذر تسجيل الدخول، يرجى التحقق من البيانات المدخلة."
+          const message = t("auth.login.errors.invalidCredentials")
           setFormError(message)
-          toast({ title: "تعذر تسجيل الدخول", description: message, variant: "destructive" })
+          toast({ title: t("auth.login.errors.title"), description: message, variant: "destructive" })
           return
         }
 
-        const nextUrl = data?.url ?? resolvedCallback ?? "/"
+        const nextUrl = safeInternalRedirect(data?.url, resolvedCallback)
         router.replace(nextUrl)
         router.refresh()
         onSuccess?.()
-      } catch (error) {
-        const fallbackMessage =
-          error instanceof Error
-            ? error.message
-            : "حدث خطأ غير متوقع أثناء محاولة تسجيل الدخول."
+      } catch {
+        const fallbackMessage = t("auth.login.errors.generic")
         setFormError(fallbackMessage)
-        toast({ title: "تعذر تسجيل الدخول", description: fallbackMessage, variant: "destructive" })
+        toast({ title: t("auth.login.errors.title"), description: fallbackMessage, variant: "destructive" })
       }
     })
   })
 
   return (
-    <Card className="border-border/50 shadow-lg">
+    <Card className="border-border/50 shadow-lg" dir={dir}>
       <CardHeader className="space-y-3 text-center">
-        <CardTitle className="text-3xl font-bold tracking-tight">Connexion</CardTitle>
-        <CardDescription className="text-base">Accédez à votre espace CyberDoc</CardDescription>
+        <CardTitle className="text-3xl font-bold tracking-tight">{t("auth.login.title")}</CardTitle>
+        <CardDescription className="text-base">{t("auth.login.description")}</CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
         <Form {...form}>
           <form className="space-y-5" onSubmit={onSubmit}>
             <FormField
               control={form.control}
-              name="email"
+              name="identifier"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium">Adresse e-mail</FormLabel>
+                  <FormLabel className="text-sm font-medium">{t("auth.login.identifier")}</FormLabel>
                   <FormControl>
                     <Input
-                      type="email"
-                      autoComplete="email"
-                      placeholder="vous@exemple.com"
+                      type="text"
+                      autoComplete="username"
+                      placeholder={t("auth.login.identifierPlaceholder")}
                       className="h-11"
                       {...field}
                     />
@@ -130,13 +132,13 @@ export function LoginForm({ callbackUrl, onSuccess }: LoginFormProps = {}) {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium">Mot de passe</FormLabel>
+                  <FormLabel className="text-sm font-medium">{t("auth.login.password")}</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Input
                         type={showPassword ? "text" : "password"}
                         autoComplete="current-password"
-                        placeholder="Votre mot de passe"
+                        placeholder={t("auth.login.passwordPlaceholder")}
                         className="h-11 pr-10"
                         {...field}
                       />
@@ -144,6 +146,7 @@ export function LoginForm({ callbackUrl, onSuccess }: LoginFormProps = {}) {
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                        aria-label={showPassword ? t("auth.login.hidePassword") : t("auth.login.showPassword")}
                       >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -154,7 +157,7 @@ export function LoginForm({ callbackUrl, onSuccess }: LoginFormProps = {}) {
               )}
             />
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center">
               <FormField
                 control={form.control}
                 name="rememberMe"
@@ -166,14 +169,11 @@ export function LoginForm({ callbackUrl, onSuccess }: LoginFormProps = {}) {
                         onCheckedChange={(checked) => field.onChange(checked === true)}
                       />
                     </FormControl>
-                    <FormLabel className="text-sm font-normal">Se souvenir de moi</FormLabel>
+                    <FormLabel className="text-sm font-normal">{t("auth.login.rememberMe")}</FormLabel>
                   </FormItem>
                 )}
               />
 
-              <Button type="button" variant="link" className="h-auto p-0 text-sm font-normal">
-                Mot de passe oublié ?
-              </Button>
             </div>
 
             {formError ? (
@@ -184,21 +184,14 @@ export function LoginForm({ callbackUrl, onSuccess }: LoginFormProps = {}) {
               {isPending ? (
                 <span className="flex items-center gap-2">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  Connexion en cours...
+                  {t("auth.login.pending")}
                 </span>
               ) : (
-                "Se connecter"
+                t("auth.login.submit")
               )}
             </Button>
           </form>
         </Form>
-
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          Vous n&apos;avez pas de compte ?{" "}
-          <Button variant="link" className="h-auto p-0 font-medium">
-            Créer un compte
-          </Button>
-        </div>
       </CardContent>
     </Card>
   )

@@ -10,6 +10,7 @@ export interface EmployeeDTO {
   firstName: string | null;
   lastName: string | null;
   email: string;
+  username: string;
   displayName: string;
   image?: string | null;
   roles: RoleDTO[];
@@ -24,6 +25,7 @@ export interface CreateEmployeeDTO {
   firstName: string;
   lastName: string;
   email: string;
+  username: string;
   password: string;
   roleNames: string[];
 }
@@ -32,6 +34,7 @@ export interface UpdateEmployeeDTO {
   firstName?: string;
   lastName?: string;
   email?: string;
+  username?: string;
   password?: string;
   roleNames?: string[];
 }
