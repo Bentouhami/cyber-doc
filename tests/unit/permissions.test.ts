@@ -20,6 +20,14 @@ test("document access accepts employee, owner and responsible roles", () => {
 
 test("legacy admin permissions include the owner and responsible replacements", () => {
   assert.equal(
+    hasAnyRole({ roles: [{ role: { name: "employee" } }] }, ["employee", "admin"]),
+    true,
+  );
+  assert.equal(
+    hasAnyRole({ roles: [{ role: { name: "admin" } }] }, ["employee", "admin"]),
+    true,
+  );
+  assert.equal(
     hasAnyRole({ roles: [{ role: { name: "owner" } }] }, ["employee", "admin"]),
     true,
   );
@@ -30,7 +38,12 @@ test("legacy admin permissions include the owner and responsible replacements", 
 });
 
 test("document access rejects roleless and unknown-role users", () => {
+  assert.equal(hasAnyRole({ roles: [] }, ["employee", "admin"]), false);
   assert.equal(hasAnyRole({ roles: [] }, ["employee", "owner", "responsible"]), false);
+  assert.equal(
+    hasAnyRole({ roles: [{ role: { name: "viewer" } }] }, ["employee", "admin"]),
+    false,
+  );
   assert.equal(
     hasAnyRole({ roles: [{ role: { name: "viewer" } }] }, ["employee", "owner", "responsible"]),
     false,
