@@ -64,5 +64,5 @@ pnpm run security:gitleaks
 - [ ] Commit SHA is recorded in the evidence document.
 - [ ] Push targets only `release/v1.0.0-candidate`.
 - [x] PR #13 into `dev` points to the release branch; historical PR #12 is merged.
-- [x] All five current required checks pass on the audited release SHA `7b94375`.
+- [x] All five current required checks pass on the audited application SHA `bc0c232`.
 - [ ] No merge or tag occurs before approval, operations proof and final GO.

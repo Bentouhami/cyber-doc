@@ -2,7 +2,7 @@
 
 Repository: `Bentouhami/cyber-doc`
 Local branch: `release/v1.0.0-candidate`
-Audited release head: `7b94375959b5221fda4fc261ddbcad3f25fefc3f`
+Audited application head: `bc0c232f223aec78eb310e6dba2c93f6b1aeb43b`
 
 ## Remote state
 
@@ -27,7 +27,7 @@ Audited release head: `7b94375959b5221fda4fc261ddbcad3f25fefc3f`
 
 ## Boundary of evidence
 
-PR run `45204065750` and push run `45204054894` cover the audited Next.js 16.4.6
+PR run `45210556273` and push run `45210543249` cover the audited Next.js 16.4.6
 release head. They prove the repository CI boundary, not target deployment,
 durable storage, backup/restore, monitoring or organizational approval.
 

@@ -101,7 +101,7 @@ PostgreSQL.
   bout en bout; preuve locale dans `evidence/2026-11-23-quality-verify.md`.
 - `quality:fast` : réussi.
 - ESLint et TypeScript : réussis.
-- Tests unitaires : **103/103 réussis**.
+- Tests unitaires : **104/104 réussis**.
 - Audit contrats API : **20/20 handlers réussis**.
 - Audit i18n : **555 clés utilisées, 0 manque FR, 0 manque AR, 0 message serveur brut dans l’UI**;
   le premier rendu serveur arabe est couvert par une politique testée.

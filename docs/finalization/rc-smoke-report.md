@@ -4,8 +4,8 @@ Date: 2026-11-23
 
 Branch: `release/v1.0.0-candidate`
 
-Scope: PR #13 release revision `7b94375`; remote CI runs `45204054894` and
-`45204065750`
+Scope: PR #13 application revision `bc0c232`; remote CI runs `45210543249` and
+`45210556273`
 
 Canonical detailed evidence:
 
@@ -16,7 +16,7 @@ Canonical detailed evidence:
 ## 1) Current quality evidence
 
 - ESLint and TypeScript: PASS;
-- unit tests: **103/103 PASS**, zero skip;
+- unit tests: **104/104 PASS**, zero skip;
 - API contracts: **4/4 self-tests and 20/20 handlers PASS**;
 - FR/AR audit: **555 used keys**, zero missing key and zero raw server message in UI;
 - Next.js 16.4.6 Webpack production build: **29 pages PASS**;
@@ -37,7 +37,7 @@ The current document smoke covers request-boundary failures, new/existing client
 history and type/category filters, preview/download/print, immutable duplication,
 concurrent copy accounting, payment/change, price-override refusal, versioning and
 language override. The complete machine reports are preserved by run
-`45204065750` in the `critical-smoke-reports` artifact.
+`45210556273` in the `critical-smoke-reports` artifact.
 
 ## 3) Database and runtime boundary
 

@@ -53,8 +53,10 @@ Create these Actions secrets with random CI-only values:
 If the repository is transferred from a personal GitHub account to an
 organization, also create `GITLEAKS_LICENSE` as required by Gitleaks Action.
 
-Protect `main`, `dev`, and release branches. Require pull requests, one approval,
-CODEOWNER review for owned files, resolved conversations, and these status checks:
+Protect `main` and `dev`. Require pull requests, resolved conversations and the
+status checks below. Approving reviews remain at zero while the Cyber Owner is the
+sole maintainer; if another maintainer joins, review this exception before granting
+write access:
 
 - `Static, security and build gates`
 - `Gitleaks secret scan`

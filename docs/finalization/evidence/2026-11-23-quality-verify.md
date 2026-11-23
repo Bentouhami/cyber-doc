@@ -18,7 +18,7 @@ value was written to the repository or evidence.
 - historical template coverage: 13/13;
 - repository secret scan and Gitleaks: no finding;
 - ESLint and TypeScript: pass;
-- unit tests: 103/103 pass, zero skip;
+- unit tests: 104/104 pass, zero skip;
 - dependency audit: zero high/critical, one moderate dev-only transitive finding;
 - API contracts: 4/4 self-tests and 20/20 handlers;
 - i18n: 555 used keys, zero missing FR/AR and zero raw server message in UI;
@@ -26,7 +26,7 @@ value was written to the repository or evidence.
 - standalone template assets: 13/13 sanitized DOCX, zero raw historical DOCX;
 - performance budgets: 7/7 routes pass.
 
-The post-review delta was also revalidated separately: full ESLint, 103/103 unit
+The post-review delta was also revalidated separately: full ESLint, 104/104 unit
 tests, 20/20 API handlers and a clean Next.js production build with all 29 pages.
 The redirect-origin guard was mutation-tested: inverting it made the focused test
 fail, and restoring it returned the suite to green.
@@ -35,8 +35,8 @@ made its focused unit test fail before the correct comparison was restored.
 
 ## Remote confirmation and boundary
 
-PR #13 repeated the static/build, container and PostgreSQL/browser gates on release
-head `7b94375`. Runs `45204054894` and `45204065750` are green. This evidence does
+PR #13 repeated the static/build, container and PostgreSQL/browser gates on
+application head `bc0c232`. Runs `45210543249` and `45210556273` are green. This evidence does
 not prove deployment, durable storage, backup/restore, monitoring or approved
 operations on the supported production target; those conditions remain open in
 `tasks/todo.md` and `docs/finalization/rc-open-issues.md`.
