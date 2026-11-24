@@ -100,8 +100,8 @@ documents match the known synthetic smoke markers, with zero unclassified client
 record. Neon also contains 6 workforce accounts (2 active, 4 deactivated), which
 remain personal data and therefore do not remove the CNDP compliance gate.
 
-Runtime reproducibility was tightened with `.node-version` pinned to the CI/image
-baseline Node 22.13.0 and pnpm 12 `engineStrict: true`. An install attempt under
+Runtime reproducibility was tightened with `.node-version` pinned to the exact CI
+baseline Node 22.17.0 and pnpm 12 `engineStrict: true`. An install attempt under
 Node 26.13.0 now fails early with `ERR_PNPM_UNSUPPORTED_ENGINE`. The controlled
 development server was restarted through the user's profile on supported Node
 24.22.3, and `/api/health` remained HTTP 200.
@@ -110,6 +110,11 @@ The quality floor now fails when `.node-version`, `package.json` engines, the
 Docker major, the CI runtime or pnpm `engineStrict` drift apart. A temporary
 `23.0.0` mutation produced the three expected blocking findings; after restoring
 `22.13.0`, targeted ESLint, the floor guard and `git diff --check` all passed.
+
+PR #14 then exposed a newer direct dependency floor: `@sparticuz/chromium-min`
+153 requires Node 22.17.0 or newer. The project floor, exact CI runtime and
+`.node-version` were raised together to 22.17.0; the frozen pnpm install and floor
+guard passed under the supported Node 24.22.3 development runtime.
 
 A five-axis review then rechecked the financial boundary, every changed caller,
 the administration/import UI, dependency lock and runtime guard. The document

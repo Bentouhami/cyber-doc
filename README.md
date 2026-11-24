@@ -54,13 +54,13 @@ Historical product context:
 
 ## Quick Start
 
-1. Use Node `22.13.0` (the version in `.node-version`, CI and the production image)
+1. Use Node `22.17.0` (the version in `.node-version` and CI; the image uses Node 22)
 2. Install dependencies: `pnpm install`
 3. Configure environment variables (`.env`, `.env.local`)
 4. Run database migrations and seed data
 5. Start dev server: `pnpm run dev`
 
-CyberDoc is pinned to Node 22.13.0 for reproducibility and pnpm 12.15.0 through
+CyberDoc is pinned to Node 22.17.0 for reproducibility and pnpm 12.15.0 through
 the `packageManager` field. Node 26 is outside the supported engine range.
 `pnpm-lock.yaml` is the only dependency lockfile; npm, Yarn and Bun are unsupported
 because mixing package managers can create a dependency graph different from CI.

@@ -85,7 +85,7 @@ writes persist canonicalized content.
 
 The dependency is pinned because 2.18.1 fixes the nested discarded-iframe recursion
 DoS present in 2.18.0 and removes the unnecessary `deepmerge` dependency. The
-project Node floor (`>=22.13`) satisfies the library floor (`>=22.12`).
+project Node floor (`>=22.17`) satisfies all current dependency runtime floors.
 
 Employee DOCX uploads are written only after ZIP/DOCX validation, with exclusive
 creation under the persistent storage root. Multipart input is stream-bounded before
