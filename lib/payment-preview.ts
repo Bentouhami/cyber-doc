@@ -13,13 +13,41 @@ function toCents(value: string) {
     : null;
 }
 
+export function calculateChargedTotalPreview(
+  unitPrice: string,
+  copies: number,
+  discount: string,
+  surcharge = "0",
+) {
+  const unitCents = toCents(unitPrice);
+  const discountCents = toCents(discount);
+  const surchargeCents = toCents(surcharge);
+  if (
+    unitCents === null ||
+    discountCents === null ||
+    surchargeCents === null ||
+    !Number.isSafeInteger(copies) ||
+    copies < 1
+  ) {
+    return "";
+  }
+
+  const chargedCents = unitCents * copies - discountCents + surchargeCents;
+  return chargedCents >= 0 && Number.isSafeInteger(chargedCents)
+    ? (chargedCents / 100).toFixed(2)
+    : "";
+}
+
 export function calculatePaymentPreview(
   chargedTotal: string,
   amountPaid: string,
 ): PaymentPreview {
+  if (chargedTotal === "") {
+    return { paymentStatus: "UNPAID", changeGiven: "0.00" };
+  }
   const chargedCents = toCents(chargedTotal);
   const paidCents = toCents(amountPaid);
-  if (chargedCents === null || chargedCents <= 0 || paidCents === null) {
+  if (chargedCents === null || chargedCents < 0 || paidCents === null) {
     return { paymentStatus: "UNPAID", changeGiven: "0.00" };
   }
 

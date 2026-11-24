@@ -6,9 +6,11 @@ import test from "node:test";
 
 import {
   buildUploadedTemplateAssetPath,
-  ensureUploadedTemplateAssetPath,
+  deleteUploadedTemplateAsset,
   isPersistentTemplateAssetPath,
+  readTemplateAssetFile,
   resolveTemplateAssetFile,
+  writeUploadedTemplateAsset,
 } from "../../services/templateAssetStorageService";
 
 test("routes uploaded template assets to persistent storage", () => {
@@ -40,8 +42,13 @@ test("writes and resolves uploaded assets below the persistent storage root", as
   });
 
   const storedPath = buildUploadedTemplateAssetPath("draft.docx");
-  const writePath = await ensureUploadedTemplateAssetPath(storedPath);
-  await fs.writeFile(writePath, "docx fixture", { flag: "wx" });
+  const writePath = await writeUploadedTemplateAsset(
+    storedPath,
+    Buffer.from("docx fixture"),
+  );
 
   assert.equal(await resolveTemplateAssetFile(storedPath), writePath);
+  assert.equal((await readTemplateAssetFile(storedPath)).toString(), "docx fixture");
+  await deleteUploadedTemplateAsset(storedPath);
+  await assert.rejects(resolveTemplateAssetFile(storedPath));
 });

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { z } from "zod"
-import fs from "node:fs/promises"
 import { randomUUID } from "node:crypto"
 
 import prisma from "@/lib/prisma"
@@ -11,6 +10,7 @@ import { hasAnyRole } from "@/lib/permissions"
 import { incrementDailyStats } from "@/services/dailyStatsService"
 import {
   buildDocumentStoragePath,
+  deleteStoredFile,
   writeDocumentFileAtomically,
 } from "@/services/documentStorageService"
 import {
@@ -24,13 +24,14 @@ import {
   validateParticipantSubmission,
 } from "@/lib/document-generation-policy"
 import {
+  cashPaymentUpdateSchema,
   calculatePaymentState,
   documentCopiesSchema,
-  paymentUpdateSchema,
 } from "@/lib/payment-policy"
 import { lockDocumentForUpdate } from "@/lib/document-transaction-lock"
 
 export const runtime = "nodejs"
+export const maxDuration = 60
 
 const requestSchema = z.object({
   templateId: z.string().min(1, "templateId is required"),
@@ -40,6 +41,7 @@ const requestSchema = z.object({
   payload: z.record(z.string(), z.json()).default({}),
   copies: documentCopiesSchema.optional(),
   amountPaid: z.number().finite().nonnegative().optional(),
+  discount: z.number().finite().nonnegative().optional(),
   languageOverrideConfirmed: z.boolean().optional(),
   participants: z
     .array(
@@ -327,6 +329,7 @@ export async function POST(request: Request) {
   const languageOverrideConfirmed = parsedBody.languageOverrideConfirmed === true
   const copies = parsedBody.copies ?? 1
   const amountPaid = parsedBody.amountPaid
+  const discount = parsedBody.discount
 
   const template = await prisma.documentTemplate.findUnique({
     where: { id: templateId },
@@ -555,13 +558,20 @@ export async function POST(request: Request) {
 
   const metadata = (template.metadata ?? {}) as Record<string, unknown>
   const basePrice = typeof metadata.basePrice === "number" ? metadata.basePrice : null
-  if (amountPaid !== undefined && !paymentUpdateSchema.safeParse({ amountPaid }).success) {
+  const hasPaymentInput = amountPaid !== undefined || discount !== undefined
+  if (
+    hasPaymentInput &&
+    !cashPaymentUpdateSchema.safeParse({
+      ...(amountPaid !== undefined ? { amountPaid } : {}),
+      ...(discount !== undefined ? { discount } : {}),
+    }).success
+  ) {
     return NextResponse.json(
-      { message: "Invalid initial payment amount", code: "INVALID_PAYMENT" },
+      { message: "Invalid initial payment values", code: "INVALID_PAYMENT" },
       { status: 400 },
     )
   }
-  if (amountPaid !== undefined && amountPaid > 0 && basePrice === null) {
+  if (((amountPaid ?? 0) > 0 || (discount ?? 0) > 0) && basePrice === null) {
     return NextResponse.json(
       { message: "A template price is required before recording payment", code: "PRICE_REQUIRED" },
       { status: 400 },
@@ -582,7 +592,7 @@ export async function POST(request: Request) {
           paidAt: null,
           currency: "MAD",
         },
-        { amountPaid: amountPaid ?? 0 },
+        { amountPaid: amountPaid ?? 0, discount: discount ?? 0 },
       )
   if (paymentCalculation && !paymentCalculation.success) {
     return NextResponse.json(
@@ -593,7 +603,6 @@ export async function POST(request: Request) {
 
   let fileName: string
   let filePath: string
-  let outputPath = ""
   try {
     const payloadNested = buildNestedPayload(payload)
     const html = renderHtmlTemplate(template.content, payloadNested)
@@ -615,11 +624,8 @@ export async function POST(request: Request) {
     fileName = `${template.slug}-${randomUUID()}.pdf`
     filePath = buildDocumentStoragePath(fileName)
     const buffer = await generatePdfBufferFromHtml(html, pdfConfig, contentCss)
-    outputPath = await writeDocumentFileAtomically(filePath, buffer)
+    await writeDocumentFileAtomically(filePath, buffer)
   } catch (error) {
-    if (outputPath) {
-      await fs.unlink(outputPath).catch(() => undefined)
-    }
     return internalServerError(
       { route: "/api/documents/generate", operation: "generate_pdf" },
       error,
@@ -693,7 +699,10 @@ export async function POST(request: Request) {
           changeGiven: payment?.changeGiven ?? null,
           paymentStatus: payment?.paymentStatus,
           paidAt: payment?.paidAt ?? null,
-          cashierId: amountPaid !== undefined && amountPaid > 0 ? currentUser.id : null,
+          cashierId:
+            (amountPaid ?? 0) > 0 || (discount ?? 0) > 0
+              ? currentUser.id
+              : null,
         },
         include: {
           status: true,
@@ -892,7 +901,7 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     try {
-      await fs.unlink(outputPath)
+      await deleteStoredFile(filePath)
     } catch (cleanupError) {
       logApiError(
         { route: "/api/documents/generate", operation: "cleanup_pdf_after_transaction_failure" },

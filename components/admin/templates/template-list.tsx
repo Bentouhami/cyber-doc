@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -24,11 +25,14 @@ import {
 import { Separator } from "@/components/ui/separator";
 import {
   ArrowUpRight,
+  CircleDollarSign,
   FileUp,
   FolderKanban,
   Globe,
+  Inbox,
   Layers,
   Rows3,
+  SlidersHorizontal,
   UploadCloud,
 } from "lucide-react";
 
@@ -78,9 +82,10 @@ export type TemplateListItem = {
 
 type TemplateListProps = {
   templates: TemplateListItem[];
+  mode?: "catalog" | "requests";
 };
 
-export function TemplateList({ templates }: TemplateListProps) {
+export function TemplateList({ templates, mode = "catalog" }: TemplateListProps) {
   const { t, dir } = useLocale();
   const { toast } = useToast();
   const pathname = usePathname();
@@ -88,6 +93,7 @@ export function TemplateList({ templates }: TemplateListProps) {
   const searchParams = useSearchParams();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkRunning, setIsBulkRunning] = useState(false);
+  const isRequestsMode = mode === "requests";
 
   const searchValue = searchParams.get("q") ?? "";
   const statusFilter = searchParams.get("status") ?? "all";
@@ -454,6 +460,30 @@ export function TemplateList({ templates }: TemplateListProps) {
   };
 
   if (!templates.length) {
+    if (isRequestsMode) {
+      return (
+        <Card dir={dir} className="overflow-hidden">
+          <CardHeader className="border-b bg-muted/30">
+            <CardTitle>{t("templates.requests.title")}</CardTitle>
+            <CardDescription>
+              {t("templates.requests.subtitle")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center py-12 text-center">
+            <Inbox className="mb-4 h-10 w-10 text-muted-foreground" />
+            <p className="font-semibold">{t("templates.requests.empty")}</p>
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">
+              {t("templates.requests.emptyDescription")}
+            </p>
+            <Button asChild variant="outline" className="mt-5">
+              <Link href="/admin/templates">
+                {t("templates.requests.backToCatalog")}
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
     return (
       <Card dir={dir}>
         <CardHeader>
@@ -471,12 +501,22 @@ export function TemplateList({ templates }: TemplateListProps) {
     <div className="space-y-6" dir={dir}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">{t("templates.title")}</h1>
+          <h1 className="text-3xl font-bold">
+            {t(
+              isRequestsMode
+                ? "templates.requests.title"
+                : "templates.title",
+            )}
+          </h1>
           <p className="text-muted-foreground mt-1">
-            {t("templates.subtitle")}
+            {t(
+              isRequestsMode
+                ? "templates.requests.subtitle"
+                : "templates.subtitle",
+            )}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        {!isRequestsMode ? <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
             <Link
               href="/admin/templates/new"
@@ -504,29 +544,48 @@ export function TemplateList({ templates }: TemplateListProps) {
               {t("templates.gap.importWord")}
             </Link>
           </Button>
-        </div>
+        </div> : null}
       </div>
-      <Card>
+      <Card className="overflow-hidden">
+        <CardHeader className="border-b bg-muted/30">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <SlidersHorizontal className="h-5 w-5 text-primary" />
+            {t(
+              isRequestsMode
+                ? "templates.requests.filtersTitle"
+                : "templates.filters.title",
+            )}
+          </CardTitle>
+          <CardDescription>
+            {t(
+              isRequestsMode
+                ? "templates.requests.filtersDescription"
+                : "templates.filters.description",
+            )}
+          </CardDescription>
+        </CardHeader>
         <CardContent className="grid gap-3 pt-6 md:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">
+            <Label htmlFor="template-search">
               {t("templates.filters.search")}
-            </p>
+            </Label>
             <Input
+              id="template-search"
+              className="h-11"
               value={searchValue}
               onChange={(event) => setQuery("q", event.target.value)}
               placeholder={t("templates.filters.search")}
             />
           </div>
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">
+            <Label htmlFor="template-status-filter">
               {t("templates.filters.status")}
-            </p>
+            </Label>
             <Select
               value={statusFilter}
               onValueChange={(value) => setQuery("status", value)}
             >
-              <SelectTrigger aria-label={t("templates.filters.status")}>
+              <SelectTrigger id="template-status-filter" className="h-11">
                 <SelectValue placeholder={t("templates.filters.status")} />
               </SelectTrigger>
               <SelectContent>
@@ -555,14 +614,14 @@ export function TemplateList({ templates }: TemplateListProps) {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">
+            <Label htmlFor="template-locale-filter">
               {t("templates.filters.locale")}
-            </p>
+            </Label>
             <Select
               value={localeFilter}
               onValueChange={(value) => setQuery("locale", value)}
             >
-              <SelectTrigger aria-label={t("templates.filters.locale")}>
+              <SelectTrigger id="template-locale-filter" className="h-11">
                 <SelectValue placeholder={t("templates.filters.locale")} />
               </SelectTrigger>
               <SelectContent>
@@ -578,14 +637,14 @@ export function TemplateList({ templates }: TemplateListProps) {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">
+            <Label htmlFor="template-type-filter">
               {t("templates.filters.documentType")}
-            </p>
+            </Label>
             <Select
               value={typeFilter}
               onValueChange={(value) => setQuery("type", value)}
             >
-              <SelectTrigger aria-label={t("templates.filters.documentType")}>
+              <SelectTrigger id="template-type-filter" className="h-11">
                 <SelectValue
                   placeholder={t("templates.filters.documentType")}
                 />
@@ -603,14 +662,14 @@ export function TemplateList({ templates }: TemplateListProps) {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">
+            <Label htmlFor="template-category-filter">
               {t("templates.filters.category")}
-            </p>
+            </Label>
             <Select
               value={categoryFilter}
               onValueChange={(value) => setQuery("category", value)}
             >
-              <SelectTrigger aria-label={t("templates.filters.category")}>
+              <SelectTrigger id="template-category-filter" className="h-11">
                 <SelectValue placeholder={t("templates.filters.category")} />
               </SelectTrigger>
               <SelectContent>
@@ -637,7 +696,7 @@ export function TemplateList({ templates }: TemplateListProps) {
           </div>
         </CardContent>
       </Card>
-      <Card>
+      {!isRequestsMode ? <Card>
         <CardContent className="flex flex-wrap items-center gap-3 pt-6">
           <label className="flex items-center gap-2 text-sm">
             <Checkbox
@@ -676,14 +735,14 @@ export function TemplateList({ templates }: TemplateListProps) {
             {t("templates.bulk.exportCsv")}
           </Button>
         </CardContent>
-      </Card>
+      </Card> : null}
       <div className="grid gap-4 lg:grid-cols-2">
         {filteredTemplates.map((template) => (
           <Card key={template.id} className="flex h-full min-w-0 flex-col overflow-hidden">
             <CardHeader className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <CardTitle className="flex min-w-0 flex-wrap items-center gap-2 text-xl">
-                  <Checkbox
+                  {!isRequestsMode ? <Checkbox
                     checked={selectedIds.includes(template.id)}
                     onCheckedChange={(checked) =>
                       toggleSelected(template.id, checked === true)
@@ -691,7 +750,7 @@ export function TemplateList({ templates }: TemplateListProps) {
                     aria-label={t("templates.bulk.selectTemplate", {
                       title: template.titleAr || template.title,
                     })}
-                  />
+                  /> : null}
                   <FolderKanban className="h-5 w-5 text-primary" />
                   <span className="min-w-0 break-words">{template.titleAr || template.title}</span>
                 </CardTitle>
@@ -734,6 +793,20 @@ export function TemplateList({ templates }: TemplateListProps) {
             </CardHeader>
             <CardContent className="flex flex-1 flex-col justify-between gap-4">
               <div className="space-y-3">
+                <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+                  <CircleDollarSign className="h-5 w-5 shrink-0 text-primary" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {t("templates.basePrice")}
+                    </p>
+                    <p className="font-semibold tabular-nums">
+                      {template.basePrice !== null &&
+                      template.basePrice !== undefined
+                        ? `${template.basePrice} MAD`
+                        : t("templates.priceNotConfigured")}
+                    </p>
+                  </div>
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline">
                     {t("templates.fieldsCount", { count: template.fieldCount })}
@@ -743,12 +816,6 @@ export function TemplateList({ templates }: TemplateListProps) {
                       count: template.participantRoles.length,
                     })}
                   </Badge>
-                  {template.basePrice !== null &&
-                  template.basePrice !== undefined ? (
-                    <Badge variant="outline" className="font-normal">
-                      {t("templates.basePrice")}: {template.basePrice} MAD
-                    </Badge>
-                  ) : null}
                   {template.asset ? (
                     <Badge variant="outline" className="font-normal">
                       {template.asset.fileName} · v
@@ -889,7 +956,11 @@ export function TemplateList({ templates }: TemplateListProps) {
       {!filteredTemplates.length ? (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            {t("templates.filters.emptyResult")}
+            {t(
+              isRequestsMode
+                ? "templates.requests.emptyResult"
+                : "templates.filters.emptyResult",
+            )}
           </CardContent>
         </Card>
       ) : null}

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 
 import prisma from "@/lib/prisma";
@@ -13,15 +12,14 @@ import {
 } from "@/services/documentRenderService";
 import {
   buildDocumentStoragePath,
-  resolveStorageRoot,
+  deleteStoredFile,
+  readStoredFile,
   writeDocumentFileAtomically,
 } from "@/services/documentStorageService";
-import {
-  resolveOwnedStoredFile,
-  safeDownloadFileName,
-} from "@/services/storageSecurity";
+import { safeDownloadFileName } from "@/services/storageSecurity";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 type RouteContext = {
   params: Promise<{ documentId: string }>;
@@ -130,7 +128,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       const buffer = await generatePdfBufferFromHtml(html, pdfConfig, contentCss);
       const nextFileName = `${document.template?.slug ?? "document"}-${randomUUID()}.pdf`;
       const nextFilePath = buildDocumentStoragePath(nextFileName);
-      const outputPath = await writeDocumentFileAtomically(nextFilePath, buffer);
+      await writeDocumentFileAtomically(nextFilePath, buffer);
 
       try {
         const pdfFormat = await prisma.fileFormat.findFirst({ where: { name: "PDF" } });
@@ -143,7 +141,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
           },
         });
       } catch (error) {
-        await fs.unlink(outputPath).catch((cleanupError) => {
+        await deleteStoredFile(nextFilePath).catch((cleanupError) => {
           logApiError(
             { route: "/api/documents/[documentId]/download", operation: "cleanup_regenerated_pdf" },
             cleanupError,
@@ -176,12 +174,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   }
 
   try {
-    const absolutePath = await resolveOwnedStoredFile({
-      root: resolveStorageRoot(),
-      storedPath: filePath,
-      legacyPrefixes: ["storage"],
-    });
-    const buffer = await fs.readFile(absolutePath);
+    const buffer = await readStoredFile(filePath);
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {

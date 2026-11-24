@@ -11,7 +11,7 @@ last-reviewed: 2026-11-23
 ## Résumé
 
 Le détail d’un document enregistre le montant dû, le montant reçu, le statut de
-paiement et la monnaie à rendre.
+paiement, la remise ponctuelle et la monnaie à rendre.
 
 ## Périmètre utilisateur
 
@@ -34,7 +34,9 @@ La caisse est intégrée à `/documents/[documentId]` pour les utilisateurs auto
   entière PostgreSQL; l'impression vérifie aussi le cumul sous verrou de ligne.
 - Le prix unitaire est la valeur du modèle au moment de la génération et ne peut
   être géré que dans le back-office par le propriétaire ou son responsable.
-  L'employé de caisse saisit uniquement le montant reçu.
+  L'employé de caisse saisit le montant reçu et peut accorder une remise totale
+  propre au document, sans modifier le prix catalogue. La remise ne peut pas
+  rendre le total facturé négatif.
 - Une nouvelle version reprend le contenu métier, pas l’ancien encaissement : elle
   recommence à une copie et sans montant payé prérempli.
 
@@ -45,8 +47,8 @@ Composant `document-detail`, route
 
 ## API et contrats
 
-La route de caisse accepte uniquement `amountPaid`. Les prix et toutes les sorties
-calculées sont interdits dans ce payload. `chargedTotal`, `changeGiven`,
+La route de caisse accepte uniquement `amountPaid` et `discount`. Les prix et toutes
+les sorties calculées sont interdits dans ce payload. `chargedTotal`, `changeGiven`,
 `paymentStatus` et `paidAt` sont dérivés en centimes entiers et renvoyés avec l’état
 financier recalculé du document. Le prix catalogue du modèle est borné, positif et
 limité à deux décimales par le contrat partagé du back-office. Le seed conserve un
@@ -77,8 +79,9 @@ jour concurrente retournent une erreur contrôlée ou un état recalculé cohér
 Les tests unitaires couvrent dérivation, limites monétaires et de copies, précision, conservation du prix
 géré et payloads
 contradictoires. `smoke:documents` lance deux impressions concurrentes, vérifie
-le nouveau total sans incrément perdu puis un paiement serveur `PAID`, le montant reçu, la monnaie, et
-le refus d’un montant négatif, d’un statut injecté et d’une devise non supportée.
+le nouveau total sans incrément perdu, une remise de 5 MAD payée exactement avec
+un statut serveur `PAID` et aucune monnaie à rendre, puis le refus d'une remise
+excessive, d’un montant négatif, d’un statut injecté et d’une devise non supportée.
 La matrice navigateur FR/AR et desktop/mobile vérifie aussi la monnaie exacte
 actualisée pendant la saisie, sans mutation de la base.
 
@@ -89,6 +92,8 @@ d’arrondi exige une décision documentée et une migration si les données cha
 
 ## Historique
 
+- 2026-11-24 — Remise ponctuelle ajoutée à la création et à la caisse; le prix
+  catalogue reste protégé et le serveur dérive le total et le statut final.
 - 2026-11-23 — La monnaie et le statut sont prévisualisés en centimes pendant
   la saisie; preuve navigateur bilingue et responsive ajoutée.
 - 2026-11-23 — Le nombre initial et le cumul des copies sont bornés à la capacité

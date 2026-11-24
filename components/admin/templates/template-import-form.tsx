@@ -2,6 +2,18 @@
 
 import { useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import {
+  Braces,
+  FileText,
+  FileUp,
+  Info,
+  Languages,
+  Loader2,
+  RotateCcw,
+  Tags,
+  Upload,
+  WandSparkles,
+} from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -207,138 +219,245 @@ export function TemplateImportForm() {
   }
 
   return (
-    <Card dir={dir}>
-      <CardHeader>
-        <CardTitle>{t("templates.importTitle")}</CardTitle>
-        <CardDescription>{t("templates.importDescription")}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Tabs value={mode} onValueChange={(value) => setMode(value as "json" | "word")}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="json">{tt("templates.importModeJson", "Import JSON")}</TabsTrigger>
-            <TabsTrigger value="word">{tt("templates.importModeWord", "Import Word (.docx)")}</TabsTrigger>
-          </TabsList>
-        </Tabs>
+    <div className="space-y-6" dir={dir}>
+      <header className="rounded-2xl border border-border/70 bg-gradient-to-r from-slate-900 via-sky-900 to-teal-800 p-6 text-white shadow-lg shadow-slate-900/15 dark:from-slate-800 dark:via-sky-900 dark:to-teal-900">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold">
+          <FileUp className="h-3.5 w-3.5" aria-hidden />
+          {t("templates.importBadge")}
+        </div>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {t("templates.importTitle")}
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm text-white/80">
+          {t("templates.importDescription")}
+        </p>
+      </header>
 
-        {mode === "json" ? (
-          <>
-            <Textarea
-              value={payloadText}
-              onChange={(event) => setPayloadText(event.target.value)}
-              className="min-h-[360px] font-mono text-xs"
-            />
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={handleJsonImport} disabled={isSubmitting}>
-                {isSubmitting ? t("templates.importPending") : t("templates.importAction")}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setPayloadText(JSON.stringify(SAMPLE_PAYLOAD, null, 2))}
-                disabled={isSubmitting}
-              >
-                {t("templates.importReset")}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  try {
-                    const parsed = JSON.parse(payloadText)
-                    setPayloadText(JSON.stringify(parsed, null, 2))
-                  } catch {
-                    toast({
-                      title: t("templates.importError"),
-                      description: tt("templates.importInvalidJson", "JSON invalide."),
-                      variant: "destructive",
-                    })
-                  }
-                }}
-                disabled={isSubmitting}
-              >
-                {tt("templates.importFormat", "Formatter JSON")}
-              </Button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-1">
-                <Label>{tt("templates.titleFr", "Titre (FR)")}</Label>
-                <Input
-                  value={wordMeta.title}
-                  onChange={(event) => setWordMeta((prev) => ({ ...prev, title: event.target.value }))}
-                  placeholder={tt("templates.titleFr", "Titre (FR)")}
-                />
+      <Card className="border-border/70 shadow-sm" aria-busy={isSubmitting}>
+        <CardHeader className="border-b border-border/70">
+          <CardTitle>{t("templates.importModeTitle")}</CardTitle>
+          <CardDescription>{t("templates.importModeDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6 pt-6">
+          <Tabs value={mode} onValueChange={(value) => setMode(value as "json" | "word")}>
+            <TabsList className="grid h-auto min-h-12 w-full grid-cols-1 gap-1 p-1 sm:grid-cols-2">
+              <TabsTrigger value="json" className="min-h-11 gap-2">
+                <Braces className="h-4 w-4" aria-hidden />
+                {t("templates.importModeJson")}
+              </TabsTrigger>
+              <TabsTrigger value="word" className="min-h-11 gap-2">
+                <FileText className="h-4 w-4" aria-hidden />
+                {t("templates.importModeWord")}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {mode === "json" ? (
+            <section className="rounded-xl border border-border/70 bg-muted/20 p-4 sm:p-5">
+              <div className="mb-4 flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Braces className="h-5 w-5" aria-hidden />
+                </div>
+                <div>
+                  <h2 className="font-semibold">{t("templates.importJsonLabel")}</h2>
+                  <p id="template-json-hint" className="text-sm text-muted-foreground">
+                    {t("templates.importJsonHint")}
+                  </p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label>{t("templates.titleAr")}</Label>
-                <Input
-                  value={wordMeta.titleAr}
-                  onChange={(event) => setWordMeta((prev) => ({ ...prev, titleAr: event.target.value }))}
-                  placeholder={t("templates.titleAr")}
-                />
+              <Label htmlFor="template-json-payload" className="sr-only">
+                {t("templates.importJsonLabel")}
+              </Label>
+              <Textarea
+                id="template-json-payload"
+                value={payloadText}
+                onChange={(event) => setPayloadText(event.target.value)}
+                aria-describedby="template-json-hint"
+                spellCheck={false}
+                className="min-h-[360px] bg-background font-mono text-xs leading-5"
+              />
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Button className="min-h-11" onClick={handleJsonImport} disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Upload className="h-4 w-4" aria-hidden />}
+                  {isSubmitting ? t("templates.importPending") : t("templates.importAction")}
+                </Button>
+                <Button
+                  type="button"
+                  className="min-h-11"
+                  variant="outline"
+                  onClick={() => setPayloadText(JSON.stringify(SAMPLE_PAYLOAD, null, 2))}
+                  disabled={isSubmitting}
+                >
+                  <RotateCcw className="h-4 w-4" aria-hidden />
+                  {t("templates.importReset")}
+                </Button>
+                <Button
+                  type="button"
+                  className="min-h-11"
+                  variant="outline"
+                  onClick={() => {
+                    try {
+                      const parsed = JSON.parse(payloadText)
+                      setPayloadText(JSON.stringify(parsed, null, 2))
+                    } catch {
+                      toast({
+                        title: t("templates.importError"),
+                        description: t("templates.importInvalidJson"),
+                        variant: "destructive",
+                      })
+                    }
+                  }}
+                  disabled={isSubmitting}
+                >
+                  <WandSparkles className="h-4 w-4" aria-hidden />
+                  {t("templates.importFormat")}
+                </Button>
               </div>
-              <div className="space-y-1 md:col-span-2">
-                <Label>{t("templates.description")}</Label>
-                <Textarea
-                  value={wordMeta.description}
-                  onChange={(event) => setWordMeta((prev) => ({ ...prev, description: event.target.value }))}
-                  placeholder={t("templates.description")}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>{tt("templates.documentTypeFr", "Type de document (FR)")}</Label>
+            </section>
+          ) : (
+            <div className="space-y-5">
+              <section className="rounded-xl border border-border/70 bg-muted/20 p-4 sm:p-5">
+                <div className="mb-5 flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Languages className="h-5 w-5" aria-hidden />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold">{t("templates.importWordDetailsTitle")}</h2>
+                    <p className="text-sm text-muted-foreground">
+                      {t("templates.importWordDetailsDescription")}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="word-title-fr">{t("templates.titleFr")}</Label>
+                    <Input
+                      id="word-title-fr"
+                      className="h-11 bg-background"
+                      value={wordMeta.title}
+                      onChange={(event) => setWordMeta((prev) => ({ ...prev, title: event.target.value }))}
+                      placeholder={t("templates.titleFr")}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="word-title-ar">{t("templates.titleAr")}</Label>
+                    <Input
+                      id="word-title-ar"
+                      className="h-11 bg-background"
+                      value={wordMeta.titleAr}
+                      onChange={(event) => setWordMeta((prev) => ({ ...prev, titleAr: event.target.value }))}
+                      placeholder={t("templates.titleAr")}
+                    />
+                  </div>
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label htmlFor="word-description">{t("templates.description")}</Label>
+                    <Textarea
+                      id="word-description"
+                      className="min-h-24 bg-background"
+                      value={wordMeta.description}
+                      onChange={(event) => setWordMeta((prev) => ({ ...prev, description: event.target.value }))}
+                      placeholder={t("templates.description")}
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-xl border border-border/70 bg-muted/20 p-4 sm:p-5">
+                <div className="mb-5 flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Tags className="h-5 w-5" aria-hidden />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold">{t("templates.importTaxonomyTitle")}</h2>
+                    <p className="text-sm text-muted-foreground">
+                      {t("templates.importTaxonomyDescription")}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="word-type-fr">{t("templates.documentTypeFr")}</Label>
+                    <Input
+                      id="word-type-fr"
+                      className="h-11 bg-background"
+                      value={wordMeta.documentTypeName}
+                      onChange={(event) => setWordMeta((prev) => ({ ...prev, documentTypeName: event.target.value }))}
+                      placeholder={t("templates.documentTypeFr")}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="word-type-ar">{t("templates.documentTypeAr")}</Label>
+                    <Input
+                      id="word-type-ar"
+                      className="h-11 bg-background"
+                      value={wordMeta.documentTypeNameAr}
+                      onChange={(event) => setWordMeta((prev) => ({ ...prev, documentTypeNameAr: event.target.value }))}
+                      placeholder={t("templates.documentTypeAr")}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="word-category-fr">{t("templates.categoryFr")}</Label>
+                    <Input
+                      id="word-category-fr"
+                      className="h-11 bg-background"
+                      value={wordMeta.categoryName}
+                      onChange={(event) => setWordMeta((prev) => ({ ...prev, categoryName: event.target.value }))}
+                      placeholder={t("templates.categoryFr")}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="word-category-ar">{t("templates.categoryAr")}</Label>
+                    <Input
+                      id="word-category-ar"
+                      className="h-11 bg-background"
+                      value={wordMeta.categoryNameAr}
+                      onChange={(event) => setWordMeta((prev) => ({ ...prev, categoryNameAr: event.target.value }))}
+                      placeholder={t("templates.categoryAr")}
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-xl border border-border/70 bg-muted/20 p-4 sm:p-5">
+                <div className="mb-4 flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <FileText className="h-5 w-5" aria-hidden />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold">{t("templates.importSourceTitle")}</h2>
+                    <p id="word-file-hint" className="text-sm text-muted-foreground">
+                      {t("templates.importWordHint")}
+                    </p>
+                  </div>
+                </div>
+                <Label htmlFor="word-file">{t("templates.importWordFile")}</Label>
                 <Input
-                  value={wordMeta.documentTypeName}
-                  onChange={(event) => setWordMeta((prev) => ({ ...prev, documentTypeName: event.target.value }))}
-                  placeholder={tt("templates.documentTypeFr", "Type de document (FR)")}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>{tt("templates.documentTypeAr", "Type de document (AR)")}</Label>
-                <Input
-                  value={wordMeta.documentTypeNameAr}
-                  onChange={(event) => setWordMeta((prev) => ({ ...prev, documentTypeNameAr: event.target.value }))}
-                  placeholder={tt("templates.documentTypeAr", "Type de document (AR)")}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>{tt("templates.categoryFr", "Catégorie (FR)")}</Label>
-                <Input
-                  value={wordMeta.categoryName}
-                  onChange={(event) => setWordMeta((prev) => ({ ...prev, categoryName: event.target.value }))}
-                  placeholder={tt("templates.categoryFr", "Catégorie (FR)")}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>{tt("templates.categoryAr", "Catégorie (AR)")}</Label>
-                <Input
-                  value={wordMeta.categoryNameAr}
-                  onChange={(event) => setWordMeta((prev) => ({ ...prev, categoryNameAr: event.target.value }))}
-                  placeholder={tt("templates.categoryAr", "Catégorie (AR)")}
-                />
-              </div>
-              <div className="space-y-1 md:col-span-2">
-                <Label>{tt("templates.importWordFile", "Fichier Word (.docx)")}</Label>
-                <Input
+                  id="word-file"
+                  className="mt-1.5 h-11 cursor-pointer bg-background"
                   type="file"
                   accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  aria-describedby="word-file-hint"
                   onChange={(event) => setWordFile(event.target.files?.[0] ?? null)}
+                  required
                 />
-                <p className="text-muted-foreground text-xs">
-                  {tt("templates.importWordHint", "Le fichier sera importé en brouillon pour révision avant publication.")}
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={handleWordImport} disabled={isSubmitting || !isWordReady}>
-                {isSubmitting ? t("templates.importPending") : tt("templates.importWordAction", "Importer le Word")}
+                <div className="mt-3 flex items-start gap-2 rounded-lg border border-sky-500/25 bg-sky-500/10 p-3 text-sm text-foreground">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden />
+                  <span>{t("templates.importWordHint")}</span>
+                </div>
+              </section>
+
+              <Button className="min-h-11" onClick={handleWordImport} disabled={isSubmitting || !isWordReady}>
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Upload className="h-4 w-4" aria-hidden />}
+                {isSubmitting ? t("templates.importPending") : t("templates.importWordAction")}
               </Button>
             </div>
-          </>
-        )}
-      </CardContent>
+          )}
+        </CardContent>
+      </Card>
+
       <AlertDialog open={isDuplicateDialogOpen} onOpenChange={setIsDuplicateDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -352,7 +471,7 @@ export function TemplateImportForm() {
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-2 text-sm">
+          <div className="rounded-lg border border-border/70 bg-muted/30 p-4 text-sm">
             <p className="font-medium">{tt("templates.duplicateWarningCandidates", "Modèles similaires :")}</p>
             <ul className="list-disc space-y-1 ps-5">
               {duplicateCandidates.map((candidate) => (
@@ -399,6 +518,6 @@ export function TemplateImportForm() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </div>
   )
 }

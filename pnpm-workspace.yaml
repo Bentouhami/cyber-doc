@@ -1,3 +1,5 @@
+engineStrict: true
+
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
@@ -25,3 +27,4 @@ overrides:
   'nanoid@<3.3.18': 3.3.18
   'source-map-js@>=1.0.0 <1.2.2': 1.2.2
   'undici@>=7.0.0 <7.30.1': 7.30.1
+  'zod@<4.6.6': 4.6.7

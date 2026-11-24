@@ -54,7 +54,8 @@ Production data, durability and recovery remain separate operational gates.
 - [ ] Previous-image rollback and post-rollback smoke are recorded
 - [ ] Monitoring dashboard, external probe and delivered alert are proven
 - [ ] PII and activity-log retention/export/deletion policy is approved
-- [ ] Ten inactive historical templates have approved legal content and prices
+- [ ] CNDP base-processing and foreign-hosting/transfer approvals are recorded
+- [ ] Twelve inactive historical templates have approved legal content and prices
 - [ ] Product, QA, security/privacy and operations sign-offs are recorded
 
 ## Decision

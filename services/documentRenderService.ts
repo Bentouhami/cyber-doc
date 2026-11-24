@@ -1,3 +1,6 @@
+import path from "node:path";
+
+import { resolvePdfRuntime } from "@/lib/pdf-runtime";
 import {
   sanitizeTemplateCss,
   sanitizeTemplateHtml,
@@ -169,6 +172,43 @@ export type PdfOptions = {
 
 const PDF_RENDER_TIMEOUT_MS = 15_000;
 const ALLOWED_RENDER_PROTOCOLS = new Set(["about:", "blob:", "data:"]);
+let vercelChromiumPath: Promise<string> | undefined;
+
+async function resolveChromiumLaunchOptions() {
+  const runtime = resolvePdfRuntime({
+    PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH:
+      process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+    VERCEL: process.env.VERCEL,
+  });
+  if (runtime.mode === "custom") {
+    return {
+      executablePath: runtime.executablePath,
+      args: ["--no-sandbox", "--disable-dev-shm-usage"],
+    };
+  }
+  if (runtime.mode === "local") return {};
+
+  const serverlessChromium = (await import("@sparticuz/chromium-min")).default;
+  vercelChromiumPath ??= serverlessChromium
+    .executablePath(
+      path.join(
+        process.cwd(),
+        "node_modules",
+        "@sparticuz",
+        "chromium",
+        "bin",
+      ),
+    )
+    .catch((error) => {
+      vercelChromiumPath = undefined;
+      throw error;
+    });
+
+  return {
+    executablePath: await vercelChromiumPath,
+    args: [...serverlessChromium.args],
+  };
+}
 
 async function withTimeout<T>(operation: Promise<T>, timeoutMs: number, message: string) {
   let timeout: NodeJS.Timeout | undefined;
@@ -187,13 +227,9 @@ async function withTimeout<T>(operation: Promise<T>, timeoutMs: number, message:
 
 export async function generatePdfBufferFromHtml(html: string, options?: PdfOptions, css?: string | null) {
   const { chromium } = await import("playwright");
-  const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim() || undefined;
   const browser = await chromium.launch({
     timeout: PDF_RENDER_TIMEOUT_MS,
-    executablePath,
-    ...(executablePath
-      ? { args: ["--no-sandbox", "--disable-dev-shm-usage"] }
-      : {}),
+    ...(await resolveChromiumLaunchOptions()),
   });
 
   try {

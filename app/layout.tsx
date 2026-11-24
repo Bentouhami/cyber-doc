@@ -45,7 +45,7 @@ export default async function RootLayout({
             </ThemeProvider>
           </UserProfileProvider>
         </I18nProvider>
-        <Analytics />
+        {process.env.VERCEL === "1" ? <Analytics /> : null}
       </body>
     </html>
   )

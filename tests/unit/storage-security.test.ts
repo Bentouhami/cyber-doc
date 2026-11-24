@@ -11,7 +11,10 @@ import {
   safeDownloadFileName,
   StoredFileAccessError,
 } from "../../services/storageSecurity";
-import { writeDocumentFileAtomically } from "../../services/documentStorageService";
+import {
+  getDocumentStorageDriver,
+  writeDocumentFileAtomically,
+} from "../../services/documentStorageService";
 
 async function withStorageFixture(
   run: (fixture: { root: string; outside: string }) => Promise<void>,
@@ -31,6 +34,19 @@ async function withStorageFixture(
 }
 
 describe("stored file security", () => {
+  it("fails closed for unsupported storage drivers", () => {
+    const previousDriver = process.env.DOCS_STORAGE_DRIVER;
+    try {
+      process.env.DOCS_STORAGE_DRIVER = "unknown";
+      assert.throws(() => getDocumentStorageDriver(), /Unsupported DOCS_STORAGE_DRIVER/);
+      process.env.DOCS_STORAGE_DRIVER = "vercel-blob";
+      assert.equal(getDocumentStorageDriver(), "vercel-blob");
+    } finally {
+      if (previousDriver === undefined) delete process.env.DOCS_STORAGE_DRIVER;
+      else process.env.DOCS_STORAGE_DRIVER = previousDriver;
+    }
+  });
+
   it("resolves an owned regular file below the real storage root", async () => {
     await withStorageFixture(async ({ root }) => {
       const expected = path.join(root, "documents", "owned.pdf");

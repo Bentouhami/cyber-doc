@@ -13,11 +13,16 @@ and make missing production configuration fail closed.
   - Used by the Prisma application client and, when no direct URL is configured,
     migrations.
   - Example: `postgresql://user:password@localhost:5433/cyber-doc-db?schema=public`
+  - Remote managed PostgreSQL connections must verify the server certificate.
+    For Neon, keep the provider hostname and use `sslmode=verify-full`; do not
+    rely on the legacy `sslmode=require` alias, whose semantics will weaken in a
+    future `pg`/`pg-connection-string` major release.
 
 - `DATABASE_URL_UNPOOLED` (optional)
 
   - Preferred by Prisma CLI commands when a database provider supplies a direct
     connection alongside a pooled `DATABASE_URL` (for example Neon).
+  - Apply the same `sslmode=verify-full` requirement to this direct connection.
   - Leave blank for deployments where `DATABASE_URL` is already direct.
 
 - `BETTER_AUTH_SECRET`
@@ -32,6 +37,9 @@ and make missing production configuration fail closed.
     value is canonical. Public production hosts must use HTTPS.
   - For Vercel previews only, the platform-provided `VERCEL_URL` is accepted
     when `VERCEL=1`; an explicit canonical URL always takes precedence.
+  - The supported production value is an HTTPS origin, including internal-only
+    employee deployments. The direct Compose HTTP port is a verification endpoint,
+    not the canonical multi-workstation production URL.
 
 ## Recommended
 
@@ -49,10 +57,32 @@ and make missing production configuration fail closed.
     paths, query strings or fragments. Development localhost conveniences are not
     added to a production instance.
 
+- `BETTER_AUTH_TRUSTED_PROXIES`
+  - Optional comma-separated exact IP addresses or CIDR ranges for the reverse
+    proxy hops that replace `x-forwarded-for`.
+  - Leave empty on Vercel: CyberDoc uses Vercel's overwritten
+    `x-vercel-forwarded-for` header automatically.
+  - On other platforms, leaving it empty makes Better Auth use a shared per-path
+    fallback bucket instead of trusting a client-controlled IP header.
+  - Hostnames and invalid CIDR prefixes fail startup; never list employee/client
+    network ranges merely because they are private.
+
+- `DOCS_STORAGE_DRIVER`
+  - `local` (default) uses the filesystem; `vercel-blob` uses a private Vercel Blob store.
+  - Unknown values fail closed. Vercel production must explicitly use `vercel-blob`.
+
 - `DOCS_STORAGE_DIR`
-  - Absolute path for generated document storage and employee-uploaded template assets.
-  - If omitted, app uses default local storage path from service layer.
-  - Production must mount this path on persistent storage and include it in backups.
+  - Absolute path for generated document storage and employee-uploaded template assets
+    when `DOCS_STORAGE_DRIVER=local`.
+  - Production with the local driver must mount this path on persistent storage and
+    include it in backups.
+
+- `BLOB_READ_WRITE_TOKEN`
+  - Credential for the private Blob store when static-token authentication is used.
+  - Vercel injects the credential when the store is connected; never commit or log it.
+  - Not used by the local driver.
+  - Provision the private `_system/health` sentinel once before enabling traffic;
+    `/api/health` checks it with a metadata request and fails closed when it is absent.
 
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`
   - Optional outside containers; points the PDF renderer at a trusted Chromium binary.
@@ -93,9 +123,9 @@ and make missing production configuration fail closed.
   one of its required values is absent.
 - The Compose `migrate` service applies migrations once and must complete before
   `web` starts. The application runner does not contain the Prisma CLI.
-- The v1 production target is the persistent container topology. Vercel is
-  preview-only until a durable object-storage adapter and compatible PDF runtime
-  are implemented and tested; see ADR 0007.
+- The selected v1 production target is Vercel with Neon and private Blob storage;
+  the persistent container topology remains a recovery/self-hosting option. The
+  Vercel rollout remains gated on deployed storage/PDF evidence; see ADR 0008.
 - Compose also requires `CYBERDOC_IMAGE` and `CYBERDOC_MIGRATOR_IMAGE`. Use an
   immutable digest or commit-SHA tag built from the same source revision; never
   use `latest`, which makes rollback and release evidence non-reproducible.

@@ -6,6 +6,7 @@ import { internalServerError } from "@/lib/api-error";
 import { buildNestedPayload, generatePdfBufferFromHtml, renderHtmlTemplate } from "@/services/documentRenderService";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 type RouteContext = {
   params: Promise<{ slug: string }>;

@@ -69,6 +69,8 @@ export default async function DocumentDetailPage({ params }: PageProps) {
     filePath: document.filePath,
     chargedTotal: document.chargedTotal ? document.chargedTotal.toString() : null,
     unitPrice: document.unitPrice ? document.unitPrice.toString() : null,
+    discount: document.discount ? document.discount.toString() : null,
+    surcharge: document.surcharge ? document.surcharge.toString() : null,
     amountPaid: document.amountPaid ? document.amountPaid.toString() : null,
     changeGiven: document.changeGiven ? document.changeGiven.toString() : null,
     currency: document.currency || "MAD",

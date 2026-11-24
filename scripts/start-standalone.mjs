@@ -33,7 +33,7 @@ async function run() {
   );
   await copyIfPresent(
     path.join(root, buildDirectory, "static"),
-    path.join(standaloneRoot, ".next", "static"),
+    path.join(standaloneRoot, buildDirectory, "static"),
   );
 
   const server = spawn(process.execPath, [serverPath], {

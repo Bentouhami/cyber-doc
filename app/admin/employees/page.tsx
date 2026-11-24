@@ -6,6 +6,7 @@ import {
   Loader2,
   MoreHorizontal,
   Plus,
+  SlidersHorizontal,
   Trash2,
   Users,
 } from "lucide-react";
@@ -47,6 +48,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -386,42 +388,58 @@ export default function EmployeesPage() {
               ))}
             </div>
           </div>
-          <div className="mb-4 grid gap-3 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">
-                {t("employees.filters.search")}
-              </p>
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder={t("employees.filters.search")}
-              />
+          <div className="mb-4 rounded-lg border bg-muted/20 p-4">
+            <div className="mb-4 flex items-start gap-3">
+              <SlidersHorizontal className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <div>
+                <p className="font-semibold">{t("employees.filters.title")}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("employees.filters.description")}
+                </p>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">
-                {t("employees.filters.status")}
-              </p>
-              <Select
-                value={statusFilter}
-                onValueChange={(value: "all" | "active" | "inactive") =>
-                  setStatusFilter(value)
-                }
-              >
-                <SelectTrigger aria-label={t("employees.filters.status")}>
-                  <SelectValue placeholder={t("employees.filters.status")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">
-                    {t("employees.filters.all")}
-                  </SelectItem>
-                  <SelectItem value="active">
-                    {t("employees.filters.active")}
-                  </SelectItem>
-                  <SelectItem value="inactive">
-                    {t("employees.filters.inactive")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="employee-search">
+                  {t("employees.filters.search")}
+                </Label>
+                <Input
+                  id="employee-search"
+                  className="h-11 bg-background"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder={t("employees.filters.search")}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="employee-status-filter">
+                  {t("employees.filters.status")}
+                </Label>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(value: "all" | "active" | "inactive") =>
+                    setStatusFilter(value)
+                  }
+                >
+                  <SelectTrigger
+                    id="employee-status-filter"
+                    className="h-11 bg-background"
+                  >
+                    <SelectValue placeholder={t("employees.filters.status")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      {t("employees.filters.all")}
+                    </SelectItem>
+                    <SelectItem value="active">
+                      {t("employees.filters.active")}
+                    </SelectItem>
+                    <SelectItem value="inactive">
+                      {t("employees.filters.inactive")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <div className="overflow-hidden rounded-xl border border-border/70">

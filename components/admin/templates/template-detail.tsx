@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table"
 import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -41,7 +42,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Download, FileText, LayoutDashboard, PanelLeftClose, Users2 } from "lucide-react"
+import {
+  CircleDollarSign,
+  Code2,
+  Download,
+  FilePenLine,
+  FileText,
+  LayoutDashboard,
+  PanelLeftClose,
+  Settings2,
+  Users2,
+} from "lucide-react"
 
 import { useLocale } from "@/hooks/use-locale"
 import { useToast } from "@/hooks/use-toast"
@@ -502,78 +513,126 @@ export function TemplateDetail({ template }: TemplateDetailProps) {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("templates.editTitle")}</CardTitle>
+      <Card className="overflow-hidden">
+        <CardHeader className="border-b bg-muted/30">
+          <CardTitle className="flex items-center gap-2">
+            <FilePenLine className="h-5 w-5 text-primary" />
+            {t("templates.editTitle")}
+          </CardTitle>
           <CardDescription>{t("templates.editDescription")}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t("templates.title")} />
-            <Input value={titleAr} onChange={(event) => setTitleAr(event.target.value)} placeholder={t("templates.titleAr")} />
-          </div>
-          <Textarea
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder={t("templates.description")}
-          />
-          <Textarea
-            value={contentHtml}
-            onChange={(event) => setContentHtml(event.target.value)}
-            placeholder={t("templates.htmlTemplate")}
-            className="min-h-[200px] font-mono text-xs"
-          />
-          <div className="space-y-2">
-            <p className="text-sm font-medium">{t("templates.basePrice")}</p>
-            <Input
-              value={basePrice}
-              onChange={(event) => setBasePrice(event.target.value)}
-              placeholder={t("templates.basePrice")}
-              type="number"
-              inputMode="decimal"
-            />
-          </div>
-          <div className="space-y-2">
-            <p className="text-sm font-medium">{t("templates.cssTemplate")}</p>
-            <Textarea
-              value={contentCss}
-              onChange={(event) => setContentCss(event.target.value)}
-              placeholder={t("templates.cssTemplate")}
-              className="min-h-[160px] font-mono text-xs"
-            />
-          </div>
-          <div className="space-y-2">
-            <p className="text-sm font-medium">{t("templates.pdfSettings")}</p>
-            <div className="grid gap-3 md:grid-cols-2">
-              <Input
-                value={pageFormat}
-                onChange={(event) => setPageFormat(event.target.value)}
-                placeholder={t("templates.pageSize")}
-              />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Input
-                  value={marginTop}
-                  onChange={(event) => setMarginTop(event.target.value)}
-                  placeholder={t("templates.marginTop")}
-                />
-                <Input
-                  value={marginRight}
-                  onChange={(event) => setMarginRight(event.target.value)}
-                  placeholder={t("templates.marginRight")}
-                />
-                <Input
-                  value={marginBottom}
-                  onChange={(event) => setMarginBottom(event.target.value)}
-                  placeholder={t("templates.marginBottom")}
-                />
-                <Input
-                  value={marginLeft}
-                  onChange={(event) => setMarginLeft(event.target.value)}
-                  placeholder={t("templates.marginLeft")}
-                />
+        <CardContent className="space-y-6 pt-6">
+          <section className="space-y-4 rounded-xl border bg-background p-4 shadow-xs md:p-5" aria-labelledby="template-details-heading">
+            <div className="flex items-start gap-3">
+              <FileText className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <div>
+                <h3 id="template-details-heading" className="font-semibold">{t("templates.detailsSection")}</h3>
+                <p className="text-sm text-muted-foreground">{t("templates.detailsSectionDescription")}</p>
               </div>
             </div>
-          </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="template-title">{t("templates.title")}</Label>
+                <Input id="template-title" className="h-11 bg-card" value={title} onChange={(event) => setTitle(event.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="template-title-ar">{t("templates.titleAr")}</Label>
+                <Input id="template-title-ar" className="h-11 bg-card" value={titleAr} onChange={(event) => setTitleAr(event.target.value)} dir="rtl" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="template-description">{t("templates.description")}</Label>
+              <Textarea
+                id="template-description"
+                className="min-h-24 bg-card"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            </div>
+          </section>
+
+          <section className="space-y-4 rounded-xl border border-primary/30 bg-primary/5 p-4 shadow-xs md:p-5" aria-labelledby="template-pricing-heading">
+            <div className="flex items-start gap-3">
+              <CircleDollarSign className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <div>
+                <h3 id="template-pricing-heading" className="font-semibold">{t("templates.pricingSection")}</h3>
+                <p className="text-sm text-muted-foreground">{t("templates.pricingSectionDescription")}</p>
+              </div>
+            </div>
+            <div className="max-w-md space-y-2">
+              <Label htmlFor="template-base-price">{t("templates.basePrice")}</Label>
+              <Input
+                id="template-base-price"
+                className="h-11 bg-background text-base tabular-nums"
+                value={basePrice}
+                onChange={(event) => setBasePrice(event.target.value)}
+                placeholder="0.00"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+              />
+            </div>
+          </section>
+
+          <section className="space-y-4 rounded-xl border bg-background p-4 shadow-xs md:p-5" aria-labelledby="template-content-heading">
+            <div className="flex items-start gap-3">
+              <Code2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <div>
+                <h3 id="template-content-heading" className="font-semibold">{t("templates.contentSection")}</h3>
+                <p className="text-sm text-muted-foreground">{t("templates.contentSectionDescription")}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="template-html">{t("templates.htmlTemplate")}</Label>
+              <Textarea
+                id="template-html"
+                value={contentHtml}
+                onChange={(event) => setContentHtml(event.target.value)}
+                className="min-h-[200px] bg-card font-mono text-xs"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="template-css">{t("templates.cssTemplate")}</Label>
+              <Textarea
+                id="template-css"
+                value={contentCss}
+                onChange={(event) => setContentCss(event.target.value)}
+                className="min-h-[160px] bg-card font-mono text-xs"
+              />
+            </div>
+          </section>
+
+          <section className="space-y-4 rounded-xl border bg-background p-4 shadow-xs md:p-5" aria-labelledby="template-pdf-heading">
+            <div className="flex items-center gap-3">
+              <Settings2 className="h-5 w-5 shrink-0 text-primary" />
+              <h3 id="template-pdf-heading" className="font-semibold">{t("templates.pdfSettings")}</h3>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="template-page-format">{t("templates.pageSize")}</Label>
+                <Input id="template-page-format" className="h-11 bg-card" value={pageFormat} onChange={(event) => setPageFormat(event.target.value)} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="template-margin-top">{t("templates.marginTop")}</Label>
+                  <Input id="template-margin-top" className="h-11 bg-card" value={marginTop} onChange={(event) => setMarginTop(event.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="template-margin-right">{t("templates.marginRight")}</Label>
+                  <Input id="template-margin-right" className="h-11 bg-card" value={marginRight} onChange={(event) => setMarginRight(event.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="template-margin-bottom">{t("templates.marginBottom")}</Label>
+                  <Input id="template-margin-bottom" className="h-11 bg-card" value={marginBottom} onChange={(event) => setMarginBottom(event.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="template-margin-left">{t("templates.marginLeft")}</Label>
+                  <Input id="template-margin-left" className="h-11 bg-card" value={marginLeft} onChange={(event) => setMarginLeft(event.target.value)} />
+                </div>
+              </div>
+            </div>
+          </section>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"

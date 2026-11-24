@@ -5,14 +5,39 @@ Applies to: Next.js 16 + Prisma/PostgreSQL
 
 ## Supported production target
 
-For v1, production means the immutable `migrator` + `runner` container topology
-with persistent PostgreSQL and `DOCS_STORAGE_DIR` volumes. Vercel deployments are
-preview-only until the requirements in ADR 0007 are implemented and verified.
-A Vercel `Ready` status is not release evidence for file persistence or PDF
-generation.
+For v1, the selected production topology is Next.js on Vercel, Neon PostgreSQL
+and a private Vercel Blob store, as recorded in ADR 0008. The immutable
+`migrator` + `runner` container topology remains the recovery/self-hosting path.
+A Vercel `Ready` status alone is not release evidence for private file
+persistence or PDF generation.
 
 The supported Compose database major is PostgreSQL 17, matching the CI critical
 smoke service. A major-version change requires a separately tested migration plan.
+
+## Network exposure decision (mandatory)
+
+The current Compose mapping (`3000:3000`) exposes Next.js directly on every host
+interface. It is suitable for controlled local verification only and is not an
+approved production edge. Better Auth uses secure cookies in production, so a
+plain-HTTP LAN URL is not a supported employee-access topology.
+
+Choose and record exactly one production topology before deployment:
+
+- **Internal only:** place CyberDoc behind an internal HTTPS reverse proxy with a
+  hostname/certificate trusted by every employee workstation; restrict the edge
+  and host firewall to the approved LAN/VPN ranges.
+- **Internet reachable:** place CyberDoc behind a public HTTPS reverse proxy/WAF;
+  keep port 3000 unreachable from clients and allow the origin only from the exact
+  proxy addresses.
+
+For either topology, the proxy must replace (not append untrusted client input to)
+the selected client-IP header. Record the exact proxy IPs/CIDRs before configuring
+`BETTER_AUTH_TRUSTED_PROXIES`. CyberDoc ignores forwarded client-IP headers while
+this value is empty and validates every configured entry before startup. Do not use an entire private
+network range when employee devices share that range, and do not enable generic
+proxy-header trust to infer the canonical application URL; `BETTER_AUTH_URL`
+remains explicit. The production login limiter must use the existing PostgreSQL
+`rate_limits` table so counters survive process restarts and replicas.
 
 ## 1) Pre-Deploy Gate (mandatory)
 
@@ -86,14 +111,26 @@ documents and PostgreSQL data use named volumes. Back them up independently.
 Both image variables must be immutable digest or commit-SHA references built from
 the same source revision; `latest` is forbidden.
 
+Before starting production traffic, replace the direct host-wide port publication
+with the binding required by the approved edge (normally loopback or a dedicated
+private origin interface). The exact binding is intentionally not hard-coded until
+the topology and proxy addresses are approved.
+
+When an external managed PostgreSQL service such as Neon is used, the application
+URL and the direct migration URL must both use `sslmode=verify-full`. Treat a
+runtime warning about `sslmode=require` as a deployment-secret configuration
+failure and rotate the stored URLs before rollout.
+
 Do not start the application if the one-shot `migrate` service fails. Inspect
 its logs, restore the pre-deploy backup when necessary, and keep the previous
 application image active.
 
 Health check:
 
-- verify `/api/health` returns `200 {"status":"ok"}`; this proves both PostgreSQL
-  connectivity and read/write access to `DOCS_STORAGE_DIR` without exposing internals;
+- with the Blob driver, upload the private `_system/health` sentinel once before
+  enabling traffic;
+- verify `/api/health` returns `200 {"status":"ok"}`; this proves PostgreSQL
+  connectivity and access to the configured storage backend without exposing internals;
 - open `/`
 - open `/documents`
 - open `/admin/templates`

@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { NextResponse } from "next/server";
@@ -19,8 +18,10 @@ import { findTemplateDuplicateCandidates } from "@/services/templateDuplicateSer
 import { importTemplateWithAsset } from "@/services/templateImportService";
 import {
   buildUploadedTemplateAssetPath,
-  ensureUploadedTemplateAssetPath,
+  deleteUploadedTemplateAsset,
+  writeUploadedTemplateAsset,
 } from "@/services/templateAssetStorageService";
+import { getDocumentStorageDriver } from "@/services/documentStorageService";
 import {
   escapeHtmlText,
   TEMPLATE_TEXT_LIMITS,
@@ -167,8 +168,7 @@ export async function POST(request: Request) {
   const ext = path.extname(fileName).toLowerCase();
   const storedName = `${slug}${ext}`;
   const relativePath = buildUploadedTemplateAssetPath(storedName);
-  const absolutePath = await ensureUploadedTemplateAssetPath(relativePath);
-  await writeFile(absolutePath, buffer, { flag: "wx" });
+  await writeUploadedTemplateAsset(relativePath, buffer);
 
   const extractedHtml = await extractDocxHtml(buffer);
   const safeDisplayTitle = escapeHtmlText(meta.titleAr || meta.title);
@@ -216,17 +216,17 @@ export async function POST(request: Request) {
         fileType:
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         fileSize: buffer.length,
-        storageDriver: "local",
+        storageDriver: getDocumentStorageDriver(),
         checksum,
         version: 1,
         metadata: {
           source: "employee_import",
-          storedIn: "storage/template-assets",
+          storedIn: relativePath,
         },
       },
     });
   } catch (error) {
-    await rm(absolutePath, { force: true }).catch((cleanupError: unknown) => {
+    await deleteUploadedTemplateAsset(relativePath).catch((cleanupError: unknown) => {
       logApiError(
         { route: "/api/templates/requests/import", operation: "cleanup_failed_import" },
         cleanupError,

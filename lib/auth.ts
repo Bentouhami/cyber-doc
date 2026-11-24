@@ -6,21 +6,32 @@ import { nextCookies } from "better-auth/next-js";
 import { username } from "better-auth/plugins";
 import bcrypt from "bcryptjs";
 
-import { resolveAuthNetworkConfig } from "./auth-network-config";
+import { resolveAuthNetworkConfig, resolveAuthSecret } from "./auth-network-config";
 import { logApiError } from "./api-error";
 import prisma from "./prisma";
 import { PASSWORD_POLICY } from "./user-validation";
 import { isUserActive, userAccessStateSelect } from "./user-access-policy";
 
 const authNetworkConfig = resolveAuthNetworkConfig(process.env);
+const authSecret = resolveAuthSecret(process.env);
 
 export const auth = betterAuth({
   baseURL: authNetworkConfig.baseURL,
+  secret: authSecret,
   database: prismaAdapter(prisma, {
     provider: "postgresql",
     transaction: true,
   }),
   trustedOrigins: authNetworkConfig.trustedOrigins,
+  advanced: {
+    ipAddress: {
+      ipAddressHeaders: authNetworkConfig.ipAddressHeaders,
+      trustedProxies: authNetworkConfig.trustedProxies,
+    },
+  },
+  rateLimit: {
+    storage: "database",
+  },
   emailAndPassword: {
     enabled: true,
     disableSignUp: true,
