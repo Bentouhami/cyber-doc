@@ -36,6 +36,7 @@ FROM deps AS migrator
 WORKDIR /app
 COPY prisma ./prisma
 COPY prisma.config.ts ./prisma.config.ts
+COPY lib/database-url.ts ./lib/database-url.ts
 RUN pnpm exec prisma generate
 CMD ["pnpm", "exec", "prisma", "migrate", "deploy"]
 

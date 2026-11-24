@@ -122,6 +122,11 @@ route metadata. GitHub Actions and the Docker builder now receive non-connecting
 build-only placeholders; Neon credentials remain runtime-only and are not copied
 into the final container stage.
 
+The container gate then found that the isolated `migrator` stage copied
+`prisma.config.ts` without its reviewed `lib/database-url.ts` import. The stage now
+copies that single dependency before Prisma generation; no application source or
+runtime credential is added to the migration image.
+
 A five-axis review then rechecked the financial boundary, every changed caller,
 the administration/import UI, dependency lock and runtime guard. The document
 summary amount was corrected to follow the server-confirmed local state after a
