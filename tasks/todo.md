@@ -6,14 +6,14 @@
   - Acceptance: all 13 DOCX sources are catalogued exactly once; no historical PII
     is published; every active template has approved clauses, tokens and owner price.
   - Progress: 13/13 sources are mapped with anonymised HTML and generated DOCX assets;
-    only the sanitized directory is packaged. Ten remain inactive pending legal review
+    only the sanitized directory is packaged. Twelve remain inactive pending legal review
     and owner pricing. Retention or purge of the raw source files remains a privacy decision.
   - Verify: `pnpm run check:template-sources`, seed on staging PostgreSQL and manual
     owner/legal approval of each activated template.
   - Automated data gate: `check:data` now fails on active unpriced templates,
     missing render sources, invalid placeholder contracts and unsafe packaged assets.
 
-- [ ] **PROD-001 — Owner and delegated-responsible hierarchy**
+- [x] **PROD-001 — Owner and delegated-responsible hierarchy**
   - Acceptance: the migrated owner is unique in normal application operation;
     only the owner designates responsible users; responsible users CRUD employees
     but cannot mutate the owner or another responsible.
@@ -22,17 +22,17 @@
     fixtures pass on a disposable PostgreSQL-compatible database. Permission smoke
     passes 52/52 on PostgreSQL 17 in PR #13 CI.
     `check:data` also enforces exactly one assigned and active owner.
-- [ ] **I18N-002 — Arabic-first bilingual interface**
+- [x] **I18N-002 — Arabic-first bilingual interface**
   - Acceptance: Arabic is used on first visit, while an explicit Arabic/French
     preference remains persisted.
   - Verify: `pnpm run i18n:audit` and critical FR/AR browser checks.
-  - Progress: translation audit passes with 555 keys, no missing locale and no
+  - Progress: translation audit passes with 592 keys, no missing locale and no
     raw API message exposed by UI components; dialog accessibility text and the
     RTL sidebar edge are localized. The server locale policy now proves Arabic on
     first render and preserves explicit FR/AR preferences. The Webpack production
     build passes all 29 pages on the patched Next.js 16.4.6 runtime; the complete
     FR/AR UX/accessibility matrix passes 32/32 on PostgreSQL 17 in CI.
-- [ ] **AUTH-002 — Username or email login**
+- [x] **AUTH-002 — Username or email login**
   - Acceptance: employees authenticate with either unique username or email and
     the same password without disclosing which identifier exists.
   - Progress: schema migration, employee CRUD, Better Auth username plugin,
@@ -43,10 +43,11 @@
     come only through named trusted proxies, and approved thresholds return `429`
     without revealing account existence.
   - Progress: Better Auth's default 3 attempts/10 seconds limiter is active only in
-    production, but currently uses process memory and `x-forwarded-for`/shared
-    fallback behavior. The existing `rate_limits` PostgreSQL model can provide the
-    shared store; threshold and proxy CIDRs require explicit security/operations approval.
-- [ ] **DOC-002 — Safe document replacement and version history**
+    production and now uses the existing PostgreSQL `rate_limits` table, so counters
+    survive restarts and replicas. Forwarded IP headers stay disabled until a
+    validated exact IP/CIDR list is configured. Target proxy values and a deployed
+    `429` exercise still require explicit security/operations approval.
+- [x] **DOC-002 — Safe document replacement and version history**
   - Acceptance: copy, new-version and replace-current flows never destroy an
     earlier document; every relationship and actor is auditable.
   - Progress: immutable version chain, current-version guard, actor audit,
@@ -59,11 +60,15 @@
     are implemented. PostgreSQL 17 CI records administration 47/47 and permissions
     52/52, including owner CRUD, employee read/mutation denial and accessible
     cards/list toggle states.
-- [ ] **PAY-002 — Central service and print pricing**
+- [x] **PAY-002 — Central service and print pricing**
   - Acceptance: owner/responsible manage prices; document totals and customer
     change are derived server-side from the active price and print quantity.
   - Progress: template prices are validated and managed in the guarded back-office;
     employee price overrides are rejected and cash/change/copies remain server-derived.
+    Employees can grant a per-document total discount without changing the catalog
+    price; the server bounds it, derives the final paid state and audits the cashier.
+    Isolated Neon E2E proves a 5 MAD discount paid exactly (`PAID`, zero change)
+    and rejects a discount that would make the charged total negative.
     The migration is replay-tested and deactivates an unpriced active template;
     the seed preserves owner-managed prices and cannot reactivate an unpriced template.
 
@@ -177,9 +182,11 @@
 ## Checkpoint B
 
 - [ ] Every v1 catalogue capability is complete with automated evidence.
-- [ ] Build, schema status, contracts, i18n and critical E2E pass.
+- [x] Build, schema status, contracts, i18n and critical E2E pass.
   - Progress: build, schema validation, contracts and i18n pass on the current
-    change with Next.js 16.4.6; critical E2E passes 4/4 on CI PostgreSQL 17.
+    change with Next.js 16.4.6; critical E2E passes 4/4 with zero skip on the
+    isolated Neon recovery branch. See
+    `docs/finalization/evidence/2026-11-24-critical-smoke-current.md`.
 - [x] No behavior change lacks a `docs/features` update.
 
 ## Phase 3 — Measured performance and operations
@@ -234,6 +241,9 @@
     clean candidate restored from the pre-migration snapshot was migrated, seeded
     and verified with zero personas/documents. The exercise also exposed and closed
     a release-gate defect that allowed mutating smokes to inherit a production URL.
+    The current worktree then passed the full zero-skip critical smoke on the
+    expiring recovery branch: permissions 52/52, documents 48/48, admin 47/47 and
+    FR/AR desktop/mobile UX/accessibility 32/32.
     A witnessed container-volume restore and an approved production branch cutover
     remain pending; see `evidence/2026-11-23-neon-recovery-and-smoke-isolation.md`.
 
@@ -244,15 +254,19 @@
   - Dependencies: product/legal decisions.
   - Progress: the data inventory, safeguards, decision table, subject-request
     runbook and automation safety contract are documented in
-    `docs/engineering/PRIVACY_OPERATIONS.md`. Policy values, approved export/purge
-    behavior and operational proof remain pending.
+    `docs/engineering/PRIVACY_OPERATIONS.md`. The official CNDP boundary is now
+    recorded: CIN processing needs the applicable prior authorization and the
+    current US-hosted Neon database needs an approved foreign-transfer basis after
+    approval of the underlying processing. Policy values, filing references,
+    approved export/purge behavior and operational proof remain pending.
 
 ## Final checkpoint
 
 - [x] `pnpm install --frozen-lockfile --ignore-scripts` succeeds under the documented policy.
 - [x] `pnpm run quality:prepush` passes without skipped suites.
-  - Evidence: 115/115 unit tests and the production build pass; PostgreSQL 17 CI
-    records permissions 52/52, documents 46/46, admin 47/47, UX 32/32 and critical
-    E2E 4/4, all without failure or skip.
+  - Evidence: 120/120 unit tests and the production build pass; the current
+    isolated Neon run records permissions 52/52, documents 48/48, admin 47/47,
+    UX 32/32 and critical E2E 4/4, all without failure or skip. The current
+    worktree still needs an immutable commit and clean CI rerun before merge.
 - [x] Independent correctness, architecture, security and performance code review is approved.
 - [x] Release evidence, known limitations and rollback instructions are current.

@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@12.15.0",
   "engines": {
-    "node": ">=22.13.0 <25",
+    "node": ">=22.17.0 <25",
     "pnpm": ">=12.15.0 <13"
   },
   "scripts": {
@@ -49,6 +49,7 @@
     "smoke:permissions": "node scripts/permissions-smoke-runner.mjs",
     "check:ux": "node scripts/ux-route-check-runner.mjs",
     "smoke:documents": "node scripts/documents-smoke-runner.mjs",
+    "storage:inventory": "tsx scripts/storage-inventory.ts",
     "type-check": "tsc --noEmit",
     "start": "node scripts/start-standalone.mjs"
   },
@@ -86,8 +87,10 @@
     "@radix-ui/react-toggle": "1.1.1",
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
+    "@sparticuz/chromium-min": "^153.0.0",
     "@tanstack/react-table": "^8.21.3",
     "@vercel/analytics": "2.0.1",
+    "@vercel/blob": "^2.9.0",
     "autoprefixer": "^10.7.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
@@ -100,7 +103,7 @@
     "dotenv": "^17.4.2",
     "embla-carousel-react": "8.5.1",
     "geist": "1.8.2",
-    "i18next": "^24.2.3",
+    "i18next": "26.3.4",
     "i18next-browser-languagedetector": "^8.3.1",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
@@ -126,6 +129,7 @@
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
     "@eslint/eslintrc": "^3.3.7",
+    "@sparticuz/chromium": "153.0.0",
     "@tailwindcss/postcss": "4.3.3",
     "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",

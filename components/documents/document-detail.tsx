@@ -17,8 +17,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { calculatePaymentPreview } from "@/lib/payment-preview";
+import {
+  calculateChargedTotalPreview,
+  calculatePaymentPreview,
+} from "@/lib/payment-preview";
 
 export type DocumentDetailData = {
   id: string;
@@ -34,6 +38,8 @@ export type DocumentDetailData = {
   filePath?: string | null;
   chargedTotal?: string | null;
   unitPrice?: string | null;
+  discount?: string | null;
+  surcharge?: string | null;
   amountPaid?: string | null;
   changeGiven?: string | null;
   currency: string;
@@ -87,6 +93,7 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
     document.paymentStatus ?? "UNPAID",
   );
   const [amountPaid, setAmountPaid] = useState(document.amountPaid ?? "");
+  const [discount, setDiscount] = useState(document.discount ?? "0");
   const [changeGiven, setChangeGiven] = useState(document.changeGiven ?? "");
   const [chargedTotal, setChargedTotal] = useState(
     document.chargedTotal ?? "",
@@ -105,6 +112,20 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
     setChangeGiven(preview.changeGiven);
   };
 
+  const updateDiscount = (value: string) => {
+    setDiscount(value);
+    const nextChargedTotal = calculateChargedTotalPreview(
+      document.unitPrice ?? "",
+      totalCopies,
+      value,
+      document.surcharge ?? "0",
+    );
+    setChargedTotal(nextChargedTotal);
+    const preview = calculatePaymentPreview(nextChargedTotal, amountPaid);
+    setPaymentStatus(preview.paymentStatus);
+    setChangeGiven(preview.changeGiven);
+  };
+
   const statusStyle = document.statusColor
     ? { borderColor: document.statusColor }
     : undefined;
@@ -117,6 +138,7 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amountPaid: Number(amountPaid),
+          discount: Number(discount || 0),
         }),
       });
 
@@ -132,6 +154,13 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
           data.chargedTotal !== undefined
         ) {
           setChargedTotal(String(data.chargedTotal));
+        }
+        if (
+          "discount" in data &&
+          data.discount !== null &&
+          data.discount !== undefined
+        ) {
+          setDiscount(String(data.discount));
         }
         if (
           "amountPaid" in data &&
@@ -242,7 +271,7 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
             {t("documents.detail.createdBy")}: {document.createdByName}
           </Badge>
           <Badge variant="outline">
-            {t("documents.detail.amount")}: {document.chargedTotal ?? "—"}{" "}
+            {t("documents.detail.amount")}: {chargedTotal || "—"}{" "}
             {document.currency}
           </Badge>
           <Badge variant="outline">
@@ -426,6 +455,10 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
+                  <span>{t("documents.detail.discount")}</span>
+                  <span>{discount || "0"} {document.currency}</span>
+                </div>
+                <div className="flex items-center justify-between">
                   <span>{t("documents.detail.amountPaid")}</span>
                   <span>
                     {amountPaid || "—"} {document.currency}
@@ -441,9 +474,36 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
                   </span>
                 </div>
               </div>
-              <div className="grid gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="document-discount">
+                    {t("documents.detail.discount")}
+                  </Label>
+                  <Input
+                    id="document-discount"
+                    data-testid="payment-discount"
+                    className="h-11"
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    max={99_999_999.99}
+                    step="0.01"
+                    value={discount}
+                    onChange={(event) => updateDiscount(event.target.value)}
+                    placeholder={t("documents.detail.discount")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("documents.detail.discountHelp")}
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="document-amount-paid">
+                    {t("documents.detail.amountPaid")}
+                  </Label>
                 <Input
+                  id="document-amount-paid"
                   data-testid="payment-amount-paid"
+                  className="h-11"
                   type="number"
                   inputMode="decimal"
                   min={0}
@@ -454,6 +514,7 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
                   onChange={(event) => updateAmountPaid(event.target.value)}
                   placeholder={t("documents.detail.amountPaid")}
                 />
+                </div>
               </div>
               <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
                 <span>{t("documents.detail.paymentStatus")}</span>

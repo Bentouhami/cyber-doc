@@ -232,7 +232,7 @@ export function EmployeeForm({
               <FormItem>
                 <FormLabel>{t("employeeForm.labels.firstName")}</FormLabel>
                 <FormControl>
-                  <Input placeholder={t("employeeForm.placeholders.firstName")} {...field} disabled={isSubmitting} />
+                  <Input className="h-11" placeholder={t("employeeForm.placeholders.firstName")} {...field} disabled={isSubmitting} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -246,7 +246,7 @@ export function EmployeeForm({
               <FormItem>
                 <FormLabel>{t("employeeForm.labels.lastName")}</FormLabel>
                 <FormControl>
-                  <Input placeholder={t("employeeForm.placeholders.lastName")} {...field} disabled={isSubmitting} />
+                  <Input className="h-11" placeholder={t("employeeForm.placeholders.lastName")} {...field} disabled={isSubmitting} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -262,6 +262,7 @@ export function EmployeeForm({
               <FormLabel>{t("employeeForm.labels.username")}</FormLabel>
               <FormControl>
                 <Input
+                  className="h-11"
                   autoComplete="username"
                   placeholder={t("employeeForm.placeholders.username")}
                   {...field}
@@ -280,7 +281,7 @@ export function EmployeeForm({
             <FormItem>
               <FormLabel>{t("employeeForm.labels.email")}</FormLabel>
               <FormControl>
-                <Input type="email" placeholder={t("employeeForm.placeholders.email")} {...field} disabled={isSubmitting} />
+                <Input className="h-11" type="email" placeholder={t("employeeForm.placeholders.email")} {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -303,15 +304,20 @@ export function EmployeeForm({
                     placeholder={isEditMode ? t("employeeForm.placeholders.passwordEdit") : t("employeeForm.placeholders.password")}
                     {...field}
                     disabled={isSubmitting}
-                    className="pr-10"
+                    className="h-11 pe-11"
                   />
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    size="icon"
+                    className="absolute inset-y-0 end-0 h-11 w-11 hover:bg-transparent"
                     onClick={() => setShowPassword((prev) => !prev)}
                     disabled={isSubmitting}
+                    aria-label={t(
+                      showPassword
+                        ? "auth.login.hidePassword"
+                        : "auth.login.showPassword",
+                    )}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
                   </Button>
@@ -330,7 +336,7 @@ export function EmployeeForm({
               <FormLabel>{t("employeeForm.labels.role")}</FormLabel>
               <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isOwnerTarget}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11">
                     <SelectValue placeholder={t("employeeForm.placeholders.role")} />
                   </SelectTrigger>
                 </FormControl>

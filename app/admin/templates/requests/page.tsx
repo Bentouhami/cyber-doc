@@ -10,5 +10,5 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function AdminTemplateRequestsPage() {
   const templates = await getAdminTemplateListData({ pendingOnly: true });
-  return <TemplateList templates={templates} />;
+  return <TemplateList templates={templates} mode="requests" />;
 }

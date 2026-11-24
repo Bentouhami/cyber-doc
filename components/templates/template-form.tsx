@@ -19,6 +19,7 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -59,6 +60,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import {
+  calculateChargedTotalPreview,
+  calculatePaymentPreview,
+} from "@/lib/payment-preview";
 
 export type GenerationTemplateField = {
   id: string;
@@ -559,21 +564,18 @@ export function TemplateForm({
       ? String(initialPayment.amountPaid)
       : "",
   );
+  const [discount, setDiscount] = useState("");
   const basePrice = template.basePrice ?? 0;
   const numericCopies = Math.max(1, Number(copies) || 1);
-  const chargedTotal = basePrice ? basePrice * numericCopies : 0;
+  const chargedTotalText = calculateChargedTotalPreview(
+    basePrice ? String(basePrice) : "",
+    numericCopies,
+    discount,
+  );
   const amountPaidNumber = amountPaid ? Number(amountPaid) : 0;
-  const changeGiven =
-    chargedTotal && amountPaidNumber
-      ? Math.max(0, amountPaidNumber - chargedTotal)
-      : 0;
-  const paymentStatus = chargedTotal
-    ? amountPaidNumber >= chargedTotal
-      ? "PAID"
-      : amountPaidNumber > 0
-      ? "PARTIAL"
-      : "UNPAID"
-    : "UNPAID";
+  const paymentPreview = calculatePaymentPreview(chargedTotalText, amountPaid);
+  const changeGiven = Number(paymentPreview.changeGiven);
+  const paymentStatus = paymentPreview.paymentStatus;
 
   const sections = useMemo(() => {
     const sectionMap = new Map<string, GenerationTemplateField[]>();
@@ -795,6 +797,7 @@ export function TemplateForm({
           payload,
           copies: numericCopies,
           amountPaid: amountPaid ? Number(amountPaid) : undefined,
+          discount: discount ? Number(discount) : undefined,
           languageOverrideConfirmed,
           participants: participantsPayload,
         }),
@@ -931,22 +934,26 @@ export function TemplateForm({
           ) : null}
         </CardHeader>
         <CardContent>
-          <div className="mb-4 grid gap-3 md:grid-cols-4">
+          <div className="mb-4 grid gap-3 md:grid-cols-5">
             <div className="space-y-2">
-              <p className="text-sm font-medium">
+              <Label htmlFor="generation-unit-price">
                 {t("documents.detail.unitPrice")}
-              </p>
+              </Label>
               <Input
+                id="generation-unit-price"
+                className="h-11"
                 value={basePrice ? basePrice.toString() : ""}
                 placeholder={t("documents.detail.unitPrice")}
                 disabled
               />
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-medium">
+              <Label htmlFor="generation-copies">
                 {t("documents.detail.copies")}
-              </p>
+              </Label>
               <Input
+                id="generation-copies"
+                className="h-11"
                 type="number"
                 min={1}
                 value={copies}
@@ -956,10 +963,33 @@ export function TemplateForm({
               />
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-medium">
-                {t("documents.detail.amountPaid")}
-              </p>
+              <Label htmlFor="generation-discount">
+                {t("documents.detail.discount")}
+              </Label>
               <Input
+                id="generation-discount"
+                className="h-11"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={basePrice * numericCopies}
+                step="0.01"
+                value={discount}
+                onChange={(event) => setDiscount(event.target.value)}
+                placeholder={t("documents.detail.discount")}
+                disabled={isSubmitting || !basePrice}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("documents.detail.discountHelp")}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="generation-amount-paid">
+                {t("documents.detail.amountPaid")}
+              </Label>
+              <Input
+                id="generation-amount-paid"
+                className="h-11"
                 type="number"
                 inputMode="decimal"
                 value={amountPaid}
@@ -969,11 +999,13 @@ export function TemplateForm({
               />
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-medium">
+              <Label htmlFor="generation-charged-total">
                 {t("documents.detail.amount")}
-              </p>
+              </Label>
               <Input
-                value={chargedTotal ? chargedTotal.toFixed(2) : ""}
+                id="generation-charged-total"
+                className="h-11"
+                value={chargedTotalText}
                 placeholder={t("documents.detail.amount")}
                 disabled
               />

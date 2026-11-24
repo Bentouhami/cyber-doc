@@ -52,13 +52,40 @@ Evidence: `evidence/2026-10-31-vercel-target-audit.md`.
 - Severity: Blocker for release
 - Area: authentication / deployment network
 - Current state: Better Auth's production default limits sign-in to 3 attempts per
-  10 seconds, but counters are process-local and client identity depends on
-  `x-forwarded-for` or a shared fallback bucket. The existing PostgreSQL
-  `rate_limits` model supports a shared counter without another service.
+  10 seconds and now stores counters in the existing PostgreSQL `rate_limits`
+  table, so they survive restarts and are shared across replicas. Forwarded IP
+  headers are ignored while `BETTER_AUTH_TRUSTED_PROXIES` is empty; configured
+  entries fail closed unless they are exact IP/CIDR values. Client identity still
+  depends on the approved proxy addresses or a shared fallback bucket. Current
+  Compose publishes port 3000 on every host interface; it is not an approved
+  production edge. Secure production cookies require an HTTPS origin even for a
+  multi-workstation internal deployment.
+- Evidence: read-only initialization of the installed Better Auth production
+  context resolves database storage with rate limiting enabled and no trusted IP
+  header while the proxy list is empty; a test IP/CIDR list enables only the
+  explicitly configured forwarding chain.
 - Exit criterion: approve the employee lockout tradeoff and exact proxy CIDRs;
-  configure database-backed sign-in limiting, prevent direct origin/header spoofing,
-  and prove allowed attempts plus `429` behavior in the critical smoke.
+  prevent direct origin/header spoofing and prove allowed attempts plus `429`
+  behavior in the target topology.
 - Owner: security / operations / Cyber Owner
+
+### RC-020 — CNDP processing and foreign-hosting approval not evidenced
+
+- Severity: Blocker for production customer data
+- Area: privacy / hosting / legal compliance
+- Current state: CyberDoc processes CIN/CNIE and other customer data in Morocco,
+  while the configured Neon database is hosted in AWS `us-east-1`. Official CNDP
+  guidance says CIN processing requires prior authorization and foreign hosting
+  or storage requires the applicable international-transfer procedure after the
+  underlying processing is approved. No declaration, authorization or transfer
+  reference is evidenced in this workspace.
+- Exit criterion: the accountable owner records the approved CNDP base-processing
+  reference and, if the database remains outside Morocco, the approved transfer
+  basis/reference; alternatively, move live data to an approved Moroccan hosting
+  arrangement and document the resulting compliance decision.
+- Owner: Cyber Owner / privacy or qualified Moroccan counsel
+
+Evidence: `../engineering/PRIVACY_OPERATIONS.md`.
 
 ### RC-009 — Privacy and retention policy pending
 

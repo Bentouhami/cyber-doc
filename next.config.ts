@@ -53,6 +53,9 @@ export default function nextConfig(phase: string) {
         "./node_modules/.pnpm/playwright-core@*/node_modules/playwright-core/browsers.json",
       ],
       "/api/templates/*/asset": ["./templates_docs/sanitized/**/*"],
+      "/api/documents/generate": ["./node_modules/@sparticuz/chromium/bin/**/*"],
+      "/api/documents/*/download": ["./node_modules/@sparticuz/chromium/bin/**/*"],
+      "/api/templates/*/render-test": ["./node_modules/@sparticuz/chromium/bin/**/*"],
     },
     outputFileTracingExcludes: {
       "/api/documents/generate": ["./next.config.ts"],

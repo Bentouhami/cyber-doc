@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function TemplateImportPage() {
   return (
-    <div className="container mx-auto space-y-6 py-10">
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <TemplateImportForm />
     </div>
   )

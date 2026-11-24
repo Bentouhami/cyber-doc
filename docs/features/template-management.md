@@ -17,6 +17,14 @@ les modèles utilisés pour générer des documents.
 
 Écrans `/admin/templates`, `/new`, `/import`, `/[slug]` et `/requests`. Les employés
 consultent uniquement les modèles actifs nécessaires à la génération.
+L'écran des demandes distingue explicitement les brouillons à examiner du catalogue
+et propose un état vide bilingue avec retour vers les modèles.
+La fiche d'administration regroupe visuellement les informations générales, la
+tarification, le contenu HTML/CSS et les réglages PDF. Chaque champ conserve un
+libellé visible en français comme en arabe; la tarification apparaît avant les
+zones techniques pour éviter qu'un modèle reste involontairement sans prix. Le
+catalogue affiche systématiquement le prix de chaque modèle ou l'état explicite
+« Prix non configuré » directement sur sa carte.
 
 ## Règles métier
 
@@ -100,6 +108,14 @@ des brouillons exigent toujours une validation produit/juridique avant activatio
 
 ## Historique
 
+- 2026-11-24 — Import JSON/Word restructuré en sections explicites avec icônes,
+  libellés associés, aide contextuelle et onglets responsives en français/arabe.
+- 2026-11-24 — Écran des demandes séparé visuellement du catalogue avec titres,
+  filtres et état vide propres au parcours de revue.
+- 2026-11-24 — Filtres du catalogue restructurés avec libellés accessibles et
+  prix toujours visible sur chaque carte, y compris lorsqu’il n’est pas configuré.
+- 2026-11-23 — Première tranche de la refonte UI du back-office : sections, icônes,
+  libellés persistants et tarification mise en évidence sur la fiche modèle.
 - 2026-11-23 — Activation bloquée si un placeholder requis manque ou si un placeholder inconnu produirait un champ vide.
 - 2026-11-23 — Remplacement des assets de production historiques par 13 DOCX générés, tokenisés et sans identifiant littéral.
 - 2026-10-31 — Import DOCX borné/validé, stockage persistant et politique de packaging alignés.

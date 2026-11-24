@@ -41,6 +41,7 @@ export function EmployeeHeader() {
               <Button
                 variant="outline"
                 size="icon"
+                className="h-11 w-11"
                 onClick={async () => {
                   await signOut();
                 }}
@@ -51,7 +52,7 @@ export function EmployeeHeader() {
             </>
           ) : (
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/auth/login">{t("user.menu.profile")}</Link>
+              <Link href="/">{t("user.menu.profile")}</Link>
             </Button>
           )}
         </div>

@@ -43,12 +43,24 @@ describe("payment boundary policy", () => {
     ]) assert.equal(paymentUpdateSchema.safeParse(payload).success, false);
   });
 
-  it("allows cashiers to submit only the received amount and bounds catalog prices", () => {
+  it("allows cashiers to submit only the received amount and discount", () => {
     assert.equal(cashPaymentUpdateSchema.safeParse({ amountPaid: 60 }).success, true);
+    assert.equal(cashPaymentUpdateSchema.safeParse({ amountPaid: 45, discount: 5 }).success, true);
     assert.equal(cashPaymentUpdateSchema.safeParse({ amountPaid: 60, unitPrice: 1 }).success, false);
     assert.equal(catalogPriceSchema.safeParse(10.25).success, true);
     assert.equal(catalogPriceSchema.safeParse(-1).success, false);
     assert.equal(catalogPriceSchema.safeParse(10.001).success, false);
+  });
+
+  it("treats an agreed discount as paid instead of partial", () => {
+    const result = calculatePaymentState(
+      existing,
+      { amountPaid: 45, discount: 5 },
+      new Date("2026-11-24T12:00:00.000Z"),
+    );
+    assert.equal(result.success && result.value.chargedTotal, 45);
+    assert.equal(result.success && result.value.paymentStatus, "PAID");
+    assert.equal(result.success && result.value.changeGiven, 0);
   });
 
   it("bounds document copies to the PostgreSQL integer range", () => {

@@ -32,10 +32,11 @@ container and PostgreSQL CI are green, but the supported target still needs a
 witnessed deployment and backup/restore rollback, monitoring proof, and approved
 privacy/retention decisions. See the authoritative Go/No-Go document below.
 
-The supported v1 production target is the immutable container deployment with
-persistent PostgreSQL and document volumes. Vercel is preview-only because the
-current document/PDF storage contract requires durable filesystem semantics; see
-[ADR 0007](docs/decisions/0007-supported-production-deployment-target.md).
+The selected v1 production target is Vercel with Neon PostgreSQL and a private
+Vercel Blob store. The local/container filesystem remains available for
+development and recovery. Rollout is still gated on provisioned private storage,
+deployed PDF/document smoke and backup/restore evidence; see
+[ADR 0008](docs/decisions/0008-vercel-production-target.md).
 
 See the current release steering documents:
 
@@ -53,12 +54,14 @@ Historical product context:
 
 ## Quick Start
 
-1. Install dependencies: `pnpm install`
-2. Configure environment variables (`.env`, `.env.local`)
-3. Run database migrations and seed data
-4. Start dev server: `pnpm run dev`
+1. Use Node `22.17.0` (the version in `.node-version` and CI; the image uses Node 22)
+2. Install dependencies: `pnpm install`
+3. Configure environment variables (`.env`, `.env.local`)
+4. Run database migrations and seed data
+5. Start dev server: `pnpm run dev`
 
-CyberDoc is pinned to pnpm 12.15.0 through the `packageManager` field.
+CyberDoc is pinned to Node 22.17.0 for reproducibility and pnpm 12.15.0 through
+the `packageManager` field. Node 26 is outside the supported engine range.
 `pnpm-lock.yaml` is the only dependency lockfile; npm, Yarn and Bun are unsupported
 because mixing package managers can create a dependency graph different from CI.
 

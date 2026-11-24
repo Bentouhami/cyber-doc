@@ -5,7 +5,7 @@ Status: release candidate; production NO-GO pending operational and governance e
 
 ## Runtime Baseline
 
-- Node.js: `>=22.13.0 <25`
+- Node.js: `>=22.17.0 <25`
 - package manager: pnpm 12.15.0
 - Next.js: 16.4.6 (exact direct dependency, security-patched stable release)
 - React: 19.3.1-compatible range

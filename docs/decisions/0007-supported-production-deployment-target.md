@@ -1,7 +1,7 @@
 # ADR 0007 — Supported production deployment target
 
 Date: 2026-10-31
-Status: Accepted for the v1 release candidate
+Status: Superseded by ADR 0008
 
 ## Context
 

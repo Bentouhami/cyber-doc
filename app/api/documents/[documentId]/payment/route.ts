@@ -146,6 +146,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       paymentStatus: document.paymentStatus,
       paidAt: document.paidAt?.toISOString() ?? null,
       chargedTotal: document.chargedTotal?.toString() ?? null,
+      discount: document.discount?.toString() ?? null,
       amountPaid: document.amountPaid?.toString() ?? null,
       changeGiven: document.changeGiven?.toString() ?? null,
     });

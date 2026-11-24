@@ -8,7 +8,8 @@ Use these files for the current `release/v1.0.0-candidate` decision:
 
 - `2026-11-23-project-analysis-and-production-plan.md` — analyse actuelle des besoins, données et backlog;
 - `evidence/2026-11-23-quality-verify.md` — current local quality/build evidence;
-- `evidence/2026-11-23-documents-smoke-current.md` — current 46/46 standalone document smoke;
+- `evidence/2026-11-23-documents-smoke-current.md` — prior 46/46 standalone document-smoke evidence;
+- `evidence/2026-11-24-critical-smoke-current.md` — current isolated Neon critical smoke, including the 5 MAD discount flow;
 - `../../tasks/todo.md` — live production-readiness work and acceptance criteria;
 - `rc-smoke-report.md` — current technical evidence summary and its verification boundary;
 - `rc-open-issues.md` — current blocking conditions and risks;

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
 
 const requestedBase = (() => {
   const index = process.argv.indexOf("--base");
@@ -32,7 +33,7 @@ function abort(message) {
 
 const root = git(["rev-parse", "--show-toplevel"])?.trim();
 if (!root) abort("not inside a Git work tree");
-process.chdir(root);
+if (path.resolve(root) !== path.resolve(process.cwd())) process.chdir(root);
 
 const mergeBase = git(["merge-base", base, "HEAD"])?.trim();
 if (!mergeBase) abort(`no merge base against ${base}`);
@@ -146,6 +147,36 @@ if (!String(packageManifest.packageManager ?? "").startsWith("pnpm@12.")) {
     "package.json",
     "packageManager must pin pnpm 12",
   );
+}
+
+const nodeVersion = existsSync(".node-version")
+  ? readFileSync(".node-version", "utf8").trim()
+  : "";
+if (!/^\d+\.\d+\.\d+$/.test(nodeVersion)) {
+  report("node-version-missing-or-invalid", ".node-version", nodeVersion || "missing");
+} else {
+  const nodeMajor = nodeVersion.split(".")[0];
+  const nodeEngines = String(packageManifest.engines?.node ?? "");
+  const dockerfile = existsSync("Dockerfile") ? readFileSync("Dockerfile", "utf8") : "";
+  const workflow = existsSync(".github/workflows/frontend.yml")
+    ? readFileSync(".github/workflows/frontend.yml", "utf8")
+    : "";
+  const workspace = existsSync("pnpm-workspace.yaml")
+    ? readFileSync("pnpm-workspace.yaml", "utf8")
+    : "";
+
+  if (!nodeEngines.includes(`>=${nodeVersion}`)) {
+    report("node-engine-drift", "package.json", `${nodeEngines} must start at ${nodeVersion}`);
+  }
+  if (!dockerfile.includes(`FROM node:${nodeMajor}-alpine`)) {
+    report("node-docker-drift", "Dockerfile", `base image must use Node ${nodeMajor}`);
+  }
+  if (!workflow.includes(`runtime: node@${nodeVersion}`)) {
+    report("node-ci-drift", ".github/workflows/frontend.yml", `runtime must use node@${nodeVersion}`);
+  }
+  if (!/^engineStrict:\s*true\s*$/m.test(workspace)) {
+    report("node-engine-not-enforced", "pnpm-workspace.yaml", "engineStrict must be true");
+  }
 }
 
 const directDependencies = {

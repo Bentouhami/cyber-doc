@@ -3,13 +3,13 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
+import { resolveDatabaseUrl } from "./database-url";
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-const connectionString =
-  process.env.DATABASE_URL ??
-  "postgresql://postgres:postgres@127.0.0.1:5432/cyber_doc_ci";
+const connectionString = resolveDatabaseUrl(process.env);
 
 const adapter = new PrismaPg({ connectionString });
 

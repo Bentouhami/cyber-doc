@@ -1,7 +1,7 @@
 # Privacy and Data-Subject Operations
 
 Status: engineering baseline; product/privacy approval required before production GO
-Last reviewed: 2026-10-30
+Last reviewed: 2026-11-24
 
 This document maps CyberDoc data to technical operations. It deliberately does
 not invent a legal basis, statutory retention period or jurisdiction-specific
@@ -23,6 +23,47 @@ record them below before an automated purge or production release.
 Generated documents and template assets live on storage as well as in database
 metadata. A subject operation is incomplete if it changes one layer but not the
 other.
+
+## Moroccan legal and hosting boundary
+
+CyberDoc processes names, contact details, document content and CIN/CNIE values
+for a business established in Morocco. The production owner must therefore
+complete the applicable CNDP formalities before processing live customer data:
+
+- Article 3 of Law 09-08 limits identifiable-data retention to the period needed
+  for the declared purpose; Article 15 requires the declared processing to state
+  its retention duration.
+- The CNDP states that processing using a national identity-card number requires
+  prior authorization; other processing is generally subject to prior declaration.
+- The currently configured Neon endpoint is hosted in AWS `us-east-1`, outside
+  Morocco. The CNDP treats foreign hosting/storage as an international transfer.
+  The underlying processing must first be approved, followed by the applicable
+  foreign-transfer procedure (form F118 and supporting basis/authorization).
+- The application and this repository cannot establish that those administrative
+  approvals exist. Their receipt/reference must be recorded by the accountable
+  owner before production GO; until then, Neon may contain only authorized
+  non-production/test data.
+
+Official sources checked on 2026-11-24:
+
+- [Law 09-08 (CNDP)](https://www.cndp.ma/wp-content/uploads/2023/11/Loi-09-08-Fr.pdf)
+- [CNDP processing conditions](https://www.cndp.ma/conditions/)
+- [CNDP foreign-transfer procedure](https://www.cndp.ma/transfert-de-donnees-a-letranger/)
+- [CNDP notification procedures](https://www.cndp.ma/procedures-de-notification-process/)
+
+This section records engineering release constraints, not legal advice. The
+Cyber Owner must confirm the appropriate filing and retention periods with the
+CNDP or qualified Moroccan counsel.
+
+### Current Neon data classification (2026-11-24)
+
+A read-only aggregate comparison against the repository's known smoke markers
+classified all 8 personas and all 5 documents as synthetic smoke data; zero
+persona or document remained unclassified. No names, identity numbers or document
+contents were emitted by the check. The database also contains 6 workforce
+accounts (2 active and 4 deactivated), which remain personal data even though the
+client fixtures are synthetic. This heuristic is evidence for release triage, not
+a substitute for CNDP approval or a formal data inventory.
 
 ## Enforced technical safeguards
 
@@ -54,6 +95,10 @@ shown as `TBD` are not defaults.
 | Sessions/security metadata | TBD | TBD | TBD | TBD | TBD | pending |
 | Activity logs | TBD | TBD | TBD | TBD | TBD | pending |
 | Backups | TBD | TBD | TBD | not applicable | expiry/rotation TBD | pending |
+
+Required approval references must also record the CNDP declaration/authorization
+for the base processing and, while Neon remains outside Morocco, the approved
+foreign-transfer basis/reference.
 
 Retention starts from an explicitly defined event, not merely from `createdAt`,
 unless the approved policy says so. Legal holds, accounting constraints and

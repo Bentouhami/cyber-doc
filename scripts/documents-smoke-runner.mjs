@@ -654,6 +654,34 @@ async function runPaymentUpdateCheck(api, documentId) {
     return;
   }
 
+  const discountDraft = await requestJson(
+    api,
+    "PATCH",
+    `/api/documents/${documentId}/payment`,
+    { discount: 5 },
+  );
+  const discountedTotal = Number(discountDraft.body?.chargedTotal);
+  const discountedPayment = await requestJson(
+    api,
+    "PATCH",
+    `/api/documents/${documentId}/payment`,
+    { amountPaid: discountedTotal, discount: 5 },
+  );
+  const discountOk =
+    discountDraft.response.ok() &&
+    Number.isFinite(discountedTotal) &&
+    discountedTotal >= 0 &&
+    discountedPayment.response.ok() &&
+    discountedPayment.body?.paymentStatus === "PAID" &&
+    Number(discountedPayment.body?.discount) === 5 &&
+    Number(discountedPayment.body?.amountPaid) === discountedTotal &&
+    Number(discountedPayment.body?.changeGiven) === 0;
+  pushResult(
+    "Documents payment supports customer discount",
+    discountOk,
+    `HTTP ${discountedPayment.response.status()} discount=${discountedPayment.body?.discount ?? "n/a"} charged=${discountedPayment.body?.chargedTotal ?? "n/a"} status=${discountedPayment.body?.paymentStatus ?? "n/a"} change=${discountedPayment.body?.changeGiven ?? "n/a"}`,
+  );
+
   const payment = await requestJson(api, "PATCH", `/api/documents/${documentId}/payment`, {
     amountPaid: 99_999_999.99,
   });
@@ -673,6 +701,7 @@ async function runPaymentUpdateCheck(api, documentId) {
 
   for (const [name, payload] of [
     ["negative amount", { amountPaid: -1 }],
+    ["excessive discount", { discount: 99_999_999.99 }],
     ["client-derived status", { amountPaid: 30, paymentStatus: "PAID" }],
     ["unsupported currency", { amountPaid: 30, currency: "EUR" }],
     ["employee price override", { amountPaid: 30, unitPrice: 1 }],

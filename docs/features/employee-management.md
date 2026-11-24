@@ -16,7 +16,9 @@ supprimer des comptes employés avec leurs rôles.
 ## Périmètre utilisateur
 
 Le parcours principal est `/admin/employees`. Il comprend la liste, le formulaire
-de création et la modification des informations, rôles et mots de passe.
+de création et la modification des informations, rôles et mots de passe. Les
+filtres disposent de libellés accessibles et les champs de gestion conservent une
+hauteur tactile minimale dans les deux langues.
 
 ## Règles métier
 
@@ -84,6 +86,8 @@ employee de test de manière idempotente.
 
 ## Historique
 
+- 2026-11-24 — Filtres employés restructurés, champs tactiles et commande de
+  visibilité du mot de passe rendue accessible en français et en arabe.
 - 2026-11-23 — Ajout des rôles propriétaire/responsable et des protections de
   délégation dans l’API et l’interface bilingue.
 - 2026-11-23 — Ajout du nom d’utilisateur unique dans le CRUD, les DTOs et la

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "node:fs/promises";
 
 import prisma from "@/lib/prisma";
 import { ensureAdminUser } from "@/lib/admin-auth";
 import { internalServerError, logApiError } from "@/lib/api-error";
 import { safeDownloadFileName } from "@/services/storageSecurity";
-import { resolveTemplateAssetFile } from "@/services/templateAssetStorageService";
+import { readTemplateAssetFile } from "@/services/templateAssetStorageService";
 
 export const runtime = "nodejs";
 
@@ -38,10 +37,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   }
 
   try {
-    const absolutePath = await resolveTemplateAssetFile(template.asset.filePath);
-    const buffer = await fs.readFile(
-      /* turbopackIgnore: true */ absolutePath,
-    );
+    const buffer = await readTemplateAssetFile(template.asset.filePath);
     return new NextResponse(buffer, {
       headers: {
         "Content-Type":

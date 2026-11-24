@@ -40,8 +40,15 @@ export function resolveCatalogPrice(
 const moneySchema = catalogPriceSchema;
 
 export const cashPaymentUpdateSchema = z
-  .object({ amountPaid: moneySchema })
-  .strict();
+  .object({
+    amountPaid: moneySchema.optional(),
+    discount: moneySchema.optional(),
+  })
+  .strict()
+  .refine(
+    (value) => value.amountPaid !== undefined || value.discount !== undefined,
+    "At least one cashier payment value is required",
+  );
 
 export const paymentUpdateSchema = z
   .object({

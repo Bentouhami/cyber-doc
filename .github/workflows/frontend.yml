@@ -45,6 +45,7 @@ jobs:
       BETTER_AUTH_SECRET: ${{ secrets.CI_BETTER_AUTH_SECRET }}
       BETTER_AUTH_URL: https://ci.cyberdoc.invalid
       NEXT_PUBLIC_APP_URL: https://ci.cyberdoc.invalid
+      DATABASE_URL: postgresql://ci@127.0.0.1:5432/cyber_doc_build
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -54,7 +55,7 @@ jobs:
       - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
         with:
           version: 12.15.0
-          runtime: node@22.13.0
+          runtime: node@22.17.0
           cache: true
           require-lockfile: true
           install: false
@@ -154,7 +155,7 @@ jobs:
       - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
         with:
           version: 12.15.0
-          runtime: node@22.13.0
+          runtime: node@22.17.0
           cache: true
           require-lockfile: true
           install: false

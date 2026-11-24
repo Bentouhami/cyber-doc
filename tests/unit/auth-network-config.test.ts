@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { resolveAuthNetworkConfig } from "../../lib/auth-network-config";
+import {
+  resolveAuthNetworkConfig,
+  resolveAuthSecret,
+} from "../../lib/auth-network-config";
 
 describe("auth network configuration", () => {
   it("keeps loopback conveniences development-only", () => {
@@ -20,6 +23,46 @@ describe("auth network configuration", () => {
       "http://127.0.0.1:3100",
     ]);
     assert.deepEqual(production.trustedOrigins, ["https://cyberdoc.example"]);
+    assert.deepEqual(production.trustedProxies, []);
+    assert.deepEqual(production.ipAddressHeaders, []);
+  });
+
+  it("uses Vercel's overwritten client IP header", () => {
+    const config = resolveAuthNetworkConfig({
+      NODE_ENV: "production",
+      VERCEL: "1",
+      BETTER_AUTH_URL: "https://cyberdoc.example",
+    });
+
+    assert.deepEqual(config.ipAddressHeaders, ["x-vercel-forwarded-for"]);
+    assert.deepEqual(config.trustedProxies, []);
+  });
+
+  it("accepts only explicit IP or CIDR trusted proxies", () => {
+    const config = resolveAuthNetworkConfig({
+      NODE_ENV: "production",
+      BETTER_AUTH_URL: "https://cyberdoc.example",
+      BETTER_AUTH_TRUSTED_PROXIES:
+        "127.0.0.1,10.20.0.0/24,2001:db8::/32,127.0.0.1",
+    });
+
+    assert.deepEqual(config.trustedProxies, [
+      "127.0.0.1",
+      "10.20.0.0/24",
+      "2001:db8::/32",
+    ]);
+    assert.deepEqual(config.ipAddressHeaders, ["x-forwarded-for"]);
+    for (const value of ["proxy.local", "10.0.0.1/33", "2001:db8::/129"]) {
+      assert.throws(
+        () =>
+          resolveAuthNetworkConfig({
+            NODE_ENV: "production",
+            BETTER_AUTH_URL: "https://cyberdoc.example",
+            BETTER_AUTH_TRUSTED_PROXIES: value,
+          }),
+        /exact IP addresses or CIDR ranges/i,
+      );
+    }
   });
 
   it("accepts only explicit exact additional origins", () => {
@@ -95,6 +138,24 @@ describe("auth network configuration", () => {
           BETTER_AUTH_TRUSTED_ORIGINS: "https://admin.cyberdoc.example/path",
         }),
       /must not include a path/i,
+    );
+  });
+
+  it("requires a high-entropy-sized authentication secret in production", () => {
+    assert.throws(
+      () => resolveAuthSecret({ NODE_ENV: "production" }),
+      /at least 32 characters/,
+    );
+    assert.throws(
+      () => resolveAuthSecret({ NODE_ENV: "production", BETTER_AUTH_SECRET: "short" }),
+      /at least 32 characters/,
+    );
+    assert.equal(
+      resolveAuthSecret({
+        NODE_ENV: "production",
+        BETTER_AUTH_SECRET: "x".repeat(32),
+      }),
+      "x".repeat(32),
     );
   });
 });

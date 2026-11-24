@@ -46,6 +46,11 @@ remplacer par un nom convivial.
 ## API et contrats
 
 Better Auth expose `/sign-in/email` et `/sign-in/username` sous `/api/auth/[...all]`.
+En production, son rate limiter conserve ses compteurs dans la table PostgreSQL
+`rate_limits`; ils survivent donc aux redémarrages et sont partagés entre replicas.
+Sur Vercel, CyberDoc utilise `x-vercel-forwarded-for`, que la plateforme remplace
+avant l'exécution de la fonction. Les autres plateformes doivent déclarer uniquement
+les adresses exactes de leurs proxies de confiance avant d'utiliser `x-forwarded-for`.
 `GET /api/users/me` renvoie
 l’utilisateur courant et ses rôles ou `401` sans session valide. Le provider de
 profil racine est l’unique client initial de cette route; gardes, en-têtes et pages
@@ -70,10 +75,10 @@ approuvées; les origines localhost de confort ne sont ajoutées qu’en dévelo
 Les URL non HTTP(S), avec credentials, query/fragment ou origine additionnelle avec
 un chemin sont rejetées au démarrage; un hôte public HTTP est refusé en production.
 Better Auth active son limiteur par défaut en production (3 requêtes de connexion
-par fenêtre de 10 secondes), mais son stockage mémoire et la résolution de
-`x-forwarded-for` ne constituent pas encore le contrat final multi-instance/proxy.
-Le passage au stockage PostgreSQL partagé, le seuil plus long et les CIDR de proxy
-doivent être explicitement approuvés et testés avant exposition de l'origine.
+par fenêtre de 10 secondes). Ses compteurs sont stockés dans PostgreSQL afin d'être
+partagés entre les fonctions; Vercel fournit l'adresse client via son en-tête écrasé.
+Tout proxy ajouté devant Vercel doit conserver ce contrat ou faire l'objet d'une
+configuration et d'un test de spoofing dédiés avant exposition.
 
 ## Erreurs et cas limites
 
