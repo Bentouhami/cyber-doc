@@ -24,8 +24,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Génère le client Prisma (nécessaire au build si importé côté server)
 RUN pnpm exec prisma generate
 
-# Build Next.js en mode standalone
-RUN pnpm run build
+# Build-only placeholders keep runtime secrets out of image layers and the final stage.
+RUN DATABASE_URL=postgresql://build@127.0.0.1:5432/cyber_doc_build \
+    BETTER_AUTH_SECRET=cyberdoc-build-placeholder-not-a-runtime-secret \
+    pnpm run build
 
 # ---------- Database migrator ----------
 # Keep schema changes as an explicit, fail-fast deployment step. The lean

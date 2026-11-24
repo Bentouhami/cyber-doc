@@ -116,6 +116,12 @@ PR #14 then exposed a newer direct dependency floor: `@sparticuz/chromium-min`
 `.node-version` were raised together to 22.17.0; the frozen pnpm install and floor
 guard passed under the supported Node 24.22.3 development runtime.
 
+The next PR #14 run passed installation and every static check, then proved that
+the production build also needs a syntactically valid database URL while collecting
+route metadata. GitHub Actions and the Docker builder now receive non-connecting,
+build-only placeholders; Neon credentials remain runtime-only and are not copied
+into the final container stage.
+
 A five-axis review then rechecked the financial boundary, every changed caller,
 the administration/import UI, dependency lock and runtime guard. The document
 summary amount was corrected to follow the server-confirmed local state after a
